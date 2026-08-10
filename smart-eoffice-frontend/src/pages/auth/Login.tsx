@@ -89,7 +89,7 @@ export const Login: React.FC = () => {
 
       {/* Main Authentication Card */}
       <main className="w-full max-w-md my-auto">
-        <div className="bg-[#ECEAE3] border border-[#292A27]/08 rounded-[1.75rem] p-7 md:p-10 shadow-sm transition-all">
+        <div className="bg-white border border-[#292A27]/08 rounded-[1.75rem] p-7 md:p-10 shadow-sm transition-all">
           <div className="mb-8 text-center">
             <h2 className="text-2xl font-semibold text-[#292A27] tracking-tight mb-1.5">Welcome back</h2>
             <p className="text-sm text-[#6B6A64]">Sign in to continue to Smart E-Office</p>
