@@ -22,6 +22,17 @@ export interface DocumentItem {
   tags?: string[];
   version?: string;
   is_new?: boolean;
+  versions?: VersionItem[];
+}
+
+export interface VersionItem {
+  id: string;
+  versionNumber: string;
+  uploadedBy: string;
+  date: string;
+  fileSize?: number;
+  fileName?: string;
+  isCurrent?: boolean;
 }
 
 export interface DocumentFilterParams {

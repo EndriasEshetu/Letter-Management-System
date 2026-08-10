@@ -3,6 +3,7 @@ import {
   DocumentFilterParams,
   DocumentItem,
   PaginatedDocumentResponse,
+  VersionItem,
 } from '@/types/document';
 
 /**
@@ -26,6 +27,11 @@ const MOCK_DOCUMENTS: DocumentItem[] = [
     updated_at: 'Today, 09:42 AM',
     tags: ['financial', 'q1', 'draft'],
     is_new: true,
+    versions: [
+      { id: 'v1-3', versionNumber: 'v3.0', uploadedBy: 'Endrias Eshetu', date: 'Today, 09:42 AM', fileSize: 2516582, fileName: 'Q1_Financial_Report_DRAFT_v3.pdf', isCurrent: true },
+      { id: 'v1-2', versionNumber: 'v2.0', uploadedBy: 'Endrias Eshetu', date: 'Oct 20, 2026', fileSize: 2200100, fileName: 'Q1_Financial_Report_DRAFT_v2.pdf' },
+      { id: 'v1-1', versionNumber: 'v1.0', uploadedBy: 'Sara Jenkins', date: 'Oct 15, 2026', fileSize: 1800500, fileName: 'Q1_Financial_Report_DRAFT.pdf' },
+    ],
   },
   {
     id: 'doc-2',
@@ -43,6 +49,9 @@ const MOCK_DOCUMENTS: DocumentItem[] = [
     created_at: 'Yesterday, 16:30 PM',
     updated_at: 'Yesterday, 16:30 PM',
     tags: ['policy', 'archive'],
+    versions: [
+      { id: 'v2-1', versionNumber: 'v1.0', uploadedBy: 'Tariku Bikila', date: 'Yesterday, 16:30 PM', fileSize: 47290777, fileName: '2025_Archived_Policies.zip', isCurrent: true },
+    ],
   },
   {
     id: 'doc-3',
@@ -61,6 +70,10 @@ const MOCK_DOCUMENTS: DocumentItem[] = [
     updated_at: 'Mar 28, 2026',
     tags: ['masterplan', 'campus'],
     is_new: true,
+    versions: [
+      { id: 'v3-2', versionNumber: 'v2.0', uploadedBy: 'Sara Jenkins', date: 'Mar 28, 2026', fileSize: 8598323, fileName: 'New_Campus_Masterplan_v2.png', isCurrent: true },
+      { id: 'v3-1', versionNumber: 'v1.0', uploadedBy: 'Sara Jenkins', date: 'Mar 10, 2026', fileSize: 7100000, fileName: 'New_Campus_Masterplan.png' },
+    ],
   },
   {
     id: 'doc-4',
@@ -78,6 +91,9 @@ const MOCK_DOCUMENTS: DocumentItem[] = [
     created_at: 'Mar 15, 2026',
     updated_at: 'Mar 15, 2026',
     tags: ['hr', 'handbook'],
+    versions: [
+      { id: 'v4-1', versionNumber: 'v1.0', uploadedBy: 'Abebe Kebede', date: 'Mar 15, 2026', fileSize: 1153433, fileName: 'Employee_Handbook_2026.pdf', isCurrent: true },
+    ],
   },
   {
     id: 'doc-5',
@@ -95,6 +111,10 @@ const MOCK_DOCUMENTS: DocumentItem[] = [
     created_at: 'Mar 10, 2026',
     updated_at: 'Mar 10, 2026',
     tags: ['ict', 'audit'],
+    versions: [
+      { id: 'v5-2', versionNumber: 'v2.0', uploadedBy: 'Michael K.', date: 'Mar 10, 2026', fileSize: 3460300, fileName: 'ICT_Infrastructure_Audit_Report_v2.docx', isCurrent: true },
+      { id: 'v5-1', versionNumber: 'v1.0', uploadedBy: 'Michael K.', date: 'Feb 28, 2026', fileSize: 3100000, fileName: 'ICT_Infrastructure_Audit_Report.docx' },
+    ],
   },
 ];
 
@@ -304,6 +324,41 @@ export const documentService = {
         if (target) {
           target.status = 'ARCHIVED';
           return { message: 'Document moved to archive', document: target };
+        }
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Get version history for a document
+   */
+  async getDocumentVersions(id: string): Promise<VersionItem[]> {
+    try {
+      const response = await api.get<VersionItem[]>(`/documents/${id}/versions`);
+      return response.data;
+    } catch (error: any) {
+      if (error.code === 'ERR_NETWORK' || !error.response) {
+        const doc = inMemoryDocuments.find((d) => d.id === id);
+        return doc?.versions || [];
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Submit document for approval
+   */
+  async submitForApproval(id: string): Promise<{ message: string; document: DocumentItem }> {
+    try {
+      const response = await api.post<{ message: string; document: DocumentItem }>(`/documents/${id}/submit`);
+      return response.data;
+    } catch (error: any) {
+      if (error.code === 'ERR_NETWORK' || !error.response) {
+        const target = inMemoryDocuments.find((d) => d.id === id);
+        if (target) {
+          target.status = 'PENDING_APPROVAL';
+          return { message: 'Document submitted for approval', document: target };
         }
       }
       throw error;
