@@ -24,7 +24,14 @@ const ToastContext = createContext<ToastContextValue | undefined>(undefined);
 
 export const useToast = () => {
   const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error('useToast must be used within <ToastProvider>');
+  if (!ctx) {
+    return {
+      addToast: (toast: Omit<ToastItem, 'id'>) => {
+        console.log('[Toast Notification]', toast.title, toast.message);
+      },
+      removeToast: () => {},
+    };
+  }
   return ctx;
 };
 
