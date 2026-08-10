@@ -1,7 +1,7 @@
 import React from 'react';
 
-type BadgeVariant = 'neutral' | 'success' | 'warning' | 'error' | 'info';
-type DocumentStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'ARCHIVED';
+export type BadgeVariant = 'neutral' | 'success' | 'warning' | 'error' | 'info';
+export type DocumentStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'ARCHIVED';
 
 interface BadgeProps {
   variant?: BadgeVariant;
