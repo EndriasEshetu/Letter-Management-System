@@ -13,6 +13,7 @@ import Departments from '@/pages/departments/Departments';
 import AuditLogs from '@/pages/audit/AuditLogs';
 import ProtectedRoute from '@/routes/ProtectedRoute';
 import RoleRoute from '@/routes/RoleRoute';
+import AppShell from '@/components/layout/AppShell';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -21,99 +22,58 @@ export const AppRoutes: React.FC = () => {
         {/* Public Route */}
         <Route path="/login" element={<Login />} />
 
-        {/* Protected Routes (All Authenticated Roles) */}
+        {/* Protected App Shell Layout */}
         <Route
-          path="/dashboard"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <AppShell />
             </ProtectedRoute>
           }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/documents"
-          element={
-            <ProtectedRoute>
-              <Documents />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/documents/:id"
-          element={
-            <ProtectedRoute>
-              <DocumentDetails />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/documents/:id/preview"
-          element={
-            <ProtectedRoute>
-              <DocumentPreview />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/archives"
-          element={
-            <ProtectedRoute>
-              <Archives />
-            </ProtectedRoute>
-          }
-        />
+        >
+          {/* Authenticated Routes (All Roles) */}
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/documents" element={<Documents />} />
+          <Route path="/documents/:id" element={<DocumentDetails />} />
+          <Route path="/documents/:id/preview" element={<DocumentPreview />} />
+          <Route path="/archives" element={<Archives />} />
 
-        {/* Role Protected Route: DEPARTMENT_MANAGER */}
-        <Route
-          path="/approvals"
-          element={
-            <ProtectedRoute>
+          {/* Role Protected Route: DEPARTMENT_MANAGER */}
+          <Route
+            path="/approvals"
+            element={
               <RoleRoute allowedRoles={['DEPARTMENT_MANAGER']}>
                 <ApprovalQueue />
               </RoleRoute>
-            </ProtectedRoute>
-          }
-        />
+            }
+          />
 
-        {/* Role Protected Routes: ADMIN */}
-        <Route
-          path="/users"
-          element={
-            <ProtectedRoute>
+          {/* Role Protected Routes: ADMIN */}
+          <Route
+            path="/users"
+            element={
               <RoleRoute allowedRoles={['ADMIN']}>
                 <Users />
               </RoleRoute>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/departments"
-          element={
-            <ProtectedRoute>
+            }
+          />
+          <Route
+            path="/departments"
+            element={
               <RoleRoute allowedRoles={['ADMIN']}>
                 <Departments />
               </RoleRoute>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/audit-logs"
-          element={
-            <ProtectedRoute>
+            }
+          />
+          <Route
+            path="/audit-logs"
+            element={
               <RoleRoute allowedRoles={['ADMIN']}>
                 <AuditLogs />
               </RoleRoute>
-            </ProtectedRoute>
-          }
-        />
+            }
+          />
+        </Route>
 
         {/* Root Redirect */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />

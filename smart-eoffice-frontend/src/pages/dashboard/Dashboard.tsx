@@ -25,33 +25,7 @@ export const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F3ED] flex flex-col">
-      {/* Top Application Header */}
-      <header className="bg-[#ECEAE3] border-b border-[#292A27]/08 px-6 py-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 bg-[#526A55] text-[#F5F3ED] rounded-xl flex items-center justify-center font-bold text-base shadow-sm">
-              S
-            </div>
-            <div>
-              <h1 className="text-base font-semibold text-[#292A27]">Smart E-Office</h1>
-              <p className="text-xs text-[#6B6A64]">Sidama Innovation & Technology Agency</p>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-3">
-            <Button variant="secondary" size="sm" onClick={() => navigate('/profile')}>
-              My Profile
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              Sign Out
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Container */}
-      <main className="flex-1 max-w-5xl w-full mx-auto p-6 md:p-10 flex flex-col justify-center items-center">
+    <div className="max-w-5xl mx-auto flex flex-col justify-center items-center py-6">
         <Card className="max-w-xl w-full text-center space-y-6">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-[#526A55]/10 text-[#526A55] rounded-2xl mx-auto mb-2">
             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -93,7 +67,6 @@ export const Dashboard: React.FC = () => {
             </Button>
           </div>
         </Card>
-      </main>
     </div>
   );
 };

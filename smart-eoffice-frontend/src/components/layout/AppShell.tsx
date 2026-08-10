@@ -1,61 +1,63 @@
-import React from 'react';
-import { ShieldCheck, FileText, Building2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Outlet } from 'react-router-dom';
+import Sidebar from './Sidebar';
+import TopNav from './TopNav';
 
 interface AppShellProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export const AppShell: React.FC<AppShellProps> = ({ children }) => {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
-      {/* SITA Top Navigation Header */}
-      <header className="bg-slate-900 border-b border-slate-800 text-white sticky top-0 z-50 shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          {/* Logo & Agency Brand */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-sm font-bold text-lg">
-              <FileText className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold tracking-tight text-white text-lg">
-                  Smart E-Office
-                </span>
-                <span className="bg-blue-500/20 text-blue-300 text-xs font-semibold px-2 py-0.5 rounded-full border border-blue-400/30">
-                  SITA
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 hidden sm:block">
-                Sidama Innovation and Technology Agency
-              </p>
-            </div>
-          </div>
+    <div className="min-h-screen flex bg-[#F5F3ED] text-[#252622]">
+      {/* ─── Desktop Sidebar (Fixed Left) ────────────────────── */}
+      <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 z-30">
+        <Sidebar />
+      </div>
 
-          {/* Phase Status Indicator */}
-          <div className="flex items-center gap-2 bg-emerald-950/80 border border-emerald-800/60 text-emerald-400 px-3 py-1.5 rounded-full text-xs font-medium">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>Phase 1: Foundation Ready</span>
+      {/* ─── Mobile Drawer Sidebar (Slide-over Overlay) ────────── */}
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          {/* Dark Backdrop */}
+          <div
+            className="fixed inset-0 bg-[#292A27]/40 backdrop-blur-xs transition-opacity"
+            aria-hidden="true"
+            onClick={() => setMobileOpen(false)}
+          />
+
+          {/* Drawer Container */}
+          <div className="relative flex-1 max-w-xs w-full bg-[#ECEAE3] flex flex-col shadow-2xl z-10">
+            {/* Mobile Close Button */}
+            <div className="absolute top-4 right-3 z-20">
+              <button
+                type="button"
+                onClick={() => setMobileOpen(false)}
+                className="p-2 text-[#292A27] hover:bg-[#D8D7D1] rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-[#526A55]"
+                aria-label="Close navigation"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <Sidebar onCloseMobile={() => setMobileOpen(false)} />
           </div>
         </div>
-      </header>
+      )}
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-        {children}
-      </main>
+      {/* ─── Main Section (Header + Outlet Content Area) ─────── */}
+      <div className="md:pl-64 flex flex-col flex-1 min-w-0 min-h-screen">
+        {/* Top Navigation Header */}
+        <TopNav onOpenMobileSidebar={() => setMobileOpen(true)} />
 
-      {/* Footer */}
-      <footer className="bg-white border-t border-slate-200 py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-slate-400" />
-            <span>Sidama Innovation and Technology Agency (SITA) &copy; {new Date().getFullYear()}</span>
-          </div>
-          <div>
-            <span>Smart E-Office Document Management System — Phase 1</span>
-          </div>
-        </div>
-      </footer>
+        {/* Page Content Outlet */}
+        <main className="flex-1 bg-[#F5F3ED] p-4 sm:p-6 lg:p-8 overflow-y-auto">
+          {children ? children : <Outlet />}
+        </main>
+      </div>
     </div>
   );
 };

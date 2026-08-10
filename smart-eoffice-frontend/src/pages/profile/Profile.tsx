@@ -81,30 +81,7 @@ export const Profile: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F3ED] flex flex-col">
-      {/* Top Header */}
-      <header className="bg-[#ECEAE3] border-b border-[#292A27]/08 px-6 py-4">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate('/dashboard')}>
-            <div className="w-8 h-8 bg-[#526A55] text-[#F5F3ED] rounded-xl flex items-center justify-center font-bold text-sm">
-              S
-            </div>
-            <span className="text-sm font-semibold text-[#292A27]">Smart E-Office</span>
-          </div>
-
-          <div className="flex items-center space-x-3">
-            <Button variant="secondary" size="sm" onClick={() => navigate('/dashboard')}>
-              Back to Dashboard
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              Logout
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="flex-1 max-w-4xl w-full mx-auto p-6 md:py-10 space-y-6">
+    <div className="max-w-4xl w-full mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-semibold text-[#292A27]">User Profile & Security</h1>
           <p className="text-sm text-[#6B6A64]">Manage your account details and update your password.</p>
@@ -222,7 +199,6 @@ export const Profile: React.FC = () => {
             </Card>
           </div>
         </div>
-      </main>
     </div>
   );
 };
