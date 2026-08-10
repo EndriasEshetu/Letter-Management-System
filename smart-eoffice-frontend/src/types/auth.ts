@@ -1,4 +1,5 @@
 export type Role = 'ADMIN' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE';
+export type UserStatus = 'ACTIVE' | 'INACTIVE';
 
 export interface AuthUser {
   id: number;
@@ -7,6 +8,9 @@ export interface AuthUser {
   role: Role;
   department_id: number | null;
   department_name?: string;
+  phone?: string;
+  job_title?: string;
+  status?: UserStatus;
   is_active?: boolean;
 }
 
