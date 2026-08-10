@@ -1,14 +1,28 @@
 @import "tailwindcss";
 
+@theme {
+  --color-sita-bg: #F5F3ED;
+  --color-sita-surface: #ECEAE3;
+  --color-sita-sage: #526A55;
+  --color-sita-sage-light: #AEBDA5;
+  --color-sita-sage-secondary: #DCE3C8;
+  --color-sita-charcoal: #292A27;
+  --color-sita-gray-soft: #D8D7D1;
+  --color-sita-text: #252622;
+  --color-sita-error: #8B3232;
+  --color-sita-success: #4A6B4E;
+  --color-sita-warning: #C48D3F;
+}
+
 @layer base {
   :root {
-    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   }
 
   body {
     font-family: var(--font-sans);
-    background-color: #f8fafc;
-    color: #0f172a;
+    background-color: #F5F3ED;
+    color: #252622;
     margin: 0;
     padding: 0;
     -webkit-font-smoothing: antialiased;
@@ -16,12 +30,60 @@
   }
 }
 
-/* Custom SITA Branding Theme Variables */
-:root {
-  --sita-navy-dark: #0B192C;
-  --sita-navy-main: #1E3E62;
-  --sita-navy-light: #3B608C;
-  --sita-accent-emerald: #059669;
-  --sita-accent-amber: #D97706;
-  --sita-accent-red: #DC2626;
+/* Custom rounded corner utility classes matching SITA visual design */
+.sita-card {
+  background-color: #ECEAE3;
+  border: 1px solid rgba(41, 42, 39, 0.08);
+  border-radius: 1.5rem; /* 24px */
+  box-shadow: 0 4px 20px -2px rgba(41, 42, 39, 0.04);
+}
+
+.sita-card-white {
+  background-color: #F9F8F5;
+  border: 1px solid rgba(41, 42, 39, 0.08);
+  border-radius: 1.5rem; /* 24px */
+  box-shadow: 0 4px 20px -2px rgba(41, 42, 39, 0.04);
+}
+
+.sita-input {
+  background-color: #F9F8F6;
+  border: 1px solid #D8D7D1;
+  color: #252622;
+  border-radius: 0.875rem; /* 14px */
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sita-input:focus {
+  outline: none;
+  border-color: #526A55;
+  box-shadow: 0 0 0 3px rgba(82, 106, 85, 0.15);
+}
+
+.sita-btn-primary {
+  background-color: #526A55;
+  color: #F5F3ED;
+  border-radius: 0.875rem; /* 14px */
+  font-weight: 500;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.sita-btn-primary:hover:not(:disabled) {
+  background-color: #435746;
+}
+
+.sita-btn-primary:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.sita-btn-secondary {
+  background-color: #ECEAE3;
+  color: #292A27;
+  border: 1px solid #D8D7D1;
+  border-radius: 0.875rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.sita-btn-secondary:hover:not(:disabled) {
+  background-color: #E2E0D8;
 }

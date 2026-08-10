@@ -1,37 +1,41 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import AppShell from '@/components/layout/AppShell';
-import LandingPage from '@/pages/LandingPage';
+import Login from '@/pages/auth/Login';
+import Dashboard from '@/pages/dashboard/Dashboard';
+import Profile from '@/pages/profile/Profile';
+import ProtectedRoute from '@/routes/ProtectedRoute';
 
-/**
- * Main Application Routing Architecture
- * Phase 1 establishes the root route (/) and routing structure.
- * Future phases will append protected routes (/login, /dashboard, /documents, etc.)
- */
 export const AppRoutes: React.FC = () => {
   return (
     <BrowserRouter>
-      <AppShell>
-        <Routes>
-          {/* Phase 1 Landing / Welcome Screen */}
-          <Route path="/" element={<LandingPage />} />
+      <Routes>
+        {/* Public Login Route */}
+        <Route path="/login" element={<Login />} />
 
-          {/* 
-            Phase 2+ Future Route Architecture Placeholders:
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/documents" element={<DocumentsPage />} />
-            <Route path="/approvals" element={<ApprovalsPage />} />
-            <Route path="/users" element={<UsersPage />} />
-            <Route path="/departments" element={<DepartmentsPage />} />
-            <Route path="/archives" element={<ArchivesPage />} />
-            <Route path="/audit-logs" element={<AuditLogsPage />} />
-          */}
+        {/* Protected Authenticated Routes */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
 
-          {/* Catch-all redirect to root */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AppShell>
+        {/* Redirect root (/) to /dashboard (which redirects to /login if unauthenticated) */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+        {/* Catch-all redirect to root */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </BrowserRouter>
   );
 };

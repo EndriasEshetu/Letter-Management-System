@@ -4,7 +4,7 @@ const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'
 
 /**
  * Centralized Axios instance for Smart E-Office Document Management System.
- * Configured with environment-based base URL and prepared for interceptors in future phases.
+ * Configured with token authorization interceptor and automatic 401 error handling.
  */
 export const api = axios.create({
   baseURL,
@@ -14,12 +14,13 @@ export const api = axios.create({
   timeout: 10000,
 });
 
-/* Request Interceptor Placeholder for Future JWT Authorization */
+/* Request Interceptor: Attach JWT Token */
 api.interceptors.request.use(
   (config) => {
-    // Phase 2 will attach authorization headers here:
-    // const token = localStorage.getItem('token');
-    // if (token) { config.headers.Authorization = `Bearer ${token}`; }
+    const token = localStorage.getItem('sita_auth_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => {
@@ -27,11 +28,20 @@ api.interceptors.request.use(
   }
 );
 
-/* Response Interceptor Placeholder for Global Error Handling */
+/* Response Interceptor: Handle Authentication Failures */
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Phase 2+ global error interceptor placeholder
+    // 401 Unauthorized handling
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem('sita_auth_token');
+      localStorage.removeItem('sita_auth_user');
+
+      // Only redirect if not already on the login page to avoid infinite redirect loops
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.location.href = '/login?expired=true';
+      }
+    }
     return Promise.reject(error);
   }
 );
