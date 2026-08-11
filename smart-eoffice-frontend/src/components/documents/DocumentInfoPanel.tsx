@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Badge from '@/components/common/Badge';
 import { DocumentItem, VersionItem } from '@/types/document';
+import CommentSection from '@/components/comments/CommentSection';
 
 /* ─── Security Level Badge ──────────────────────────────── */
 
@@ -84,7 +85,7 @@ type TabId = 'details' | 'versions' | 'discussion';
 const TABS: { id: TabId; label: string; disabled?: boolean }[] = [
   { id: 'details', label: 'Details' },
   { id: 'versions', label: 'Versions' },
-  { id: 'discussion', label: 'Discussion', disabled: true },
+  { id: 'discussion', label: 'Discussion' },
 ];
 
 /* ─── DocumentInfoPanel Props ───────────────────────────── */
@@ -232,17 +233,14 @@ export const DocumentInfoPanel: React.FC<DocumentInfoPanelProps> = ({ document }
           </div>
         )}
 
-        {/* Discussion Tab — Placeholder (Phase 11) */}
+        {/* Discussion Tab (Phase 11) */}
         {activeTab === 'discussion' && (
           <div
             id="tabpanel-discussion"
             role="tabpanel"
             aria-labelledby="tab-discussion"
-            className="text-center py-10"
           >
-            <p className="text-sm text-[#8A8983]">
-              Comments will be available in a future update.
-            </p>
+            <CommentSection documentId={document.id} compact />
           </div>
         )}
       </div>

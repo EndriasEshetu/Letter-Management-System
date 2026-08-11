@@ -14,6 +14,7 @@ import EmptyState from '@/components/common/EmptyState';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import Dropdown, { DropdownItem } from '@/components/common/Dropdown';
 import UploadVersionModal from '@/components/documents/UploadVersionModal';
+import CommentSection from '@/components/comments/CommentSection';
 
 /* ─── Security Level Badge Helper ───────────────────────── */
 
@@ -349,6 +350,11 @@ export const DocumentDetails: React.FC = () => {
                 </div>
               </div>
             )}
+          </Card>
+
+          {/* Discussion & Comments */}
+          <Card>
+            <CommentSection documentId={doc.id} />
           </Card>
         </div>
 
