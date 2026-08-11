@@ -108,12 +108,54 @@ export const departmentService = {
           name: payload.name,
           code: payload.code,
           description: payload.description || '',
+          manager_id: payload.manager_id,
           manager_name: 'Unassigned',
           member_count: 1,
           created_at: new Date().toISOString().split('T')[0],
         };
         mockDepartments.push(newDept);
         return newDept;
+      }
+      throw error;
+    }
+  },
+
+  async updateDepartment(id: number | string, payload: UpdateDepartmentPayload): Promise<Department> {
+    try {
+      const response = await api.put<Department>(`/departments/${id}`, payload);
+      return response.data;
+    } catch (error: any) {
+      if (error.code === 'ERR_NETWORK' || !error.response) {
+        await new Promise((r) => setTimeout(r, 300));
+        const department = mockDepartments.find((d) => String(d.id) === String(id));
+        if (department) {
+          Object.assign(department, payload);
+          return { ...department };
+        }
+      }
+      throw error;
+    }
+  },
+
+  async assignManager(
+    id: number | string,
+    managerId: number | string,
+    managerName: string
+  ): Promise<Department> {
+    try {
+      const response = await api.post<Department>(`/departments/${id}/assign-manager`, {
+        manager_id: managerId,
+      });
+      return response.data;
+    } catch (error: any) {
+      if (error.code === 'ERR_NETWORK' || !error.response) {
+        await new Promise((r) => setTimeout(r, 300));
+        const department = mockDepartments.find((d) => String(d.id) === String(id));
+        if (department) {
+          department.manager_id = managerId;
+          department.manager_name = managerName;
+          return { ...department };
+        }
       }
       throw error;
     }

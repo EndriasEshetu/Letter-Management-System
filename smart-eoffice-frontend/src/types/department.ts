@@ -16,6 +16,14 @@ export interface CreateDepartmentPayload {
   manager_id?: number | string;
 }
 
+export interface UpdateDepartmentPayload {
+  name?: string;
+  code?: string;
+  description?: string;
+  manager_id?: number | string;
+  manager_name?: string;
+}
+
 export interface SystemCapacityInfo {
   total_licenses: number;
   used_licenses: number;
