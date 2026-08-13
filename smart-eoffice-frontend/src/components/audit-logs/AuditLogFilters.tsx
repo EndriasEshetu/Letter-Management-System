@@ -42,7 +42,7 @@ interface AuditLogFiltersProps {
   onReset: () => void;
 }
 
-export const AuditLogFilters: React.FC<AuditLogFiltersProps> = ({
+export const AuditLogFilterBar: React.FC<AuditLogFiltersProps> = ({
   filters,
   users,
   onSearchChange,
@@ -180,4 +180,4 @@ export const AuditLogFilters: React.FC<AuditLogFiltersProps> = ({
   );
 };
 
-export default AuditLogFilters;
+export default AuditLogFilterBar;

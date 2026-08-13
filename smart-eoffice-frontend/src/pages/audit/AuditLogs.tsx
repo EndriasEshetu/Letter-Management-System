@@ -1,7 +1,7 @@
 import React from 'react';
 import { Shield } from 'lucide-react';
 import { useAuditLogs } from '@/hooks/useAuditLogs';
-import AuditLogFilters from '@/components/audit-logs/AuditLogFilters';
+import AuditLogFilterBar from '@/components/audit-logs/AuditLogFilters';
 import AuditLogTable from '@/components/audit-logs/AuditLogTable';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import EmptyState from '@/components/common/EmptyState';
