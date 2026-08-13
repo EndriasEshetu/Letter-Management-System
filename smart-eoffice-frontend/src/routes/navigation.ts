@@ -10,6 +10,7 @@ export const NAVIGATION_BY_ROLE: Record<Role, NavigationItem[]> = {
   ADMIN: [
     { label: 'Dashboard', path: '/dashboard' },
     { label: 'Documents', path: '/documents' },
+    { label: 'Reports', path: '/reports' },
     { label: 'Users', path: '/users' },
     { label: 'Departments', path: '/departments' },
     { label: 'Archives', path: '/archives' },
@@ -19,11 +20,13 @@ export const NAVIGATION_BY_ROLE: Record<Role, NavigationItem[]> = {
     { label: 'Dashboard', path: '/dashboard' },
     { label: 'Documents', path: '/documents' },
     { label: 'Approvals', path: '/approvals' },
+    { label: 'Reports', path: '/reports' },
     { label: 'Archives', path: '/archives' },
   ],
   EMPLOYEE: [
     { label: 'Dashboard', path: '/dashboard' },
     { label: 'My Documents', path: '/documents' },
+    { label: 'Reports', path: '/reports' },
     { label: 'Archives', path: '/archives' },
   ],
 };
