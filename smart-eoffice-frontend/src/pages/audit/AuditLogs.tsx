@@ -1,12 +1,12 @@
-import React from 'react';
-import { Shield } from 'lucide-react';
-import { useAuditLogs } from '@/hooks/useAuditLogs';
-import AuditLogFilterBar from '@/components/audit-logs/AuditLogFilters';
-import AuditLogTable from '@/components/audit-logs/AuditLogTable';
-import LoadingSpinner from '@/components/common/LoadingSpinner';
-import EmptyState from '@/components/common/EmptyState';
-import ErrorState from '@/components/common/ErrorState';
-import Pagination from '@/components/common/Pagination';
+import React from "react";
+import { Shield } from "lucide-react";
+import { useAuditLogs } from "@/hooks/useAuditLogs";
+import AuditLogFilterBar from "@/components/audit-logs/AuditLogFilters";
+import AuditLogTable from "@/components/audit-logs/AuditLogTable";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
+import EmptyState from "@/components/common/EmptyState";
+import ErrorState from "@/components/common/ErrorState";
+import Pagination from "@/components/common/Pagination";
 
 export const AuditLogs: React.FC = () => {
   const {
@@ -29,7 +29,8 @@ export const AuditLogs: React.FC = () => {
     refetch,
   } = useAuditLogs();
 
-  const pageStart = total === 0 ? 0 : (currentPage - 1) * (filters.limit || 20) + 1;
+  const pageStart =
+    total === 0 ? 0 : (currentPage - 1) * (filters.limit || 20) + 1;
   const pageEnd = Math.min(currentPage * (filters.limit || 20), total);
 
   return (
@@ -52,18 +53,17 @@ export const AuditLogs: React.FC = () => {
 
         {!isLoading && total > 0 && (
           <div className="mt-4 sm:mt-0 text-xs text-[#6B6A64] font-medium bg-[#ECEAE3] px-3 py-1.5 rounded-xl border border-[#D8D7D1]/60">
-            Showing{' '}
+            Showing{" "}
             <span className="text-[#292A27] font-bold">
               {pageStart}–{pageEnd}
-            </span>{' '}
-            of{' '}
-            <span className="text-[#292A27] font-bold">{total}</span> records
+            </span>{" "}
+            of <span className="text-[#292A27] font-bold">{total}</span> records
           </div>
         )}
       </div>
 
       {/* Filters */}
-      <AuditLogFilters
+      <AuditLogFilterBar
         filters={filters}
         users={users}
         onSearchChange={setSearch}
@@ -79,7 +79,9 @@ export const AuditLogs: React.FC = () => {
       {isLoading && (
         <div className="py-24 flex flex-col items-center justify-center">
           <LoadingSpinner size="lg" />
-          <p className="mt-4 text-sm font-semibold text-[#6B6A64]">Loading audit logs…</p>
+          <p className="mt-4 text-sm font-semibold text-[#6B6A64]">
+            Loading audit logs…
+          </p>
         </div>
       )}
 
@@ -116,7 +118,9 @@ export const AuditLogs: React.FC = () => {
           {totalPages > 1 && (
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-2">
               <p className="text-xs text-[#6B6A64] font-medium">
-                Page <span className="font-bold text-[#292A27]">{currentPage}</span> of{' '}
+                Page{" "}
+                <span className="font-bold text-[#292A27]">{currentPage}</span>{" "}
+                of{" "}
                 <span className="font-bold text-[#292A27]">{totalPages}</span>
               </p>
               <Pagination
