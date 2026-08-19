@@ -102,9 +102,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
                 key={item.path}
                 to={item.path}
                 onClick={onCloseMobile}
+                aria-current={isActive ? 'page' : undefined}
                 className={({ isActive: linkActive }) => {
                   const active = isActive || linkActive;
-                  return `flex items-center space-x-3 px-3.5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-150 ${
+                  return `flex items-center space-x-3 px-3.5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-150 motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#526A55] ${
                     active
                       ? 'bg-[#AEBDA5]/70 text-[#292A27] shadow-sm'
                       : 'text-[#292A27] hover:bg-[#D8D7D1]/40'

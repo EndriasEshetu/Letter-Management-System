@@ -10,6 +10,21 @@ interface AppShellProps {
 export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  /* Mobile drawer escape key handling */
+  React.useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileOpen(false);
+    };
+    if (mobileOpen) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = '';
+    };
+  }, [mobileOpen]);
+
   return (
     <div className="min-h-screen flex bg-[#F5F3ED] text-[#252622]">
       {/* ─── Desktop Sidebar (Fixed Left) ────────────────────── */}
@@ -19,16 +34,21 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
       {/* ─── Mobile Drawer Sidebar (Slide-over Overlay) ────────── */}
       {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex">
+        <div
+          className="md:hidden fixed inset-0 z-50 flex"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Mobile Navigation"
+        >
           {/* Dark Backdrop */}
           <div
-            className="fixed inset-0 bg-[#292A27]/40 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 bg-[#292A27]/40 backdrop-blur-xs transition-opacity motion-reduce:transition-none"
             aria-hidden="true"
             onClick={() => setMobileOpen(false)}
           />
 
           {/* Drawer Container */}
-          <div className="relative flex-1 max-w-xs w-full bg-[#ECEAE3] flex flex-col shadow-2xl z-10">
+          <div className="relative flex-1 max-w-xs w-full bg-[#ECEAE3] flex flex-col shadow-2xl z-10 transition-transform motion-reduce:transition-none">
             {/* Mobile Close Button */}
             <div className="absolute top-4 right-3 z-20">
               <button
