@@ -48,13 +48,13 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           />
 
           {/* Drawer Container */}
-          <div className="relative flex-1 max-w-xs w-full bg-[#ECEAE3] flex flex-col shadow-2xl z-10 transition-transform motion-reduce:transition-none">
+          <div className="relative flex-1 max-w-xs w-full bg-[#292A27] flex flex-col shadow-2xl z-10 transition-transform motion-reduce:transition-none">
             {/* Mobile Close Button */}
             <div className="absolute top-4 right-3 z-20">
               <button
                 type="button"
                 onClick={() => setMobileOpen(false)}
-                className="p-2 text-[#292A27] hover:bg-[#D8D7D1] rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-[#526A55]"
+                className="p-2 text-[#F5F3ED] hover:bg-[#383A35] rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-[#526A55]"
                 aria-label="Close navigation"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -70,7 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
 
   return (
     <aside
-      className="w-64 h-full bg-[#ECEAE3] border-r border-[#D8D7D1] flex flex-col justify-between select-none"
+      className="w-64 h-full bg-[#292A27] border-r border-[#3A3B37] flex flex-col justify-between select-none text-[#F5F3ED]"
       aria-label="Sidebar Navigation"
     >
       {/* Top Section: Branding + Nav Items */}
@@ -81,10 +81,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
             S
           </div>
           <div className="min-w-0">
-            <h1 className="text-base font-bold text-[#292A27] tracking-tight truncate">
+            <h1 className="text-base font-bold text-[#F5F3ED] tracking-tight truncate">
               Smart E-Office
             </h1>
-            <p className="text-[10px] font-medium text-[#6B6A64] tracking-wide uppercase truncate">
+            <p className="text-[10px] font-medium text-[#A8A7A1] tracking-wide uppercase truncate">
               SITA Document System
             </p>
           </div>
@@ -107,15 +107,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
                   const active = isActive || linkActive;
                   return `flex items-center space-x-3 px-3.5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-150 motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#526A55] ${
                     active
-                      ? 'bg-[#AEBDA5]/70 text-[#292A27] shadow-sm'
-                      : 'text-[#292A27] hover:bg-[#D8D7D1]/40'
+                      ? 'bg-[#526A55] text-[#F5F3ED] shadow-sm'
+                      : 'text-[#D8D7D1] hover:bg-[#383A35] hover:text-[#F5F3ED]'
                   }`;
                 }}
               >
-                <span className="flex-shrink-0 text-[#292A27]">{getNavIcon(item.path)}</span>
+                <span className={isActive ? 'text-[#F5F3ED] flex-shrink-0' : 'text-[#A8A7A1] group-hover:text-[#F5F3ED] flex-shrink-0'}>
+                  {getNavIcon(item.path)}
+                </span>
                 <span className="truncate">{item.label}</span>
                 {item.badge && (
-                  <span className="ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#526A55] text-[#F5F3ED]">
+                  <span className={`ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                    isActive ? 'bg-[#3E5140] text-[#F5F3ED]' : 'bg-[#526A55]/80 text-[#F5F3ED]'
+                  }`}>
                     {item.badge}
                   </span>
                 )}
@@ -126,17 +130,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
       </div>
 
       {/* Bottom Profile Navigation Link */}
-      <div className="p-4 border-t border-[#D8D7D1]/70">
+      <div className="p-4 border-t border-[#3A3B37]">
         <NavLink
           to="/profile"
           onClick={onCloseMobile}
-          className={`flex items-center space-x-3 px-3.5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-150 ${
+          aria-current={isProfileActive ? 'page' : undefined}
+          className={`flex items-center space-x-3 px-3.5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-150 motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#526A55] ${
             isProfileActive
-              ? 'bg-[#AEBDA5]/70 text-[#292A27] shadow-sm'
-              : 'text-[#292A27] hover:bg-[#D8D7D1]/40'
+              ? 'bg-[#526A55] text-[#F5F3ED] shadow-sm'
+              : 'text-[#D8D7D1] hover:bg-[#383A35] hover:text-[#F5F3ED]'
           }`}
         >
-          <svg className="w-5 h-5 flex-shrink-0 text-[#292A27]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-5 h-5 flex-shrink-0 ${isProfileActive ? 'text-[#F5F3ED]' : 'text-[#A8A7A1]'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span className="truncate">Profile</span>
