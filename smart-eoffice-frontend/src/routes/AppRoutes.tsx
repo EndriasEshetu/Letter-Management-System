@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from '@/pages/auth/Login';
+import LandingPage from '@/pages/LandingPage';
 import Dashboard from '@/pages/dashboard/Dashboard';
 import Profile from '@/pages/profile/Profile';
 import Documents from '@/pages/documents/Documents';
@@ -20,7 +21,8 @@ export const AppRoutes: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public Route */}
+        {/* Public Routes */}
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
 
         {/* Protected App Shell Layout */}
