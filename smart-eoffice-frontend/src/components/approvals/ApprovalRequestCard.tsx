@@ -4,6 +4,7 @@ import Avatar from '@/components/common/Avatar';
 import Button from '@/components/common/Button';
 import Badge from '@/components/common/Badge';
 import { ApprovalRequest } from '@/types/approval';
+import WorkflowTimeline from '@/components/workflows/WorkflowTimeline';
 
 interface ApprovalRequestCardProps {
   request: ApprovalRequest;
@@ -117,6 +118,15 @@ export const ApprovalRequestCard: React.FC<ApprovalRequestCardProps> = ({
           <span>Size: {formatFileSize(document.file_size)}</span>
           {typeof page_count === 'number' && <span>· Pages: {page_count}</span>}
           <span>· Submitted: {formatDate(submitted_at)}</span>
+        </div>
+
+        {/* Workflow Progression Timeline */}
+        <div className="pt-2 border-t border-[#D8D7D1]/50">
+          <WorkflowTimeline
+            currentStatus={request.status === 'PENDING' ? 'PENDING_APPROVAL' : request.status}
+            rejectionReason={request.comment}
+            timestamps={{ submitted_at: formatDate(submitted_at), reviewed_at: request.reviewed_at ? formatDate(request.reviewed_at) : undefined }}
+          />
         </div>
       </div>
 

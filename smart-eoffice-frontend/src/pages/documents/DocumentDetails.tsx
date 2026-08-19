@@ -15,6 +15,7 @@ import ConfirmDialog from '@/components/common/ConfirmDialog';
 import Dropdown, { DropdownItem } from '@/components/common/Dropdown';
 import UploadVersionModal from '@/components/documents/UploadVersionModal';
 import CommentSection from '@/components/comments/CommentSection';
+import WorkflowTimeline from '@/components/workflows/WorkflowTimeline';
 
 /* ─── Security Level Badge Helper ───────────────────────── */
 
@@ -299,6 +300,14 @@ export const DocumentDetails: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2/3: Document Information */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Workflow Timeline Card */}
+          <Card>
+            <WorkflowTimeline
+              currentStatus={doc.status}
+              timestamps={{ created_at: doc.created_at, completed_at: doc.updated_at }}
+            />
+          </Card>
+
           {/* Description */}
           <Card>
             <h2 className="text-base font-semibold text-[#292A27] mb-3">Description</h2>
