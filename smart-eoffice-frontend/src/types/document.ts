@@ -1,4 +1,5 @@
-import { DocumentStatus } from '@/components/common/Badge';
+import type { DocumentStatus } from '@/components/common/Badge';
+export type { DocumentStatus };
 
 export type SecurityLevel = 'PUBLIC' | 'INTERNAL' | 'CONFIDENTIAL' | 'RESTRICTED';
 

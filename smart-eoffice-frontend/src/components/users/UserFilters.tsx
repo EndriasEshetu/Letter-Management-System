@@ -53,8 +53,7 @@ export const UserFilters: React.FC<UserFiltersProps> = ({
       <div className="flex-1 min-w-[200px]">
         <SearchInput
           value={searchQuery}
-          onChange={(e) => onSearchChange(e.target.value)}
-          onClear={() => onSearchChange('')}
+          onChange={(val) => onSearchChange(val)}
           placeholder="Search personnel by name, email, or job title..."
         />
       </div>
@@ -64,7 +63,7 @@ export const UserFilters: React.FC<UserFiltersProps> = ({
         <Select
           options={roleOptions}
           value={selectedRole}
-          onChange={(e) => onRoleChange(e.target.value)}
+          onChange={(val) => onRoleChange(val)}
         />
       </div>
 
@@ -73,7 +72,7 @@ export const UserFilters: React.FC<UserFiltersProps> = ({
         <Select
           options={departmentOptions}
           value={selectedDepartment}
-          onChange={(e) => onDepartmentChange(e.target.value)}
+          onChange={(val) => onDepartmentChange(val)}
         />
       </div>
 
@@ -82,7 +81,7 @@ export const UserFilters: React.FC<UserFiltersProps> = ({
         <Select
           options={statusOptions}
           value={selectedStatus}
-          onChange={(e) => onStatusChange(e.target.value)}
+          onChange={(val) => onStatusChange(val)}
         />
       </div>
     </div>

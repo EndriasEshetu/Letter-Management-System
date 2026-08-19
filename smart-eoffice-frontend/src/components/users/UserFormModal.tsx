@@ -140,14 +140,14 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
             label="Department"
             options={deptOptions}
             value={departmentId}
-            onChange={(e) => setDepartmentId(e.target.value)}
+            onChange={(val) => setDepartmentId(val)}
           />
 
           <Select
             label="Role / Clearance"
             options={roleOptions}
             value={role}
-            onChange={(e) => setRole(e.target.value as UserRole)}
+            onChange={(val) => setRole(val as UserRole)}
           />
         </div>
       </form>

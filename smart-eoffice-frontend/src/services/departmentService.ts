@@ -1,5 +1,5 @@
 import api from './api';
-import { Department, CreateDepartmentPayload, SystemCapacityInfo } from '@/types/department';
+import { Department, CreateDepartmentPayload, UpdateDepartmentPayload, SystemCapacityInfo } from '@/types/department';
 
 /* ─── Mock Department Dataset (Dev Offline Fallback) ────── */
 

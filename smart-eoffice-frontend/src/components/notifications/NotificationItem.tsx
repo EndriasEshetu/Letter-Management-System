@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import { NotificationItem as NotificationItemType, NotificationType } from '@/types/notification';
 
 interface NotificationItemProps {

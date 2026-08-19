@@ -1,7 +1,7 @@
 import React from 'react';
 import Avatar from '@/components/common/Avatar';
 import Badge from '@/components/common/Badge';
-import Button from '@/components/common/Button';
+
 import { User, UserRole } from '@/types/user';
 
 interface UserTableProps {

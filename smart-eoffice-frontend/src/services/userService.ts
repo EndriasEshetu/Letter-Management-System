@@ -122,10 +122,11 @@ export const userService = {
         }
 
         if (params?.department_id && params.department_id !== 'ALL') {
+          const deptFilter = params.department_id.toLowerCase();
           filtered = filtered.filter(
             (u) =>
               String(u.department_id) === String(params.department_id) ||
-              u.department_name?.toLowerCase() === params.department_id.toLowerCase()
+              u.department_name?.toLowerCase() === deptFilter
           );
         }
 

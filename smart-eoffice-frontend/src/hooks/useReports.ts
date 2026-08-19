@@ -31,8 +31,8 @@ export const useReports = (): UseReportsReturn => {
   const [isExporting, setIsExporting] = useState(false);
 
   const initialDeptId =
-    user?.role === 'DEPARTMENT_MANAGER' && user?.department
-      ? String(user.department)
+    user?.role === 'DEPARTMENT_MANAGER' && (user?.department_id || user?.department_name)
+      ? String(user.department_id || user.department_name)
       : 'all';
 
   const [filters, setFilters] = useState<ReportFilters>({

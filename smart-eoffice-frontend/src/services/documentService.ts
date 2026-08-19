@@ -364,6 +364,32 @@ export const documentService = {
       throw error;
     }
   },
+
+  /**
+   * Get archived documents specifically
+   */
+  async getArchivedDocuments(params?: DocumentFilterParams): Promise<PaginatedDocumentResponse> {
+    return this.getDocuments({ ...params, status: 'ARCHIVED' });
+  },
+
+  /**
+   * Restore an archived document back to active storage (Admin only)
+   */
+  async restoreDocument(id: string): Promise<{ message: string; document: DocumentItem }> {
+    try {
+      const response = await api.post<{ message: string; document: DocumentItem }>(`/documents/${id}/restore`);
+      return response.data;
+    } catch (error: any) {
+      if (error.code === 'ERR_NETWORK' || !error.response) {
+        const target = inMemoryDocuments.find((d) => d.id === id);
+        if (target) {
+          target.status = 'APPROVED';
+          return { message: 'Document restored from archive', document: target };
+        }
+      }
+      throw error;
+    }
+  },
 };
 
 export default documentService;
