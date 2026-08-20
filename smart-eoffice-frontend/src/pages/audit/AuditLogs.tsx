@@ -1,5 +1,6 @@
 import React from "react";
 import { Shield } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { useAuditLogs } from "@/hooks/useAuditLogs";
 import AuditLogFilterBar from "@/components/audit-logs/AuditLogFilters";
 import AuditLogTable from "@/components/audit-logs/AuditLogTable";
@@ -7,8 +8,10 @@ import LoadingSpinner from "@/components/common/LoadingSpinner";
 import EmptyState from "@/components/common/EmptyState";
 import ErrorState from "@/components/common/ErrorState";
 import Pagination from "@/components/common/Pagination";
+import AccessDenied from "@/components/common/AccessDenied";
 
 export const AuditLogs: React.FC = () => {
+  const { user } = useAuth();
   const {
     logs,
     users,
@@ -28,6 +31,16 @@ export const AuditLogs: React.FC = () => {
     resetFilters,
     refetch,
   } = useAuditLogs();
+
+  if (user?.role !== 'ADMIN') {
+    return (
+      <AccessDenied
+        title="Access Restricted"
+        description="System Audit Logs are accessible by Administrators only."
+        role={user?.role}
+      />
+    );
+  }
 
   const pageStart =
     total === 0 ? 0 : (currentPage - 1) * (filters.limit || 20) + 1;

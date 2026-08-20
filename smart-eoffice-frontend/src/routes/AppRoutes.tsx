@@ -42,11 +42,11 @@ export const AppRoutes: React.FC = () => {
           <Route path="/archives" element={<Archives />} />
           <Route path="/reports" element={<ReportsPage />} />
 
-          {/* Role Protected Route: DEPARTMENT_MANAGER */}
+          {/* Role Protected Route: DEPARTMENT_MANAGER & ADMIN */}
           <Route
             path="/approvals"
             element={
-              <RoleRoute allowedRoles={['DEPARTMENT_MANAGER']}>
+              <RoleRoute allowedRoles={['DEPARTMENT_MANAGER', 'ADMIN']}>
                 <ApprovalQueue />
               </RoleRoute>
             }
