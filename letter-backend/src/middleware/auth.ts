@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import { verifyToken } from '../lib/supabase';
+import { verifyToken } from '../lib/jwt';
 import { ApiError } from '../lib/errors';
 import { query } from '../lib/db';
 import { UserRow } from '../lib/utils';
@@ -12,8 +12,8 @@ export interface AuthenticatedRequest extends Request {
 export type Role = 'ADMIN' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE';
 
 /**
- * Extract the Bearer token, verify it against Supabase Auth, load the
- * corresponding `users` profile row and attach it to `req.user`.
+ * Extract the Bearer token, verify it (JWT), load the corresponding
+ * `users` profile row and attach it to `req.user`.
  */
 export async function requireAuth(req: AuthenticatedRequest, _res: Response, next: NextFunction) {
   try {
@@ -23,8 +23,8 @@ export async function requireAuth(req: AuthenticatedRequest, _res: Response, nex
     }
     const token = header.slice('Bearer '.length).trim();
 
-    const authUser = await verifyToken(token);
-    if (!authUser) {
+    const payload = verifyToken(token);
+    if (!payload) {
       throw ApiError.unauthorized('Invalid or expired session token.');
     }
 
@@ -32,8 +32,8 @@ export async function requireAuth(req: AuthenticatedRequest, _res: Response, nex
       `SELECT u.*, d.name AS department_name
          FROM users u
          LEFT JOIN departments d ON d.id = u.department_id
-        WHERE u.auth_uid = $1`,
-      [authUser.id]
+        WHERE u.id = $1`,
+      [payload.sub]
     );
 
     if (rows.length === 0) {
@@ -41,7 +41,7 @@ export async function requireAuth(req: AuthenticatedRequest, _res: Response, nex
     }
 
     req.user = rows[0] as UserRow;
-    req.authUid = authUser.id;
+    req.authUid = String(payload.sub);
     next();
   } catch (err) {
     next(err);

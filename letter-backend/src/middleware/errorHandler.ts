@@ -18,7 +18,7 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
 
   const message = err instanceof Error ? err.message : 'Internal server error.';
   console.error('[error]', err);
-  return res.status(500).json({ message: 'Internal server error.' });
+  return res.status(500).json({ message });
 }
 
 /** 404 for unknown /api routes. */

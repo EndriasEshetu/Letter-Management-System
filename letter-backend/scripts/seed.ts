@@ -1,8 +1,8 @@
 /**
  * Seed script — provisions demo data so the frontend works end-to-end.
  *
- *  - Creates 3 Supabase Auth users (admin / manager / employee, password: Sita@2026)
- *  - Seeds departments, users, sample documents (with placeholder PDFs in Storage),
+ *  - Creates 3 users directly in the `users` table (admin / manager / employee, password: Sita@2026)
+ *  - Seeds departments, sample documents (with placeholder PDFs written to disk),
  *    one pending approval, comments, notifications and activity.
  *
  * Idempotent: safe to run multiple times.
@@ -11,24 +11,26 @@
  */
 import dotenv from 'dotenv';
 import path from 'path';
-import { createClient } from '@supabase/supabase-js';
+import fs from 'fs';
+import bcrypt from 'bcryptjs';
 import { Pool } from 'pg';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
-const { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_DB_URL } = process.env;
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY || !SUPABASE_DB_URL) {
-  console.error('Missing Supabase env vars. Copy .env.example to .env and fill them in.');
+const { DATABASE_URL, DB_SSL, UPLOADS_DIR } = process.env;
+if (!DATABASE_URL) {
+  console.error('Missing DATABASE_URL. Copy .env.example to .env and fill it in.');
   process.exit(1);
 }
 
-const bucket = process.env.SUPABASE_STORAGE_BUCKET || 'documents';
+const dbSsl = DB_SSL === 'true';
+const uploadsDir = UPLOADS_DIR || path.resolve(process.cwd(), 'uploads');
 const DEMO_PASSWORD = 'Sita@2026';
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false },
+const pool = new Pool({
+  connectionString: DATABASE_URL,
+  ssl: dbSsl ? { rejectUnauthorized: false } : false,
 });
-const pool = new Pool({ connectionString: SUPABASE_DB_URL, ssl: { rejectUnauthorized: false } });
 
 /* ─── Minimal valid PDF placeholder ─────────────────────── */
 
@@ -37,7 +39,7 @@ function buildPlaceholderPdf(title: string): Buffer {
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
     '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>`,
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
     `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`,
   ];
@@ -59,30 +61,6 @@ function buildPlaceholderPdf(title: string): Buffer {
 
 /* ─── Helpers ───────────────────────────────────────────── */
 
-async function ensureBucket() {
-  const { data: buckets } = await supabase.storage.listBuckets();
-  if (!buckets?.some((b) => b.name === bucket)) {
-    await supabase.storage.createBucket(bucket, { public: false });
-    console.log(`[seed] created storage bucket "${bucket}"`);
-  }
-}
-
-async function upsertAuthUser(email: string, fullName: string): Promise<string> {
-  const { data: existing } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
-  const found = existing?.users.find((u) => u.email?.toLowerCase() === email);
-  if (found) return found.id;
-
-  const { data, error } = await supabase.auth.admin.createUser({
-    email,
-    password: DEMO_PASSWORD,
-    email_confirm: true,
-    user_metadata: { full_name: fullName },
-  });
-  if (error) throw new Error(`createUser ${email}: ${error.message}`);
-  console.log(`[seed] created auth user ${email}`);
-  return data.user.id;
-}
-
 async function upsertDepartment(name: string, code: string, description: string): Promise<number> {
   const { rows } = await pool.query('SELECT id FROM departments WHERE code = $1', [code]);
   if (rows.length > 0) return rows[0].id as number;
@@ -93,26 +71,35 @@ async function upsertDepartment(name: string, code: string, description: string)
   return (inserted.rows[0] as { id: number }).id;
 }
 
-async function upsertUser(authUid: string, profile: {
-  full_name: string; email: string; role: string; departmentId: number; jobTitle: string;
+async function upsertUser(profile: {
+  full_name: string;
+  email: string;
+  role: string;
+  departmentId: number;
+  jobTitle: string;
 }): Promise<number> {
-  const { rows } = await pool.query('SELECT id FROM users WHERE auth_uid = $1', [authUid]);
-  if (rows.length > 0) return rows[0].id as number;
+  const { rows } = await pool.query('SELECT id FROM users WHERE email = $1', [profile.email]);
+  if (rows.length > 0) {
+    console.log(`[seed] user ${profile.email} already exists, skipping`);
+    return rows[0].id as number;
+  }
+
+  const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);
   const inserted = await pool.query(
-    `INSERT INTO users (auth_uid, full_name, email, role, department_id, job_title)
-     VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
-    [authUid, profile.full_name, profile.email, profile.role, profile.departmentId, profile.jobTitle]
+    `INSERT INTO users (full_name, email, role, department_id, job_title, password_hash, status, is_active)
+     VALUES ($1,$2,$3,$4,$5,$6,'ACTIVE',true) RETURNING id`,
+    [profile.full_name, profile.email, profile.role, profile.departmentId, profile.jobTitle, passwordHash]
   );
+  console.log(`[seed] created user ${profile.email}`);
   return (inserted.rows[0] as { id: number }).id;
 }
 
-async function uploadPdf(docKey: string, title: string): Promise<{ path: string; size: number }> {
+async function savePlaceholderPdf(docKey: string, title: string): Promise<{ path: string; size: number }> {
   const pdf = buildPlaceholderPdf(title);
-  const { error } = await supabase.storage.from(bucket).upload(docKey, pdf, {
-    contentType: 'application/pdf',
-    upsert: true,
-  });
-  if (error) throw new Error(`storage upload ${docKey}: ${error.message}`);
+  const fullPath = path.join(uploadsDir, docKey);
+  fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+  fs.writeFileSync(fullPath, pdf);
+  console.log(`[seed] wrote placeholder PDF to ${fullPath}`);
   return { path: docKey, size: pdf.byteLength };
 }
 
@@ -127,7 +114,7 @@ async function seedDocument(args: {
   authorId: number;
   status: string;
   storageKey: string;
-  
+
   // Letter fields
   letterType?: string;
   sender?: string;
@@ -147,7 +134,7 @@ async function seedDocument(args: {
   ]);
   if (rows.length > 0) return rows[0].id as number;
 
-  const file = await uploadPdf(args.storageKey, args.title);
+  const file = await savePlaceholderPdf(args.storageKey, args.title);
   const inserted = await pool.query(
     `INSERT INTO documents
        (document_number, title, description, category, department_id, department_name,
@@ -175,7 +162,7 @@ async function seedDocument(args: {
       args.dueDate || null,
       args.originatingDepartment || null,
       args.assignedEmployee || null,
-      args.responseRequired || false
+      args.responseRequired || false,
     ]
   );
   const docId = (inserted.rows[0] as { id: number }).id;
@@ -193,7 +180,8 @@ async function seedDocument(args: {
 /* ─── Main ──────────────────────────────────────────────── */
 
 async function seed() {
-  await ensureBucket();
+  // Ensure uploads directory exists
+  fs.mkdirSync(path.join(uploadsDir, 'documents'), { recursive: true });
 
   // Departments
   const deptFinance = await upsertDepartment('Finance & Planning', 'DEP-FIN', 'Budgeting, financial forecasting, and expenditure control');
@@ -202,20 +190,16 @@ async function seed() {
   await upsertDepartment('Legal Services', 'DEP-LGL', 'Regulatory compliance, contract review, and policy archives');
   await upsertDepartment('Public Works', 'DEP-PWK', 'Facilities management and campus infrastructure projects');
 
-  // Auth users + profiles
-  const adminUid = await upsertAuthUser('admin@sita.gov.et', 'Abebe Bikila');
-  const managerUid = await upsertAuthUser('manager@sita.gov.et', 'Tariku Eshetu');
-  const employeeUid = await upsertAuthUser('employee@sita.gov.et', 'Endrias Eshetu');
-
-  const adminId = await upsertUser(adminUid, {
+  // Users with hashed passwords (no Supabase Auth)
+  const adminId = await upsertUser({
     full_name: 'Abebe Bikila', email: 'admin@sita.gov.et', role: 'ADMIN',
     departmentId: deptIct, jobTitle: 'System Administrator',
   });
-  const managerId = await upsertUser(managerUid, {
+  const managerId = await upsertUser({
     full_name: 'Tariku Eshetu', email: 'manager@sita.gov.et', role: 'DEPARTMENT_MANAGER',
     departmentId: deptFinance, jobTitle: 'Department Manager',
   });
-  const employeeId = await upsertUser(employeeUid, {
+  const employeeId = await upsertUser({
     full_name: 'Endrias Eshetu', email: 'employee@sita.gov.et', role: 'EMPLOYEE',
     departmentId: deptFinance, jobTitle: 'Senior Finance Officer',
   });
@@ -232,7 +216,7 @@ async function seed() {
     authorId: employeeId,
     status: 'PENDING_APPROVAL',
     storageKey: 'documents/seed-q1-financial-report.pdf',
-    
+
     letterType: 'INCOMING',
     sender: 'Ato Kebede Tadesse',
     senderOrganization: 'Ministry of Finance, Ethiopia',
@@ -241,8 +225,9 @@ async function seed() {
     priority: 'HIGH',
     dateReceived: new Date('2026-08-25T09:42:00'),
     dueDate: new Date('2026-11-01T00:00:00'),
-    responseRequired: true
+    responseRequired: true,
   });
+
   const approvedDoc = await seedDocument({
     documentNumber: 'LMS/OUT/2026/089',
     title: 'Employee_Handbook_2026.pdf',
@@ -261,8 +246,9 @@ async function seed() {
     recipient: 'Regional Director',
     recipientOrganization: 'Huawei Technologies East Africa',
     priority: 'NORMAL',
-    dateSent: new Date('2026-08-24T16:30:00')
+    dateSent: new Date('2026-08-24T16:30:00'),
   });
+
   await seedDocument({
     documentNumber: 'LMS/INT/2026/045',
     title: 'ICT_Infrastructure_Audit_Report.pdf',
@@ -281,9 +267,8 @@ async function seed() {
     recipient: 'All Department Heads',
     recipientOrganization: 'SITA',
     priority: 'NORMAL',
-    dateSent: new Date('2026-08-23T10:00:00')
+    dateSent: new Date('2026-08-23T10:00:00'),
   });
-
 
   // Pending approval for the manager's queue
   const approvalExists = await pool.query('SELECT id FROM approvals WHERE document_id = $1', [pendingDoc]);

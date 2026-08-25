@@ -6,12 +6,12 @@ import { config } from '../config';
 types.setTypeParser(20, (value: string) => parseInt(value, 10));
 
 /**
- * Postgres connection pool pointing at the Supabase managed database.
- * Supabase pooler requires SSL.
+ * PostgreSQL connection pool.
+ * SSL is enabled when DB_SSL=true (required for Railway and most managed databases).
  */
 export const pool = new Pool({
-  connectionString: config.supabaseDbUrl,
-  ssl: { rejectUnauthorized: false },
+  connectionString: config.databaseUrl,
+  ssl: config.dbSsl ? { rejectUnauthorized: false } : false,
   max: 10,
   idleTimeoutMillis: 30000,
 });

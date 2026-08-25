@@ -1,15 +1,15 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { randomUUID } from 'crypto';
+import path from 'path';
+import fs from 'fs';
 import { config } from '../config';
-import { supabaseAdmin } from '../lib/supabase';
 import { query } from '../lib/db';
 import { ApiError } from '../lib/errors';
 import { asyncHandler } from '../lib/errors';
 import { requireAuth, AuthenticatedRequest } from '../middleware/auth';
 import {
   serializeDocument,
-  serializeLetter,
   serializeVersion,
   toNumber,
   normalizeDepartmentParam,
@@ -20,6 +20,9 @@ import {
 import { createNotification, notifyDepartmentManagers } from '../lib/notifications';
 
 const router = Router();
+
+// Ensure uploads directory exists at startup.
+fs.mkdirSync(config.uploadsDir, { recursive: true });
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -43,20 +46,19 @@ async function nextDocumentNumber(): Promise<string> {
   return `DOC-${year}-${String(n).padStart(3, '0')}`;
 }
 
-/** Upload a buffer to Supabase Storage and return its path. */
-async function uploadToStorage(buffer: Buffer, path: string, contentType: string) {
-  const { error } = await supabaseAdmin.storage
-    .from(config.storageBucket)
-    .upload(path, buffer, { contentType, upsert: false });
-  if (error) {
-    throw new ApiError(500, `File storage upload failed: ${error.message}`);
-  }
-  return path;
+/** Save a buffer to the local uploads directory and return the relative storage path. */
+async function saveToLocalDisk(buffer: Buffer, relativePath: string): Promise<string> {
+  const fullPath = path.join(config.uploadsDir, relativePath);
+  // Ensure sub-directories exist (e.g. uploads/documents/uuid-name.pdf)
+  fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+  await fs.promises.writeFile(fullPath, buffer);
+  return relativePath;
 }
 
-/** Remove an object from storage (used to roll back a failed insert). */
-async function deleteFromStorage(path: string) {
-  await supabaseAdmin.storage.from(config.storageBucket).remove([path]).catch(() => undefined);
+/** Delete a file from the local uploads directory (silent fail on missing file). */
+async function deleteFromLocalDisk(relativePath: string): Promise<void> {
+  const fullPath = path.join(config.uploadsDir, relativePath);
+  await fs.promises.unlink(fullPath).catch(() => undefined);
 }
 
 /** Load versions for a document, newest first. */
@@ -153,11 +155,11 @@ router.post(
     if (!req.file) throw ApiError.badRequest('No file provided.');
 
     const body = req.body as Record<string, string | undefined>;
-    
+
     // Support both subject (frontend shape) and title (legacy/document shape)
     const title = body.subject?.trim() || body.title?.trim() || req.file.originalname;
     const category = body.category || 'General / Correspondence';
-    
+
     // Support both confidentialityLevel and securityLevel
     const securityLevel = body.confidentialityLevel || body.securityLevel || 'INTERNAL';
     const description = body.description || '';
@@ -172,7 +174,7 @@ router.post(
     const originatingDepartment = body.originatingDepartment || null;
     const assignedEmployee = body.assignedEmployee || null;
     const responseRequired = body.responseRequired === 'true' || body.responseRequired === '1' || false;
-    
+
     // Dates received/sent
     const dateReceived = body.dateReceived ? new Date(body.dateReceived) : null;
     const dateSent = body.dateSent ? new Date(body.dateSent) : null;
@@ -192,10 +194,10 @@ router.post(
       }
     }
 
-    // Upload the file to storage first, then record metadata.
+    // Save the file to local disk, then record metadata.
     const safeName = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const storagePath = `documents/${randomUUID()}-${safeName}`;
-    await uploadToStorage(req.file.buffer, storagePath, req.file.mimetype);
+    const relativePath = `documents/${randomUUID()}-${safeName}`;
+    await saveToLocalDisk(req.file.buffer, relativePath);
 
     const documentNumber = await nextDocumentNumber();
     let doc: DocumentRow;
@@ -224,7 +226,7 @@ router.post(
           req.file.originalname,
           req.file.size,
           req.file.mimetype,
-          storagePath,
+          relativePath,
           splitTags(body.tags),
           letterType,
           sender,
@@ -237,13 +239,13 @@ router.post(
           dueDate,
           originatingDepartment,
           assignedEmployee,
-          responseRequired
+          responseRequired,
         ]
       );
       doc = inserted.rows[0] as DocumentRow;
     } catch (err) {
       // Roll back the stored file if the metadata insert failed.
-      await deleteFromStorage(storagePath);
+      await deleteFromLocalDisk(relativePath);
       throw err;
     }
 
@@ -252,7 +254,7 @@ router.post(
       `INSERT INTO document_versions
          (document_id, version_number, uploaded_by, uploaded_by_id, date, file_size, file_name, storage_path, is_current)
        VALUES ($1,'v1.0',$2,$3,now(),$4,$5,$6,true)`,
-      [doc.id, user.full_name, user.id, req.file.size, req.file.originalname, storagePath]
+      [doc.id, user.full_name, user.id, req.file.size, req.file.originalname, relativePath]
     );
 
     const { rows } = await query(`${DOC_SELECT} WHERE d.id = $1`, [doc.id]);
@@ -303,7 +305,6 @@ router.post(
     const user = req.user!;
     const { rows } = await query(`SELECT * FROM documents WHERE id = $1`, [id]);
     if (rows.length === 0) throw ApiError.notFound('Document not found.');
-    const doc = rows[0] as DocumentRow;
 
     // Next version number: count existing versions + 1.
     const countRes = await query(
@@ -313,27 +314,27 @@ router.post(
     const versionNumber = `v${(countRes.rows[0] as { n: number }).n + 1}.0`;
 
     const safeName = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const storagePath = `documents/${id}/${versionNumber}-${safeName}`;
-    await uploadToStorage(req.file.buffer, storagePath, req.file.mimetype);
+    const relativePath = `documents/${id}/${versionNumber}-${safeName}`;
+    await saveToLocalDisk(req.file.buffer, relativePath);
 
     await query(`UPDATE document_versions SET is_current = false WHERE document_id = $1`, [id]);
     await query(
       `INSERT INTO document_versions
          (document_id, version_number, uploaded_by, uploaded_by_id, date, file_size, file_name, storage_path, is_current)
        VALUES ($1,$2,$3,$4,now(),$5,$6,$7,true)`,
-      [id, versionNumber, user.full_name, user.id, req.file.size, req.file.originalname, storagePath]
+      [id, versionNumber, user.full_name, user.id, req.file.size, req.file.originalname, relativePath]
     );
     await query(
       `UPDATE documents SET version = $2, file_name = $3, file_size = $4, file_type = $5, storage_path = $6, updated_at = now()
         WHERE id = $1`,
-      [id, versionNumber, req.file.originalname, req.file.size, req.file.mimetype, storagePath]
+      [id, versionNumber, req.file.originalname, req.file.size, req.file.mimetype, relativePath]
     );
 
     res.json({ message: 'Version uploaded successfully.', version: versionNumber });
   })
 );
 
-/* ─── GET /documents/:id/download — stream file ────────── */
+/* ─── GET /documents/:id/download — stream file from disk ── */
 
 router.get(
   '/:id/download',
@@ -346,21 +347,21 @@ router.get(
     if (rows.length === 0) throw ApiError.notFound('Document not found.');
     const doc = rows[0] as DocumentRow;
 
-    const bucket = config.storageBucket;
-    const { data, error } = await supabaseAdmin.storage.from(bucket).download(doc.storage_path);
-    if (error || !data) {
-      throw new ApiError(404, 'File not found in storage.');
+    const fullPath = path.join(config.uploadsDir, doc.storage_path);
+    if (!fs.existsSync(fullPath)) {
+      throw new ApiError(404, 'File not found on disk.');
     }
 
-    const buffer = Buffer.from(await data.arrayBuffer());
     res.setHeader('Content-Type', doc.file_type || 'application/octet-stream');
-    // RFC 5987 filename* handles unicode/spaces; plain filename as a fallback.
     res.setHeader(
       'Content-Disposition',
       `attachment; filename="${doc.file_name.replace(/["\\]/g, '_')}"; filename*=UTF-8''${encodeURIComponent(doc.file_name)}`
     );
-    res.setHeader('Content-Length', buffer.length);
-    res.send(buffer);
+
+    const stat = fs.statSync(fullPath);
+    res.setHeader('Content-Length', stat.size);
+
+    fs.createReadStream(fullPath).pipe(res);
   })
 );
 
@@ -445,7 +446,6 @@ router.post(
 );
 
 /* ─── GET /documents/:id/attachments — alias for versions ── */
-/* The frontend calls this to populate the Attachments panel in LetterDetails. */
 
 router.get(
   '/:id/attachments',
@@ -455,7 +455,6 @@ router.get(
     if (!Number.isFinite(id)) throw ApiError.badRequest('Invalid document id.');
 
     const versions = await loadVersions(id);
-    // Return in the AttachmentItem shape the frontend expects
     res.json(
       versions.map((v) => ({
         id: String(v.id),
@@ -484,7 +483,6 @@ router.post(
       [id]
     );
     if (rows.length === 0) {
-      // Check if it exists at all
       const { rows: existing } = await query(`SELECT id, status FROM documents WHERE id = $1`, [id]);
       if (existing.length === 0) throw ApiError.notFound('Document not found.');
       throw ApiError.badRequest('Only archived documents can be restored.');
