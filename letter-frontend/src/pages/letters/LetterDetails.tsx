@@ -217,6 +217,7 @@ export const LetterDetails: React.FC = () => {
   const canComplete = (role === 'ADMIN' || role === 'DEPARTMENT_MANAGER') && (st === 'DISPATCHED' || st === 'DELIVERED' || st === 'IN_PROGRESS');
   const canArchive = st !== 'ARCHIVED' && (role === 'ADMIN' || role === 'DEPARTMENT_MANAGER');
   const canUploadAttachment = st !== 'ARCHIVED' && st !== 'COMPLETED';
+  const canSubmitForApproval = canSubmitForReview || st === 'DRAFT' || st === 'CHANGES_REQUESTED';
 
   // Build workflow action buttons
   const workflowActions: { label: string; variant: 'primary' | 'secondary' | 'outline'; icon: React.ReactNode; onClick: () => void; loading?: boolean }[] = [];

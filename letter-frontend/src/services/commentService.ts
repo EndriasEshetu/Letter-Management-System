@@ -1,102 +1,24 @@
 import api from './api';
 import { CommentItem, CreateCommentPayload } from '@/types/comment';
 
-/* ─── Mock Comments Database (Dev Offline Fallback) ─────── */
-
-let mockCommentsStore: Record<string, CommentItem[]> = {
-  'doc-1': [
-    {
-      id: 'cmt-1',
-      documentId: 'doc-1',
-      author: {
-        id: 101,
-        name: 'Tigist Haile',
-        role: 'Department Manager',
-        department: 'App Development Directorate',
-      },
-      message: 'Please update section 4.2 software implementation roadmap before final approval.',
-      createdAt: '2026-08-11T08:15:00Z',
-    },
-    {
-      id: 'cmt-2',
-      documentId: 'doc-1',
-      author: {
-        id: 102,
-        name: 'Endrias Eshetu',
-        role: 'Software Systems Lead',
-        department: 'App Development Directorate',
-      },
-      message: 'Revised roadmap has been uploaded in version 3.0. Ready for review.',
-      createdAt: '2026-08-11T09:30:00Z',
-    },
-  ],
-  'doc-4': [
-    {
-      id: 'cmt-3',
-      documentId: 'doc-4',
-      author: {
-        id: 103,
-        name: 'Abebe Kebede',
-        role: 'Research Lead',
-        department: 'Science and Technology Directorate',
-      },
-      message: 'This policy document applies to all SITA staff effective Q2 2026.',
-      createdAt: '2026-08-10T14:00:00Z',
-    },
-  ],
-};
-
 export const commentService = {
   /**
-   * Get list of comments for a document
+   * Get list of comments for a document via backend API
    */
   async getComments(documentId: string): Promise<CommentItem[]> {
-    try {
-      const response = await api.get<CommentItem[]>(`/documents/${documentId}/comments`);
-      return response.data;
-    } catch (error: any) {
-      if (error.code === 'ERR_NETWORK' || !error.response) {
-        await new Promise((r) => setTimeout(r, 200));
-        return mockCommentsStore[documentId] || [];
-      }
-      throw error;
-    }
+    const response = await api.get<CommentItem[]>(`/documents/${documentId}/comments`);
+    return response.data;
   },
 
   /**
-   * Create a new comment for a document
+   * Create a new comment for a document via backend API
    */
-  async createComment(payload: CreateCommentPayload, currentUser?: { full_name?: string; role?: string; department_name?: string }): Promise<CommentItem> {
-    try {
-      const response = await api.post<CommentItem>(
-        `/documents/${payload.documentId}/comments`,
-        { message: payload.message }
-      );
-      return response.data;
-    } catch (error: any) {
-      if (error.code === 'ERR_NETWORK' || !error.response) {
-        await new Promise((r) => setTimeout(r, 300));
-        const newComment: CommentItem = {
-          id: `cmt-${Date.now()}`,
-          documentId: payload.documentId,
-          author: {
-            id: Date.now(),
-            name: currentUser?.full_name || 'You',
-            role: currentUser?.role === 'ADMIN' ? 'Administrator' : currentUser?.role === 'DEPARTMENT_MANAGER' ? 'Department Manager' : 'Employee',
-            department: currentUser?.department_name || 'SITA',
-          },
-          message: payload.message,
-          createdAt: new Date().toISOString(),
-        };
-
-        if (!mockCommentsStore[payload.documentId]) {
-          mockCommentsStore[payload.documentId] = [];
-        }
-        mockCommentsStore[payload.documentId].push(newComment);
-        return newComment;
-      }
-      throw error;
-    }
+  async createComment(payload: CreateCommentPayload): Promise<CommentItem> {
+    const response = await api.post<CommentItem>(
+      `/documents/${payload.documentId}/comments`,
+      { message: payload.message }
+    );
+    return response.data;
   },
 };
 
