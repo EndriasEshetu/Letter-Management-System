@@ -13,9 +13,8 @@ import ErrorState from '@/components/common/ErrorState';
 import EmptyState from '@/components/common/EmptyState';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import Dropdown, { DropdownItem } from '@/components/common/Dropdown';
-import UploadAttachmentModal from '@/components/letters/UploadAttachmentModal';
+import { UploadAttachmentModal, LetterTimeline } from '@/components/letters';
 import CommentSection from '@/components/comments/CommentSection';
-import LetterTimeline from '@/components/letters/LetterTimeline';
 
 /* ─── Confidentiality Badge ──────────────────────────────── */
 

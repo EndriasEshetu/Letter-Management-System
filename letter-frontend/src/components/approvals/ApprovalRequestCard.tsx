@@ -4,7 +4,7 @@ import Avatar from '@/components/common/Avatar';
 import Button from '@/components/common/Button';
 import Badge from '@/components/common/Badge';
 import { ApprovalRequest } from '@/types/approval';
-import LetterTimeline from '@/components/letters/LetterTimeline';
+import { LetterTimeline } from '@/components/letters';
 
 interface ApprovalRequestCardProps {
   request: ApprovalRequest;

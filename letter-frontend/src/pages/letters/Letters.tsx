@@ -14,7 +14,7 @@ import ErrorState from '@/components/common/ErrorState';
 import EmptyState from '@/components/common/EmptyState';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { useToast } from '@/components/common/Toast';
-import RegisterLetterModal from '@/components/letters/RegisterLetterModal';
+import { RegisterLetterModal } from '@/components/letters';
 
 const LETTER_TYPE_OPTIONS: SelectOption[] = [
   { value: 'ALL', label: 'All Types' },

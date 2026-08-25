@@ -9,7 +9,7 @@ import Badge, { LetterStatus } from '@/components/common/Badge';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import ErrorState from '@/components/common/ErrorState';
 import DocumentViewer from '@/components/documents/DocumentViewer';
-import LetterInfoPanel from '@/components/letters/LetterInfoPanel';
+import { LetterInfoPanel } from '@/components/letters';
 
 /* ─── Viewer Header ──────────────────────────────────────── */
 
