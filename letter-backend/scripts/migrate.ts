@@ -11,14 +11,18 @@ import { Pool } from 'pg';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
-const dbUrl = process.env.SUPABASE_DB_URL;
+const dbUrl = process.env.DATABASE_URL;
 if (!dbUrl) {
-  console.error('Missing SUPABASE_DB_URL. Copy .env.example to .env and fill in your credentials.');
+  console.error('Missing DATABASE_URL. Copy .env.example to .env and fill in your credentials.');
   process.exit(1);
 }
 
+const dbSsl = process.env.DB_SSL === 'true';
 const migrationsDir = path.resolve(__dirname, '../supabase/migrations');
-const pool = new Pool({ connectionString: dbUrl, ssl: { rejectUnauthorized: false } });
+const pool = new Pool({
+  connectionString: dbUrl,
+  ssl: dbSsl ? { rejectUnauthorized: false } : false,
+});
 
 async function migrate() {
   const client = await pool.connect();

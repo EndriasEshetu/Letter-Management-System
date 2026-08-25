@@ -159,7 +159,7 @@ router.get(
       changes_requested_count: m.changes_requested_count,
       approval_rate_percent: total > 0 ? Math.round((m.approved_count / total) * 100) : null,
       avg_turnaround_hours:
-        turnaround.rows[0]?.avg_hours != null ? Math.round((turnaround.rows[0] as { avg_hours: number }).avg_hours * 10) / 10 : null,
+        turnaround[0]?.avg_hours != null ? Math.round((turnaround[0] as { avg_hours: number }).avg_hours * 10) / 10 : null,
     });
   })
 );

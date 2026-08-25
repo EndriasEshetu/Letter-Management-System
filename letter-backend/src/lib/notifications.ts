@@ -6,7 +6,8 @@ export type NotificationType =
   | 'DOCUMENT_REJECTED'
   | 'CHANGES_REQUESTED'
   | 'COMMENT_ADDED'
-  | 'DOCUMENT_ARCHIVED';
+  | 'DOCUMENT_ARCHIVED'
+  | 'DOCUMENT_RESTORED';
 
 interface CreateNotificationInput {
   userId: number;

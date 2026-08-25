@@ -61,6 +61,21 @@ create table if not exists documents (
   tags            text[] not null default '{}',
   version         text,
   is_new          boolean not null default true,
+  
+  -- Letter Specific Fields
+  letter_type            text not null default 'INCOMING',
+  sender                 text,
+  sender_organization    text,
+  recipient              text,
+  recipient_organization  text,
+  priority               text not null default 'NORMAL' check (priority in ('URGENT', 'HIGH', 'NORMAL', 'LOW')),
+  date_received          timestamptz,
+  date_sent              timestamptz,
+  due_date               timestamptz,
+  originating_department text,
+  assigned_employee      text,
+  response_required      boolean not null default false,
+
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
 );

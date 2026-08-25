@@ -86,7 +86,7 @@ export const Login: React.FC = () => {
           </div>
         </div>
         <span className="text-[11px] font-bold px-2.5 py-1 bg-[#ECEAE3] text-[#526A55] rounded-full border border-[#D8D7D1]">
-          Letter Management
+          Letter Management System
         </span>
       </header>
 
@@ -150,7 +150,7 @@ export const Login: React.FC = () => {
                 type="button"
                 onClick={() => {
                   setEmail('admin@sita.gov.et');
-                  setPassword('admin123');
+                  setPassword('Sita@2026');
                 }}
                 className="px-2.5 py-1 bg-[#F9F8F6] text-[#292A27] border border-[#D8D7D1] rounded-lg hover:bg-[#AEBDA5]/20 transition-colors"
               >
@@ -160,7 +160,7 @@ export const Login: React.FC = () => {
                 type="button"
                 onClick={() => {
                   setEmail('manager@sita.gov.et');
-                  setPassword('manager123');
+                  setPassword('Sita@2026');
                 }}
                 className="px-2.5 py-1 bg-[#F9F8F6] text-[#292A27] border border-[#D8D7D1] rounded-lg hover:bg-[#AEBDA5]/20 transition-colors"
               >
@@ -170,7 +170,7 @@ export const Login: React.FC = () => {
                 type="button"
                 onClick={() => {
                   setEmail('employee@sita.gov.et');
-                  setPassword('emp12345');
+                  setPassword('Sita@2026');
                 }}
                 className="px-2.5 py-1 bg-[#F9F8F6] text-[#292A27] border border-[#D8D7D1] rounded-lg hover:bg-[#AEBDA5]/20 transition-colors"
               >

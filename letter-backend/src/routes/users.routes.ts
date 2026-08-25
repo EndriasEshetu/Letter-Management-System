@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { supabaseAdmin } from '../lib/supabase';
+import bcrypt from 'bcryptjs';
 import { query } from '../lib/db';
 import { ApiError } from '../lib/errors';
 import { asyncHandler } from '../lib/errors';
-import { requireAuth, requireRole, AuthenticatedRequest } from '../middleware/auth';
+import { requireAuth, requireRole } from '../middleware/auth';
 import { serializeUser, toNumber, UserRow } from '../lib/utils';
 
 const router = Router();
@@ -79,7 +79,7 @@ router.get(
   })
 );
 
-/** POST /users — create a Supabase Auth account + profile row (admin). */
+/** POST /users — create a user account with hashed password (admin). */
 router.post(
   '/',
   requireAuth,
@@ -90,45 +90,36 @@ router.post(
     if (!full_name || !email) throw ApiError.badRequest('Full name and email are required.');
     const normalizedEmail = String(email).trim().toLowerCase();
 
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: normalizedEmail,
-      password: DEFAULT_PASSWORD,
-      email_confirm: true,
-      user_metadata: { full_name },
-    });
-    if (authError) throw ApiError.conflict(authError.message || 'Failed to create user account.');
-
-    try {
-      const inserted = await query(
-        `INSERT INTO users (auth_uid, full_name, email, phone, job_title, role, department_id, status, is_active)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8 <> 'INACTIVE')
-         RETURNING *`,
-        [
-          authData.user!.id,
-          full_name,
-          normalizedEmail,
-          phone || null,
-          job_title || null,
-          role || 'EMPLOYEE',
-          department_id ?? null,
-          status || 'ACTIVE',
-        ]
-      );
-      const row = inserted.rows[0] as UserRow;
-      const { rows } = await query(
-        `${USER_SELECT} WHERE u.id = $1`,
-        [row.id]
-      );
-      res.status(201).json({
-        ...serializeUser(rows[0] as UserRow),
-        // Extra field for the admin (frontend ignores unknown props).
-        temporaryPassword: DEFAULT_PASSWORD,
-      });
-    } catch (err) {
-      // Roll back the auth account if the profile insert fails.
-      await supabaseAdmin.auth.admin.deleteUser(authData.user!.id).catch(() => undefined);
-      throw err;
+    // Check for duplicate email
+    const { rows: existing } = await query(`SELECT id FROM users WHERE email = $1`, [normalizedEmail]);
+    if (existing.length > 0) {
+      throw ApiError.conflict('A user with this email already exists.');
     }
+
+    const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 12);
+
+    const inserted = await query(
+      `INSERT INTO users (full_name, email, phone, job_title, role, department_id, status, is_active, password_hash)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $7 <> 'INACTIVE', $8)
+       RETURNING *`,
+      [
+        full_name,
+        normalizedEmail,
+        phone || null,
+        job_title || null,
+        role || 'EMPLOYEE',
+        department_id ?? null,
+        status || 'ACTIVE',
+        passwordHash,
+      ]
+    );
+    const row = inserted.rows[0] as UserRow;
+    const { rows } = await query(`${USER_SELECT} WHERE u.id = $1`, [row.id]);
+    res.status(201).json({
+      ...serializeUser(rows[0] as UserRow),
+      // Extra field for the admin (frontend ignores unknown props).
+      temporaryPassword: DEFAULT_PASSWORD,
+    });
   })
 );
 
