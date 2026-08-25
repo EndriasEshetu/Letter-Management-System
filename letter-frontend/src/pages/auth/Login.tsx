@@ -5,6 +5,7 @@ import Input from '@/components/common/Input';
 import PasswordInput from '@/components/common/PasswordInput';
 import Button from '@/components/common/Button';
 import Alert from '@/components/common/Alert';
+import logoLetter from '@/assets/logo-letter.png';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -74,16 +75,18 @@ export const Login: React.FC = () => {
       {/* Top Header Branding */}
       <header className="w-full max-w-md flex items-center justify-between py-4 mb-2">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-[#526A55] text-[#F5F3ED] rounded-xl flex items-center justify-center font-bold text-lg shadow-sm">
-            S
-          </div>
+          <img
+            src={logoLetter}
+            alt="SITA LMS Logo"
+            className="w-10 h-10 object-contain rounded-xl bg-[#526A55]/15 p-1 flex-shrink-0"
+          />
           <div>
             <h1 className="text-sm font-semibold tracking-wide text-[#292A27] uppercase">SITA</h1>
             <p className="text-xs text-[#6B6A64]">Sidama Innovation & Technology Agency</p>
           </div>
         </div>
-        <span className="text-[11px] font-medium px-2.5 py-1 bg-[#ECEAE3] text-[#526A55] rounded-full border border-[#D8D7D1]">
-          Smart E-Office
+        <span className="text-[11px] font-bold px-2.5 py-1 bg-[#ECEAE3] text-[#526A55] rounded-full border border-[#D8D7D1]">
+          Letter Management
         </span>
       </header>
 
@@ -92,7 +95,7 @@ export const Login: React.FC = () => {
         <div className="bg-white border border-[#292A27]/08 rounded-[1.75rem] p-7 md:p-10 shadow-sm transition-all">
           <div className="mb-8 text-center">
             <h2 className="text-2xl font-semibold text-[#292A27] tracking-tight mb-1.5">Welcome back</h2>
-            <p className="text-sm text-[#6B6A64]">Sign in to continue to Smart E-Office</p>
+            <p className="text-sm text-[#6B6A64]">Sign in to continue to Letter Management System</p>
           </div>
 
           {error && (

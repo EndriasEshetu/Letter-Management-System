@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import screenAsset from '@/assets/screen.png';
+import logoLetter from '@/assets/logo-letter.png';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
@@ -27,9 +28,11 @@ export const LandingPage: React.FC = () => {
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             className="flex items-center space-x-3 cursor-pointer group"
           >
-            <div className="w-10 h-10 bg-[#3B4E3D] text-[#F5F3ED] rounded-xl flex items-center justify-center font-bold text-lg shadow-sm group-hover:bg-[#2B3E30] transition-colors">
-              L
-            </div>
+            <img
+              src={logoLetter}
+              alt="SITA LMS Logo"
+              className="w-11 h-11 object-contain rounded-xl bg-[#526A55]/15 p-1 shadow-xs group-hover:scale-105 transition-transform"
+            />
             <div className="flex flex-col">
               <span className="text-base font-extrabold tracking-tight text-[#292A27] group-hover:text-[#3B4E3D] transition-colors">
                 Letter Management System
@@ -629,9 +632,11 @@ export const LandingPage: React.FC = () => {
             {/* Brand Col */}
             <div className="space-y-4 md:col-span-1">
               <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-[#3B4E3D] text-[#F5F3ED] rounded-xl flex items-center justify-center font-bold text-sm">
-                  L
-                </div>
+                <img
+                  src={logoLetter}
+                  alt="SITA LMS Logo"
+                  className="w-9 h-9 object-contain rounded-xl bg-[#526A55]/15 p-1"
+                />
                 <span className="text-sm font-extrabold text-[#292A27]">
                   Letter Management System
                 </span>

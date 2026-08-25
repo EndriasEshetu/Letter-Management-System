@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { getNavItemsForRole } from '@/routes/navigation';
+import logoLetter from '@/assets/logo-letter.png';
 
 interface SidebarProps {
   onCloseMobile?: () => void;
@@ -83,9 +84,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
       <div className="flex-1 overflow-y-auto px-4 py-6">
         {/* Branding Logo Header */}
         <div className="flex items-center space-x-3 px-3 mb-8">
-          <div className="w-9 h-9 bg-[#526A55] text-[#F5F3ED] rounded-xl flex items-center justify-center font-bold text-base shadow-sm flex-shrink-0">
-            L
-          </div>
+          <img
+            src={logoLetter}
+            alt="SITA LMS Logo"
+            className="w-10 h-10 object-contain rounded-xl bg-[#526A55]/20 p-1 flex-shrink-0"
+          />
           <div className="min-w-0">
             <h1 className="text-sm font-bold text-[#F5F3ED] tracking-tight truncate leading-tight">
               Letter Management
