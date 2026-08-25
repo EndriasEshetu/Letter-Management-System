@@ -1,36 +1,12 @@
 import { Router } from 'express';
-import { supabaseAdmin, supabaseAuth } from '../lib/supabase';
+import bcrypt from 'bcryptjs';
 import { query } from '../lib/db';
+import { signToken } from '../lib/jwt';
 import { ApiError, asyncHandler } from '../lib/errors';
 import { requireAuth, AuthenticatedRequest } from '../middleware/auth';
 import { serializeAuthUser, UserRow } from '../lib/utils';
 
 const router = Router();
-
-/** Load a users row by its Supabase auth uid, auto-provisioning a minimal profile if missing. */
-async function loadUserByAuthUid(authUid: string): Promise<UserRow> {
-  const { rows } = await query(
-    `SELECT u.*, d.name AS department_name
-       FROM users u
-       LEFT JOIN departments d ON d.id = u.department_id
-      WHERE u.auth_uid = $1`,
-    [authUid]
-  );
-  if (rows.length > 0) return rows[0] as UserRow;
-
-  // Auto-provision: account exists in Supabase Auth but has no profile row yet.
-  const { data: authData } = await supabaseAdmin.auth.admin.getUserById(authUid);
-  const email = authData.user?.email ?? '';
-  const fullName = (authData.user?.user_metadata?.full_name as string) || email.split('@')[0] || 'User';
-  const inserted = await query(
-    `INSERT INTO users (auth_uid, full_name, email, role)
-     VALUES ($1, $2, $3, 'EMPLOYEE')
-     RETURNING *`,
-    [authUid, fullName, email]
-  );
-  const row = inserted.rows[0] as UserRow;
-  return { ...row, department_name: null };
-}
 
 /** POST /auth/login */
 router.post(
@@ -41,18 +17,37 @@ router.post(
       throw ApiError.badRequest('Email and password are required.');
     }
 
-    const { data, error } = await supabaseAuth.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password,
-    });
+    const { rows } = await query(
+      `SELECT u.*, d.name AS department_name
+         FROM users u
+         LEFT JOIN departments d ON d.id = u.department_id
+        WHERE u.email = $1`,
+      [email.trim().toLowerCase()]
+    );
 
-    if (error || !data.session) {
+    if (rows.length === 0) {
       throw new ApiError(401, 'Invalid email or password.');
     }
 
-    const user = await loadUserByAuthUid(data.user.id);
+    const user = rows[0] as UserRow & { password_hash: string };
+
+    if (!user.password_hash) {
+      throw new ApiError(401, 'Account not configured for password login. Please contact an administrator.');
+    }
+
+    const passwordMatch = await bcrypt.compare(password, user.password_hash);
+    if (!passwordMatch) {
+      throw new ApiError(401, 'Invalid email or password.');
+    }
+
+    if (user.status === 'INACTIVE') {
+      throw new ApiError(403, 'Your account has been deactivated. Please contact an administrator.');
+    }
+
+    const token = signToken(user.id, user.email, user.role);
+
     res.json({
-      token: data.session.access_token,
+      token,
       user: serializeAuthUser(user),
       message: 'Authenticated successfully',
     });
@@ -85,24 +80,23 @@ router.post(
       throw ApiError.badRequest('New password must be at least 6 characters long.');
     }
 
-    // Verify the current password by attempting a fresh sign-in.
     const user = req.user!;
-    const { error: verifyError } = await supabaseAuth.auth.signInWithPassword({
-      email: user.email,
-      password: current_password,
-    });
-    if (verifyError) {
+
+    // Fetch current hash from DB.
+    const { rows } = await query(`SELECT password_hash FROM users WHERE id = $1`, [user.id]);
+    const currentHash: string | null = rows[0]?.password_hash ?? null;
+
+    if (!currentHash) {
+      throw ApiError.badRequest('No password set for this account.');
+    }
+
+    const valid = await bcrypt.compare(current_password, currentHash);
+    if (!valid) {
       throw ApiError.badRequest('Current password is incorrect.');
     }
 
-    // Apply the new password via the service-role admin API. This needs no user
-    // session on a shared client, avoiding cross-request session races.
-    const { error } = await supabaseAdmin.auth.admin.updateUserById(user.authUid, {
-      password: new_password,
-    });
-    if (error) {
-      throw new ApiError(400, error.message || 'Failed to update password.');
-    }
+    const newHash = await bcrypt.hash(new_password, 12);
+    await query(`UPDATE users SET password_hash = $1 WHERE id = $2`, [newHash, user.id]);
 
     res.json({ message: 'Password updated successfully.' });
   })

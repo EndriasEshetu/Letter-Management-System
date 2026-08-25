@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Login from '@/pages/auth/Login';
 import LandingPage from '@/pages/LandingPage';
 import Dashboard from '@/pages/dashboard/Dashboard';
@@ -16,9 +16,19 @@ import ProtectedRoute from '@/routes/ProtectedRoute';
 import RoleRoute from '@/routes/RoleRoute';
 import AppShell from '@/components/layout/AppShell';
 
+// Scroll to top on route change helper
+const ScrollToTop: React.FC = () => {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [pathname]);
+  return null;
+};
+
 export const AppRoutes: React.FC = () => {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />

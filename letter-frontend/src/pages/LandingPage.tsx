@@ -99,19 +99,24 @@ export const LandingPage: React.FC = () => {
       </header>
 
       {/* ─── 2. Hero Section ──────────────────────────────────────────── */}
-      <section className="pt-16 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center space-y-8">
+      <section className="pt-16 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center space-y-8 overflow-hidden">
+        {/* Eyebrow Label */}
+        <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-[#3B4E3D]/10 border border-[#3B4E3D]/20 text-[#3B4E3D] text-[11px] font-bold uppercase tracking-widest animate-fade-in-up">
+          <span>OFFICIAL CORRESPONDENCE MANAGEMENT SYSTEM</span>
+        </div>
+
         {/* Hero Title */}
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#292A27] tracking-tight max-w-4xl mx-auto leading-[1.15]">
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#292A27] tracking-tight max-w-4xl mx-auto leading-[1.15] animate-fade-in-up delay-100">
           Centralize Official Letter Workflows into a Smarter Digital System
         </h1>
 
         {/* Hero Subtitle */}
-        <p className="text-base sm:text-lg text-[#6B6A64] max-w-2xl mx-auto font-medium leading-relaxed">
+        <p className="text-base sm:text-lg text-[#6B6A64] max-w-2xl mx-auto font-medium leading-relaxed animate-fade-in-up delay-200">
           Create, register, route, review, approve, dispatch, and archive incoming, outgoing, and internal organizational letters with complete auditability.
         </p>
 
         {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2 animate-fade-in-up delay-300">
           <button
             type="button"
             onClick={() => navigate('/login')}
@@ -129,7 +134,7 @@ export const LandingPage: React.FC = () => {
         </div>
 
         {/* Hero Screen Frame Mockup */}
-        <div className="pt-8 max-w-5xl mx-auto">
+        <div className="pt-8 max-w-5xl mx-auto animate-scale-in delay-500">
           <div className="bg-[#E5E3DC] p-3 sm:p-4 rounded-3xl border border-[#292A27]/15 shadow-2xl">
             {/* Safari/Browser Bar Header */}
             <div className="bg-[#D8D7D1]/80 rounded-t-2xl px-4 py-2.5 flex items-center justify-between border-b border-[#292A27]/10 mb-2">

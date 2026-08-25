@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import letterService from '@/services/letterService';
 import { LetterFilterParams, LetterItem, PaginatedLetterResponse, LetterDirection } from '@/types/letter';
+import { formatDate } from '@/utils/dateUtils';
 import Table from '@/components/common/Table';
 import Badge, { LetterStatus } from '@/components/common/Badge';
 import Button from '@/components/common/Button';
@@ -486,7 +487,7 @@ export const Letters: React.FC = () => {
                 </Table.Td>
                 <Table.Td>
                   <span className="text-xs text-[#6B6A64]">
-                    {letter.dateReceived || letter.dateSent || letter.created_at}
+                    {formatDate(letter.dateReceived || letter.dateSent || letter.created_at)}
                   </span>
                 </Table.Td>
                 <Table.Td>
@@ -546,7 +547,7 @@ export const Letters: React.FC = () => {
                 {letter.sender && <p><span className="font-medium text-[#292A27]">From:</span> {letter.sender}</p>}
                 {letter.recipient && <p><span className="font-medium text-[#292A27]">To:</span> {letter.recipient}</p>}
                 <p><span className="font-medium text-[#292A27]">Dept:</span> {letter.department_name}</p>
-                <p><span className="font-medium text-[#292A27]">Date:</span> {letter.dateReceived || letter.dateSent || letter.created_at}</p>
+                <p><span className="font-medium text-[#292A27]">Date:</span> {formatDate(letter.dateReceived || letter.dateSent || letter.created_at)}</p>
               </div>
 
               <div className="pt-2 border-t border-[#D8D7D1]/50 flex items-center justify-between">
