@@ -9,10 +9,10 @@ let mockUsers: User[] = [
     full_name: 'Endrias Eshetu',
     email: 'endrias.e@sita.gov.et',
     phone: '+251 91 123 4567',
-    job_title: 'Senior Finance Officer',
+    job_title: 'Software Systems Lead',
     role: 'DEPARTMENT_MANAGER',
     department_id: 1,
-    department_name: 'Finance & Planning',
+    department_name: 'App Development Directorate',
     status: 'ACTIVE',
     is_active: true,
   },
@@ -24,7 +24,7 @@ let mockUsers: User[] = [
     job_title: 'Chief IT Architect',
     role: 'ADMIN',
     department_id: 2,
-    department_name: 'ICT Governance',
+    department_name: 'ICT Infrastructure Development Directorate',
     status: 'ACTIVE',
     is_active: true,
   },
@@ -33,10 +33,10 @@ let mockUsers: User[] = [
     full_name: 'Abebe Kebede',
     email: 'abebe.k@sita.gov.et',
     phone: '+251 93 345 6789',
-    job_title: 'HR Operations Lead',
+    job_title: 'Research Lead',
     role: 'DEPARTMENT_MANAGER',
     department_id: 3,
-    department_name: 'Human Resources',
+    department_name: 'Science and Technology Directorate',
     status: 'ACTIVE',
     is_active: true,
   },
@@ -45,22 +45,22 @@ let mockUsers: User[] = [
     full_name: 'Tariku Bikila',
     email: 'tariku.b@sita.gov.et',
     phone: '+251 94 456 7890',
-    job_title: 'Legal Counsel',
-    role: 'EMPLOYEE',
+    job_title: 'Incubation Manager',
+    role: 'DEPARTMENT_MANAGER',
     department_id: 4,
-    department_name: 'Legal Services',
+    department_name: 'Incubation Development Directorate',
     status: 'ACTIVE',
     is_active: true,
   },
   {
     id: 'usr-105',
-    full_name: 'Tigist Haile',
-    email: 'tigist.h@sita.gov.et',
+    full_name: 'Abebe Demissie',
+    email: 'abebe.d@sita.gov.et',
     phone: '+251 95 567 8901',
-    job_title: 'Public Relations Officer',
-    role: 'EMPLOYEE',
-    department_id: 5,
-    department_name: 'Public Relations',
+    job_title: 'Senior Registry Officer',
+    role: 'REGISTRY_OFFICER',
+    department_id: 2,
+    department_name: 'ICT Infrastructure Development Directorate',
     status: 'ACTIVE',
     is_active: true,
   },
@@ -72,9 +72,9 @@ let mockUsers: User[] = [
     job_title: 'Infrastructure Specialist',
     role: 'EMPLOYEE',
     department_id: 2,
-    department_name: 'ICT Governance',
-    status: 'INACTIVE',
-    is_active: false,
+    department_name: 'ICT Infrastructure Development Directorate',
+    status: 'ACTIVE',
+    is_active: true,
   },
 ];
 
@@ -168,12 +168,12 @@ export const userService = {
           department_id: payload.department_id,
           department_name:
             payload.department_id === 1
-              ? 'Finance & Planning'
+              ? 'App Development Directorate'
               : payload.department_id === 2
-              ? 'ICT Governance'
+              ? 'ICT Infrastructure Development Directorate'
               : payload.department_id === 3
-              ? 'Human Resources'
-              : 'Public Relations',
+              ? 'Science and Technology Directorate'
+              : 'Incubation Development Directorate',
           status: payload.status || 'ACTIVE',
           is_active: payload.status !== 'INACTIVE',
         };

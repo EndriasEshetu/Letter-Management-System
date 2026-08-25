@@ -27,16 +27,9 @@ const CATEGORY_OPTIONS: SelectOption[] = [
   { value: 'Public Relations', label: 'Public Relations' },
 ];
 
-const DEPARTMENT_OPTIONS: SelectOption[] = [
-  { value: 'Finance & Planning', label: 'Finance & Planning' },
-  { value: 'Legal Services', label: 'Legal Services' },
-  { value: 'Human Resources', label: 'Human Resources' },
-  { value: 'ICT Governance', label: 'ICT Governance' },
-  { value: 'Public Works', label: 'Public Works' },
-  { value: 'General Administration', label: 'General Administration' },
-  { value: 'City Clerk', label: 'City Clerk' },
-  { value: 'Urban Development', label: 'Urban Development' },
-];
+import { DEPARTMENT_SELECT_OPTIONS } from '@/constants/departments';
+
+const DEPARTMENT_OPTIONS: SelectOption[] = DEPARTMENT_SELECT_OPTIONS;
 
 const CONFIDENTIALITY_OPTIONS: SelectOption[] = [
   { value: 'PUBLIC', label: 'Public' },
@@ -163,8 +156,8 @@ export const RegisterLetterModal: React.FC<RegisterLetterModalProps> = ({
   const [recipientOrganization, setRecipientOrganization] = useState('');
   const [externalReferenceNumber, setExternalReferenceNumber] = useState('');
   const [category, setCategory] = useState('General / Correspondence');
-  const [department, setDepartment] = useState('ICT Governance');
-  const [targetDepartment, setTargetDepartment] = useState('Finance & Planning');
+  const [department, setDepartment] = useState('App Development Directorate');
+  const [targetDepartment, setTargetDepartment] = useState('ICT Infrastructure Development Directorate');
   const [confidentiality, setConfidentiality] = useState('INTERNAL');
   const [priority, setPriority] = useState('NORMAL');
   const [dateReceivedSent, setDateReceivedSent] = useState('');
@@ -264,8 +257,8 @@ export const RegisterLetterModal: React.FC<RegisterLetterModalProps> = ({
     setRecipientOrganization('');
     setExternalReferenceNumber('');
     setCategory('General / Correspondence');
-    setDepartment('ICT Governance');
-    setTargetDepartment('Finance & Planning');
+    setDepartment('App Development Directorate');
+    setTargetDepartment('ICT Infrastructure Development Directorate');
     setConfidentiality('INTERNAL');
     setPriority('NORMAL');
     setDateReceivedSent('');

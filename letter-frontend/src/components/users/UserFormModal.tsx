@@ -68,6 +68,7 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
   const roleOptions = [
     { value: 'EMPLOYEE', label: 'Employee' },
     { value: 'DEPARTMENT_MANAGER', label: 'Department Manager' },
+    { value: 'REGISTRY_OFFICER', label: 'Registry Officer' },
     { value: 'ADMIN', label: 'Administrator' },
   ];
 

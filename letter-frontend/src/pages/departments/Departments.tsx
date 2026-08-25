@@ -147,13 +147,13 @@ export const Departments: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <span className="text-[10px] font-bold uppercase tracking-widest text-[#526A55] bg-[#526A55]/10 px-2.5 py-1 rounded-md">
-            DEPARTMENT MANAGEMENT
+            DIRECTORATE MANAGEMENT
           </span>
           <h1 className="text-2xl sm:text-3xl font-bold text-[#292A27] tracking-tight mt-2">
-            Department Management
+            Directorate Management
           </h1>
           <p className="text-sm text-[#6B6A64] mt-1">
-            Manage organizational departments and their assigned leaders.
+            Manage SITA official directorates and their assigned leaders.
           </p>
         </div>
 

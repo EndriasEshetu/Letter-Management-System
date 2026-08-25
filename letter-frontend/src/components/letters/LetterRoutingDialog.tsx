@@ -15,15 +15,9 @@ interface LetterRoutingDialogProps {
   onSuccess: () => void;
 }
 
-const DEPARTMENT_OPTIONS: SelectOption[] = [
-  { value: 'ICT Governance', label: 'ICT Governance Directorate' },
-  { value: 'Finance & Planning', label: 'Finance & Planning Directorate' },
-  { value: 'Legal Services', label: 'Legal Services Directorate' },
-  { value: 'Human Resources', label: 'Human Resources Directorate' },
-  { value: 'Procurement & Finance', label: 'Procurement Directorate' },
-  { value: 'General Administration', label: 'General Administration' },
-  { value: 'Urban Development', label: 'Urban Development Directorate' },
-];
+import { DEPARTMENT_SELECT_OPTIONS } from '@/constants/departments';
+
+const DEPARTMENT_OPTIONS: SelectOption[] = DEPARTMENT_SELECT_OPTIONS;
 
 export const LetterRoutingDialog: React.FC<LetterRoutingDialogProps> = ({
   open,
@@ -34,7 +28,7 @@ export const LetterRoutingDialog: React.FC<LetterRoutingDialogProps> = ({
   onSuccess,
 }) => {
   const { addToast } = useToast();
-  const [selectedDepartment, setSelectedDepartment] = useState('ICT Governance');
+  const [selectedDepartment, setSelectedDepartment] = useState('App Development Directorate');
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 

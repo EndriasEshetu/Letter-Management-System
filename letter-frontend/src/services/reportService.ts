@@ -100,11 +100,10 @@ function getMockReportData(filters: ReportFilters): FullReportData {
 
   const departmentStats: DepartmentStats = {
     departments: [
-      { id: 1, name: 'Finance & Planning', code: 'DEP-FIN', submitted: Math.round(420 * timeScale), approved: Math.round(350 * timeScale), rejected: Math.round(30 * timeScale), pending: Math.round(40 * timeScale), totalMembers: 14 },
-      { id: 2, name: 'ICT Governance', code: 'DEP-ICT', submitted: Math.round(510 * timeScale), approved: Math.round(440 * timeScale), rejected: Math.round(25 * timeScale), pending: Math.round(45 * timeScale), totalMembers: 18 },
-      { id: 3, name: 'Human Resources', code: 'DEP-HR', submitted: Math.round(290 * timeScale), approved: Math.round(245 * timeScale), rejected: Math.round(15 * timeScale), pending: Math.round(30 * timeScale), totalMembers: 9 },
-      { id: 4, name: 'Legal Services', code: 'DEP-LGL', submitted: Math.round(210 * timeScale), approved: Math.round(180 * timeScale), rejected: Math.round(10 * timeScale), pending: Math.round(20 * timeScale), totalMembers: 6 },
-      { id: 5, name: 'Public Works', code: 'DEP-PWK', submitted: Math.round(340 * timeScale), approved: Math.round(280 * timeScale), rejected: Math.round(20 * timeScale), pending: Math.round(40 * timeScale), totalMembers: 12 },
+      { id: 1, name: 'App Development Directorate', code: 'DIR-APP', submitted: Math.round(510 * timeScale), approved: Math.round(440 * timeScale), rejected: Math.round(25 * timeScale), pending: Math.round(45 * timeScale), totalMembers: 14 },
+      { id: 2, name: 'ICT Infrastructure Development Directorate', code: 'DIR-INF', submitted: Math.round(620 * timeScale), approved: Math.round(530 * timeScale), rejected: Math.round(30 * timeScale), pending: Math.round(60 * timeScale), totalMembers: 18 },
+      { id: 3, name: 'Science and Technology Directorate', code: 'DIR-SCT', submitted: Math.round(340 * timeScale), approved: Math.round(290 * timeScale), rejected: Math.round(15 * timeScale), pending: Math.round(35 * timeScale), totalMembers: 12 },
+      { id: 4, name: 'Incubation Development Directorate', code: 'DIR-INC', submitted: Math.round(280 * timeScale), approved: Math.round(230 * timeScale), rejected: Math.round(12 * timeScale), pending: Math.round(38 * timeScale), totalMembers: 10 },
     ],
   };
 

@@ -25,15 +25,9 @@ const CATEGORY_FILTER_OPTIONS: SelectOption[] = [
   { value: 'ICT / Partnerships', label: 'ICT / Partnerships' },
 ];
 
-const DEPARTMENT_FILTER_OPTIONS: SelectOption[] = [
-  { value: 'ALL', label: 'All Departments' },
-  { value: 'Finance & Planning', label: 'Finance & Planning' },
-  { value: 'Legal Services', label: 'Legal Services' },
-  { value: 'Public Works', label: 'Public Works' },
-  { value: 'Human Resources', label: 'Human Resources' },
-  { value: 'ICT Governance', label: 'ICT Governance' },
-  { value: 'City Clerk', label: 'City Clerk' },
-];
+import { DEPARTMENT_FILTER_OPTIONS as OFFICIAL_DEPT_FILTER_OPTIONS } from '@/constants/departments';
+
+const DEPARTMENT_FILTER_OPTIONS: SelectOption[] = OFFICIAL_DEPT_FILTER_OPTIONS;
 
 const getDocIcon = (filename: string, filetype?: string) => {
   const lower = (filename || filetype || '').toLowerCase();

@@ -38,7 +38,7 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
   ];
 
   const departmentOptions = [
-    { value: 'all', label: 'All Departments' },
+    { value: 'all', label: 'All Directorates' },
     ...departments.map((d) => ({
       value: String(d.id),
       label: `${d.name} (${d.code})`,
@@ -65,7 +65,7 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
           {/* Department Filter */}
           <div>
             <label className="block text-xs font-semibold text-[#6B6A64] uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-              <Filter className="w-3.5 h-3.5 text-[#526A55]" /> Department
+              <Filter className="w-3.5 h-3.5 text-[#526A55]" /> Directorate
             </label>
             <Select
               options={departmentOptions}

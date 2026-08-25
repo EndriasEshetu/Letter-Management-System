@@ -30,6 +30,7 @@ export const UserFilters: React.FC<UserFiltersProps> = ({
     { value: 'ALL', label: 'All Roles' },
     { value: 'ADMIN', label: 'Administrator' },
     { value: 'DEPARTMENT_MANAGER', label: 'Department Manager' },
+    { value: 'REGISTRY_OFFICER', label: 'Registry Officer' },
     { value: 'EMPLOYEE', label: 'Employee' },
   ];
 

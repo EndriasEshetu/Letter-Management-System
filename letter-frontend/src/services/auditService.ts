@@ -32,7 +32,7 @@ const MOCK_AUDIT_LOGS: AuditLog[] = [
     entity_type: 'LETTER',
     entity_id: 'IN/2026/00452',
     ip_address: '10.0.0.12',
-    details: JSON.stringify({ routed_to_department: 'ICT Governance', routed_by: 'Main Administrator' }),
+    details: JSON.stringify({ routed_to_department: 'ICT Infrastructure Development Directorate', routed_by: 'Main Administrator' }),
   },
   {
     id: 'aud-003',
