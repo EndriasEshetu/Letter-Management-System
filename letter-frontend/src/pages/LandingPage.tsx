@@ -6,17 +6,31 @@ import logoLetter from '@/assets/logo-letter.png';
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const [activeAccordion, setActiveAccordion] = useState<number | null>(0);
+  const [activeSection, setActiveSection] = useState<string>('home');
 
   const toggleAccordion = (index: number) => {
     setActiveAccordion((prev) => (prev === index ? null : index));
   };
 
   const scrollToSection = (id: string) => {
+    setActiveSection(id);
+    if (id === 'home') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     const el = document.getElementById(id);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth' });
     }
   };
+
+  const navItems = [
+    { id: 'home', label: 'Home' },
+    { id: 'features', label: 'Features' },
+    { id: 'how-it-works', label: 'How It Works' },
+    { id: 'benefits', label: 'Benefits' },
+    { id: 'about-sita', label: 'About SITA' },
+  ];
 
   return (
     <div className="min-h-screen bg-[#F5F3ED] text-[#292A27] font-sans antialiased selection:bg-[#526A55]/20 selection:text-[#526A55]">
@@ -25,7 +39,7 @@ export const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           {/* Logo */}
           <div
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            onClick={() => scrollToSection('home')}
             className="flex items-center space-x-3 cursor-pointer group"
           >
             <img
@@ -44,42 +58,24 @@ export const LandingPage: React.FC = () => {
           </div>
 
           {/* Navigation Links */}
-          <nav className="hidden md:flex items-center space-x-8 text-xs font-bold uppercase tracking-wider text-[#6B6A64]">
-            <button
-              type="button"
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="text-[#3B4E3D] relative py-1 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-[#3B4E3D] after:rounded-full"
-            >
-              Home
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToSection('features')}
-              className="hover:text-[#3B4E3D] transition-colors py-1"
-            >
-              Features
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToSection('how-it-works')}
-              className="hover:text-[#3B4E3D] transition-colors py-1"
-            >
-              How It Works
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToSection('benefits')}
-              className="hover:text-[#3B4E3D] transition-colors py-1"
-            >
-              Benefits
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToSection('about-sita')}
-              className="hover:text-[#3B4E3D] transition-colors py-1"
-            >
-              About SITA
-            </button>
+          <nav className="hidden md:flex items-center space-x-8 text-xs font-bold uppercase tracking-wider">
+            {navItems.map((item) => {
+              const isActive = activeSection === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => scrollToSection(item.id)}
+                  className={`py-1 transition-all relative font-bold focus:outline-none ${
+                    isActive
+                      ? 'text-[#3B4E3D] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-[#3B4E3D] after:rounded-full'
+                      : 'text-[#6B6A64] hover:text-[#3B4E3D] transition-colors'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
           </nav>
 
           {/* Header Action Buttons */}
