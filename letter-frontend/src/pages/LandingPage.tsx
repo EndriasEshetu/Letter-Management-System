@@ -100,11 +100,6 @@ export const LandingPage: React.FC = () => {
 
       {/* ─── 2. Hero Section ──────────────────────────────────────────── */}
       <section className="pt-16 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center space-y-8">
-        {/* Eyebrow Label */}
-        <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-[#3B4E3D]/10 border border-[#3B4E3D]/20 text-[#3B4E3D] text-[11px] font-bold uppercase tracking-widest">
-          <span>OFFICIAL CORRESPONDENCE MANAGEMENT SYSTEM</span>
-        </div>
-
         {/* Hero Title */}
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#292A27] tracking-tight max-w-4xl mx-auto leading-[1.15]">
           Centralize Official Letter Workflows into a Smarter Digital System
