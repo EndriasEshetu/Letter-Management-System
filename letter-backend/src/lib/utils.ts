@@ -149,11 +149,38 @@ export function serializeVersion(v: VersionRow) {
   };
 }
 
-export function serializeDocument(row: DocumentRow, versions?: VersionRow[]) {
+export function serializeDocument(row: DocumentRow & { letter_type?: string; sender?: string; sender_organization?: string; recipient?: string; recipient_organization?: string; registration_number?: string; date_received?: Date; date_sent?: Date; due_date?: Date; originating_department?: string; assigned_employee?: string; priority?: string; response_required?: boolean }, versions?: VersionRow[]) {
+  const rawLetterType = (row as any).letter_type;
+  const letterType = rawLetterType || derivLetterTypeFromCategory(row.category);
+
   return {
     id: String(row.id),
+    
+    // Document shape properties (legacy)
     documentNumber: row.document_number,
     title: row.title,
+    securityLevel: row.security_level,
+    version: row.version ?? undefined,
+    
+    // Letter shape properties (frontend)
+    referenceNumber: row.document_number,
+    registrationNumber: (row as any).registration_number ?? undefined,
+    subject: row.title,
+    letterType,
+    confidentialityLevel: row.security_level as 'PUBLIC' | 'INTERNAL' | 'CONFIDENTIAL' | 'RESTRICTED',
+    priority: (row as any).priority ?? 'NORMAL',
+    originatingDepartment: (row as any).originating_department ?? undefined,
+    sender: (row as any).sender ?? undefined,
+    senderOrganization: (row as any).sender_organization ?? undefined,
+    recipient: (row as any).recipient ?? undefined,
+    recipientOrganization: (row as any).recipient_organization ?? undefined,
+    assignedEmployee: (row as any).assigned_employee ?? undefined,
+    dateReceived: formatDisplayDate((row as any).date_received),
+    dateSent: formatDisplayDate((row as any).date_sent),
+    dueDate: formatDisplayDate((row as any).due_date),
+    responseRequired: (row as any).response_required ?? false,
+
+    // Shared properties
     description: row.description ?? undefined,
     category: row.category,
     department_id: row.department_id ?? undefined,
@@ -161,16 +188,27 @@ export function serializeDocument(row: DocumentRow, versions?: VersionRow[]) {
     created_by: row.created_by,
     author_id: row.author_id ? String(row.author_id) : undefined,
     status: row.status,
-    securityLevel: row.security_level,
     file_name: row.file_name,
     file_size: row.file_size,
     file_type: row.file_type,
     created_at: formatDisplayDate(row.created_at),
     updated_at: formatDisplayDate(row.updated_at),
     tags: row.tags ?? [],
-    version: row.version ?? undefined,
     is_new: row.is_new,
-    ...(versions ? { versions: versions.map(serializeVersion) } : {}),
+    
+    // Attachments & Versions
+    ...(versions ? { 
+      versions: versions.map(serializeVersion),
+      attachments: versions.map((v) => ({
+        id: String(v.id),
+        versionNumber: v.version_number,
+        uploadedBy: v.uploaded_by,
+        date: formatDisplayDate(v.date),
+        fileSize: v.file_size ?? undefined,
+        fileName: v.file_name ?? undefined,
+        isCurrent: v.is_current,
+      }))
+    } : {}),
   };
 }
 
@@ -192,6 +230,71 @@ export function normalizeDepartmentParam(value: unknown): {
     return { id: n };
   }
   return { name: String(value).toLowerCase() };
+}
+
+export function serializeLetter(row: DocumentRow & { letter_type?: string; sender?: string; sender_organization?: string; recipient?: string; recipient_organization?: string; registration_number?: string; date_received?: Date; date_sent?: Date; due_date?: Date; originating_department?: string; assigned_employee?: string; priority?: string; response_required?: boolean; response_deadline?: Date }, versions?: VersionRow[]) {
+  // Derive letterType: stored in category field or a dedicated letter_type column if present
+  const rawLetterType = (row as any).letter_type as string | undefined;
+  const letterType = rawLetterType || derivLetterTypeFromCategory(row.category);
+
+  return {
+    id: String(row.id),
+    referenceNumber: row.document_number,
+    registrationNumber: (row as any).registration_number ?? undefined,
+    subject: row.title,
+    description: row.description ?? undefined,
+    letterType,
+    category: row.category,
+    department_id: row.department_id ?? undefined,
+    department_name: (row as any).department_name ?? '',
+    originatingDepartment: (row as any).originating_department ?? undefined,
+    sender: (row as any).sender ?? undefined,
+    senderOrganization: (row as any).sender_organization ?? undefined,
+    recipient: (row as any).recipient ?? undefined,
+    recipientOrganization: (row as any).recipient_organization ?? undefined,
+    assignedEmployee: (row as any).assigned_employee ?? undefined,
+    created_by: row.created_by,
+    author_id: row.author_id ? String(row.author_id) : undefined,
+    status: row.status,
+    confidentialityLevel: row.security_level as 'PUBLIC' | 'INTERNAL' | 'CONFIDENTIAL' | 'RESTRICTED',
+    priority: ((row as any).priority as string | undefined) ?? 'NORMAL',
+    dateReceived: formatDisplayDate((row as any).date_received),
+    dateSent: formatDisplayDate((row as any).date_sent),
+    dueDate: formatDisplayDate((row as any).due_date),
+    responseRequired: (row as any).response_required ?? false,
+    file_name: row.file_name,
+    file_size: row.file_size,
+    file_type: row.file_type,
+    created_at: formatDisplayDate(row.created_at),
+    updated_at: formatDisplayDate(row.updated_at),
+    tags: row.tags ?? [],
+    is_new: row.is_new,
+    ...(versions ? {
+      attachments: versions.map((v) => ({
+        id: String(v.id),
+        versionNumber: v.version_number,
+        uploadedBy: v.uploaded_by,
+        date: formatDisplayDate(v.date),
+        fileSize: v.file_size ?? undefined,
+        fileName: v.file_name ?? undefined,
+        isCurrent: v.is_current,
+      }))
+    } : {}),
+  };
+}
+
+/** Derive a letter type from a category string for backward-compatibility. */
+function derivLetterTypeFromCategory(category: string): string {
+  const lower = category.toLowerCase();
+  if (lower.includes('incoming') || lower.includes('in/')) return 'INCOMING';
+  if (lower.includes('outgoing') || lower.includes('out/')) return 'OUTGOING';
+  if (lower.includes('memo') || lower.includes('memorandum')) return 'MEMORANDUM';
+  if (lower.includes('request')) return 'REQUEST';
+  if (lower.includes('invitation')) return 'INVITATION';
+  if (lower.includes('notification')) return 'NOTIFICATION';
+  if (lower.includes('response') || lower.includes('reply')) return 'RESPONSE';
+  if (lower.includes('internal')) return 'INTERNAL';
+  return 'OFFICIAL';
 }
 
 /** Split a comma-separated tags string from a multipart form into an array. */

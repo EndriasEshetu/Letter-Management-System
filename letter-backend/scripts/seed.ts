@@ -127,6 +127,20 @@ async function seedDocument(args: {
   authorId: number;
   status: string;
   storageKey: string;
+  
+  // Letter fields
+  letterType?: string;
+  sender?: string;
+  senderOrganization?: string;
+  recipient?: string;
+  recipientOrganization?: string;
+  priority?: string;
+  dateReceived?: Date | string;
+  dateSent?: Date | string;
+  dueDate?: Date | string;
+  originatingDepartment?: string;
+  assignedEmployee?: string;
+  responseRequired?: boolean;
 }) {
   const { rows } = await pool.query('SELECT id FROM documents WHERE document_number = $1', [
     args.documentNumber,
@@ -138,14 +152,30 @@ async function seedDocument(args: {
     `INSERT INTO documents
        (document_number, title, description, category, department_id, department_name,
         created_by, author_id, status, security_level, file_name, file_size, file_type,
-        storage_path, tags, version, is_new)
+        storage_path, tags, version, is_new,
+        letter_type, sender, sender_organization, recipient, recipient_organization,
+        priority, date_received, date_sent, due_date, originating_department,
+        assigned_employee, response_required)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'INTERNAL',$10,$11,'application/pdf',$12,
-             ARRAY['demo'],'v1.0',true)
+             ARRAY['demo'],'v1.0',true,
+             $13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
      RETURNING id`,
     [
       args.documentNumber, args.title, args.description, args.category,
       args.departmentId, args.departmentName, args.createdBy, args.authorId,
       args.status, args.title + '.pdf', file.size, file.path,
+      args.letterType || 'INCOMING',
+      args.sender || null,
+      args.senderOrganization || null,
+      args.recipient || null,
+      args.recipientOrganization || null,
+      args.priority || 'NORMAL',
+      args.dateReceived || null,
+      args.dateSent || null,
+      args.dueDate || null,
+      args.originatingDepartment || null,
+      args.assignedEmployee || null,
+      args.responseRequired || false
     ]
   );
   const docId = (inserted.rows[0] as { id: number }).id;
@@ -192,7 +222,7 @@ async function seed() {
 
   // Sample documents
   const pendingDoc = await seedDocument({
-    documentNumber: 'DOC-2026-001',
+    documentNumber: 'LMS/INC/2026/001',
     title: 'Q1_Financial_Report_DRAFT.pdf',
     description: 'Quarterly financial overview and budget projections for SITA departments.',
     category: 'Finance / Reports',
@@ -202,9 +232,19 @@ async function seed() {
     authorId: employeeId,
     status: 'PENDING_APPROVAL',
     storageKey: 'documents/seed-q1-financial-report.pdf',
+    
+    letterType: 'INCOMING',
+    sender: 'Ato Kebede Tadesse',
+    senderOrganization: 'Ministry of Finance, Ethiopia',
+    recipient: 'Director General',
+    recipientOrganization: 'SITA',
+    priority: 'HIGH',
+    dateReceived: new Date('2026-08-25T09:42:00'),
+    dueDate: new Date('2026-11-01T00:00:00'),
+    responseRequired: true
   });
   const approvedDoc = await seedDocument({
-    documentNumber: 'HR-2026-001',
+    documentNumber: 'LMS/OUT/2026/089',
     title: 'Employee_Handbook_2026.pdf',
     description: 'Updated HR code of conduct, leave policies, and organizational structure.',
     category: 'HR / Policies',
@@ -214,9 +254,17 @@ async function seed() {
     authorId: employeeId,
     status: 'APPROVED',
     storageKey: 'documents/seed-employee-handbook.pdf',
+
+    letterType: 'OUTGOING',
+    sender: 'Director General, SITA',
+    senderOrganization: 'Sidama Innovation and Technology Agency',
+    recipient: 'Regional Director',
+    recipientOrganization: 'Huawei Technologies East Africa',
+    priority: 'NORMAL',
+    dateSent: new Date('2026-08-24T16:30:00')
   });
   await seedDocument({
-    documentNumber: 'DOC-2026-002',
+    documentNumber: 'LMS/INT/2026/045',
     title: 'ICT_Infrastructure_Audit_Report.pdf',
     description: 'Hardware audit, server rack capacity, and fiber network routing assessment.',
     category: 'ICT / Audit',
@@ -226,7 +274,16 @@ async function seed() {
     authorId: employeeId,
     status: 'DRAFT',
     storageKey: 'documents/seed-ict-audit-report.pdf',
+
+    letterType: 'MEMORANDUM',
+    sender: 'HR Director',
+    senderOrganization: 'SITA – Human Resources Directorate',
+    recipient: 'All Department Heads',
+    recipientOrganization: 'SITA',
+    priority: 'NORMAL',
+    dateSent: new Date('2026-08-23T10:00:00')
   });
+
 
   // Pending approval for the manager's queue
   const approvalExists = await pool.query('SELECT id FROM approvals WHERE document_id = $1', [pendingDoc]);

@@ -9,6 +9,7 @@ import { asyncHandler } from '../lib/errors';
 import { requireAuth, AuthenticatedRequest } from '../middleware/auth';
 import {
   serializeDocument,
+  serializeLetter,
   serializeVersion,
   toNumber,
   normalizeDepartmentParam,
@@ -152,10 +153,30 @@ router.post(
     if (!req.file) throw ApiError.badRequest('No file provided.');
 
     const body = req.body as Record<string, string | undefined>;
-    const title = body.title?.trim() || req.file.originalname;
-    const category = body.category || 'General / Documentation';
-    const securityLevel = body.securityLevel || 'INTERNAL';
+    
+    // Support both subject (frontend shape) and title (legacy/document shape)
+    const title = body.subject?.trim() || body.title?.trim() || req.file.originalname;
+    const category = body.category || 'General / Correspondence';
+    
+    // Support both confidentialityLevel and securityLevel
+    const securityLevel = body.confidentialityLevel || body.securityLevel || 'INTERNAL';
     const description = body.description || '';
+
+    // Letter-specific metadata fields
+    const letterType = body.letterType || 'INCOMING';
+    const sender = body.sender || null;
+    const senderOrganization = body.senderOrganization || null;
+    const recipient = body.recipient || null;
+    const recipientOrganization = body.recipientOrganization || null;
+    const priority = body.priority || 'NORMAL';
+    const originatingDepartment = body.originatingDepartment || null;
+    const assignedEmployee = body.assignedEmployee || null;
+    const responseRequired = body.responseRequired === 'true' || body.responseRequired === '1' || false;
+    
+    // Dates received/sent
+    const dateReceived = body.dateReceived ? new Date(body.dateReceived) : null;
+    const dateSent = body.dateSent ? new Date(body.dateSent) : null;
+    const dueDate = body.dueDate ? new Date(body.dueDate) : null;
 
     // Resolve department from the name the frontend sends (e.g. "Public Works").
     let departmentId: number | null = null;
@@ -183,8 +204,12 @@ router.post(
         `INSERT INTO documents
            (document_number, title, description, category, department_id, department_name,
             created_by, author_id, status, security_level, file_name, file_size, file_type,
-            storage_path, tags, version, is_new)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'DRAFT',$9,$10,$11,$12,$13,$14,'v1.0',true)
+            storage_path, tags, version, is_new,
+            letter_type, sender, sender_organization, recipient, recipient_organization,
+            priority, date_received, date_sent, due_date, originating_department,
+            assigned_employee, response_required)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'DRAFT',$9,$10,$11,$12,$13,$14,'v1.0',true,
+                 $15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)
          RETURNING *`,
         [
           documentNumber,
@@ -201,6 +226,18 @@ router.post(
           req.file.mimetype,
           storagePath,
           splitTags(body.tags),
+          letterType,
+          sender,
+          senderOrganization,
+          recipient,
+          recipientOrganization,
+          priority,
+          dateReceived,
+          dateSent,
+          dueDate,
+          originatingDepartment,
+          assignedEmployee,
+          responseRequired
         ]
       );
       doc = inserted.rows[0] as DocumentRow;
@@ -404,6 +441,68 @@ router.post(
 
     const { rows: full } = await query(`${DOC_SELECT} WHERE d.id = $1`, [id]);
     res.json({ message: 'Document submitted for approval.', document: serializeDocument(full[0] as DocumentRow) });
+  })
+);
+
+/* ─── GET /documents/:id/attachments — alias for versions ── */
+/* The frontend calls this to populate the Attachments panel in LetterDetails. */
+
+router.get(
+  '/:id/attachments',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) throw ApiError.badRequest('Invalid document id.');
+
+    const versions = await loadVersions(id);
+    // Return in the AttachmentItem shape the frontend expects
+    res.json(
+      versions.map((v) => ({
+        id: String(v.id),
+        versionNumber: v.version_number,
+        uploadedBy: v.uploaded_by,
+        date: v.date instanceof Date ? v.date.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : String(v.date),
+        fileSize: v.file_size ?? undefined,
+        fileName: v.file_name ?? undefined,
+        isCurrent: v.is_current,
+      }))
+    );
+  })
+);
+
+/* ─── POST /documents/:id/restore — restore from archive ─── */
+
+router.post(
+  '/:id/restore',
+  requireAuth,
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) throw ApiError.badRequest('Invalid document id.');
+
+    const { rows } = await query(
+      `UPDATE documents SET status = 'APPROVED', updated_at = now() WHERE id = $1 AND status = 'ARCHIVED' RETURNING *`,
+      [id]
+    );
+    if (rows.length === 0) {
+      // Check if it exists at all
+      const { rows: existing } = await query(`SELECT id, status FROM documents WHERE id = $1`, [id]);
+      if (existing.length === 0) throw ApiError.notFound('Document not found.');
+      throw ApiError.badRequest('Only archived documents can be restored.');
+    }
+    const doc = rows[0] as DocumentRow;
+
+    if (doc.author_id) {
+      await createNotification({
+        userId: doc.author_id,
+        type: 'DOCUMENT_RESTORED',
+        message: `Your document "${doc.title}" has been restored from archives.`,
+        documentId: doc.id,
+        documentTitle: doc.title,
+      });
+    }
+
+    const { rows: full } = await query(`${DOC_SELECT} WHERE d.id = $1`, [id]);
+    res.json({ message: 'Document restored from archive.', document: serializeDocument(full[0] as DocumentRow) });
   })
 );
 

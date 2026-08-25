@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import letterService from '@/services/letterService';
 import { LetterItem, AttachmentItem, LetterDirection } from '@/types/letter';
 import { useToast } from '@/components/common/Toast';
+import { formatDate } from '@/utils/dateUtils';
 
 import Card from '@/components/common/Card';
 import Button from '@/components/common/Button';
@@ -472,9 +473,9 @@ export const LetterDetails: React.FC = () => {
               <MetaField label="Confidentiality"><ConfidentialityBadge level={letter.confidentialityLevel} /></MetaField>
               {letter.priority && <MetaField label="Priority"><PriorityBadge priority={letter.priority} /></MetaField>}
               <MetaField label="Registered By">{letter.created_by}</MetaField>
-              <MetaField label="Registered At">{letter.created_at}</MetaField>
-              <MetaField label="Last Updated">{letter.updated_at}</MetaField>
-              {letter.dueDate && <MetaField label="Due Date"><span className="text-[#8B3232] font-semibold">{letter.dueDate}</span></MetaField>}
+              <MetaField label="Registered At">{formatDate(letter.created_at)}</MetaField>
+              <MetaField label="Last Updated">{formatDate(letter.updated_at)}</MetaField>
+              {letter.dueDate && <MetaField label="Due Date"><span className="text-[#8B3232] font-semibold">{formatDate(letter.dueDate)}</span></MetaField>}
             </dl>
           </Card>
 
@@ -506,10 +507,10 @@ export const LetterDetails: React.FC = () => {
                   </div>
                 )}
                 {letter.dateReceived && (
-                  <MetaField label="Date Received">{letter.dateReceived}</MetaField>
+                  <MetaField label="Date Received">{formatDate(letter.dateReceived)}</MetaField>
                 )}
                 {letter.dateSent && (
-                  <MetaField label="Date Sent">{letter.dateSent}</MetaField>
+                  <MetaField label="Date Sent">{formatDate(letter.dateSent)}</MetaField>
                 )}
               </dl>
             </Card>
@@ -657,6 +658,56 @@ export const LetterDetails: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                   Upload Attachment
+                </Button>
+              </div>
+            )}
+          </Card>
+
+          {/* Letter Status Card */}
+          <Card className="bg-[#ECEAE3]">
+            <h3 className="text-sm font-semibold text-[#292A27] mb-3">Current Status</h3>
+            <div className="space-y-3 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[#6B6A64]">Status</span>
+                <Badge status={letter.status as LetterStatus} dot />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[#6B6A64]">Confidentiality</span>
+                <ConfidentialityBadge level={letter.confidentialityLevel} />
+              </div>
+              {letter.assignedEmployee && (
+                <div className="flex items-center justify-between">
+                  <span className="text-[#6B6A64]">Assigned To</span>
+                  <span className="font-semibold text-[#292A27] truncate ml-2">{letter.assignedEmployee}</span>
+                </div>
+              )}
+              {letter.responseRequired && (
+                <div className="flex items-center justify-between">
+                  <span className="text-[#6B6A64]">Response Required</span>
+                  <span className="font-semibold text-[#8B3232]">Yes</span>
+                </div>
+              )}
+              {letter.dueDate && (
+                <div className="flex items-center justify-between">
+                  <span className="text-[#6B6A64]">Due Date</span>
+                  <span className="font-semibold text-[#8B3232]">{formatDate(letter.dueDate)}</span>
+                </div>
+              )}
+            </div>
+
+            {canSubmitForApproval && (
+              <div className="mt-4 pt-3 border-t border-[#D8D7D1]/50">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="w-full"
+                  onClick={handleSubmitForApproval}
+                  isLoading={isSubmitting}
+                >
+                  <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Submit for Approval
                 </Button>
               </div>
             )}

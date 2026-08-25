@@ -22,13 +22,19 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', service: 'smart-eoffice-backend', time: new Date().toISOString() });
 });
 
+app.get('/api/health/letters', (_req, res) => {
+  res.json({ status: 'ok', service: 'smart-eoffice-letter-service', time: new Date().toISOString() });
+});
+
 // All routes are served under /api to match the frontend's base URL.
 app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/departments', departmentsRoutes);
 app.use('/api/documents', documentsRoutes);
+app.use('/api/letters', documentsRoutes);
 app.use('/api/approvals', approvalsRoutes);
 app.use('/api/documents', commentsRoutes); // comments live under /api/documents/:id/comments
+app.use('/api/letters', commentsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 
 app.use(notFoundHandler);
