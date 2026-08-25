@@ -57,8 +57,8 @@ app.get('/api/system/capacity', (_req, res) => {
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-app.listen(config.port, () => {
-  console.log(`[server] Letter Management API listening on http://localhost:${config.port}/api`);
+app.listen(config.port, '0.0.0.0', () => {
+  console.log(`[server] Letter Management API listening on http://0.0.0.0:${config.port}/api`);
   console.log(`[server] Environment: ${config.nodeEnv}`);
   console.log(`[server] Uploads directory: ${config.uploadsDir}`);
 });
