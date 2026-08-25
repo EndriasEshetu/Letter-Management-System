@@ -6,39 +6,43 @@ import { NotificationItem } from '@/types/notification';
 let mockNotifications: NotificationItem[] = [
   {
     id: 'notif-1',
-    type: 'DOCUMENT_SUBMITTED',
-    message: 'Endrias Eshetu submitted Q1 Financial Report for approval.',
+    type: 'LETTER_ASSIGNED',
+    message: 'Tigist Haile assigned letter IN/2026/00452 to you: Prepare Outgoing Response Report.',
     isRead: false,
-    createdAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(), // 10 mins ago
-    documentId: 'doc-1',
-    documentTitle: 'Q1_Financial_Report_DRAFT.pdf',
+    createdAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+    letterId: 'ltr-1',
+    letterTitle: 'Request for Digital Transformation Progress Report & Budget Alignment',
+    referenceNumber: 'IN/2026/00452',
   },
   {
     id: 'notif-2',
-    type: 'CHANGES_REQUESTED',
-    message: 'Tigist Haile requested revisions on Procurement Policy Draft.',
+    type: 'LETTER_AWAITING_ROUTING',
+    message: 'New incoming letter registered by Registry: IN/2026/00501 awaiting Main Admin routing.',
     isRead: false,
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-    documentId: 'doc-5',
-    documentTitle: 'ICT_Infrastructure_Audit_Report.docx',
+    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    letterId: 'ltr-5',
+    letterTitle: 'Annual Compliance Audit Notification FY2026',
+    referenceNumber: 'IN/2026/00501',
   },
   {
     id: 'notif-3',
-    type: 'DOCUMENT_APPROVED',
-    message: 'Your document Employee Handbook 2026 was approved.',
+    type: 'LETTER_APPROVED',
+    message: 'Response letter OUT/2026/00891 was approved by Department Manager and registered by Admin.',
     isRead: false,
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // Yesterday
-    documentId: 'doc-4',
-    documentTitle: 'Employee_Handbook_2026.pdf',
+    createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+    letterId: 'ltr-2',
+    letterTitle: 'Official Response – SITA Digital Transformation Progress',
+    referenceNumber: 'OUT/2026/00891',
   },
   {
     id: 'notif-4',
-    type: 'COMMENT_ADDED',
-    message: 'New comment added on Q1 Financial Report.',
+    type: 'LETTER_DEADLINE_APPROACHING',
+    message: 'Response deadline for IN/2026/00452 is approaching (Due: Sep 02, 2026).',
     isRead: true,
-    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
-    documentId: 'doc-1',
-    documentTitle: 'Q1_Financial_Report_DRAFT.pdf',
+    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+    letterId: 'ltr-1',
+    letterTitle: 'Request for Digital Transformation Progress Report',
+    referenceNumber: 'IN/2026/00452',
   },
 ];
 

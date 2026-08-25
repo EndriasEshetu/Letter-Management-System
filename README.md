@@ -85,19 +85,42 @@ The **Letter Management System (LMS)** provides SITA with an end-to-end digital 
 
 ---
 
-## ✨ Key Features
+## ✨ Key Features & Official Workflows
 
-### ✉️ 1. Letter Registration & Repository
-- **Letter Metadata**: Reference number, registration number, subject, description, letter type (`INCOMING`, `OUTGOING`, `INTERNAL`, `MEMORANDUM`, etc.), category, department, sender, recipient, date received/sent, response required flag, and confidentiality levels.
-- **Letter Attachments**: Attachment history, file uploads, and stream download options.
-- **In-Browser Attachment Preview**: Built-in PDF reader for attached letter documents.
-- **Search & Filtering**: Search by subject, reference number, sender, or recipient; filter by letter type, department, and status.
+### 📥 1. Incoming Letter Workflow
+- **Registration**: Scanned & registered by **Registry Officer** with official reference `IN/YYYY/NNNNN`, external reference number, sender name, and organization.
+- **Admin Routing**: Sent to **Main Administrator** for review and assignment to appropriate destination directorate.
+- **Department Processing**: **Department Manager** assigns to specific officer with task instructions and SLA deadline.
+- **Response Generation**: Assigned officer processes request and drafts response letter (linked as related OUT letter).
+- **Manager Approval**: Department Manager reviews and approves draft response.
+- **Dispatch**: Registry Officer dispatches approved response letter to external party.
 
-### ⏱️ 2. Approval & Sign-Off Engine
-- **Review Queue**: Centralized queue for Department Managers to view pending letters requiring sign-off.
-- **Decision Handling**:
-  - ✅ **Approve**: Progresses letter to `APPROVED`.
-  - ❌ **Reject**: Rejects letter with compulsory feedback reason.
+### 📤 2. Outgoing Letter Workflow
+- **Drafting**: Created as `DRAFT` by initiating officer with recipient name, organization, and subject.
+- **Manager Endorsement**: **Department Manager** reviews and submits for administrator verification.
+- **Admin Approval & Numbering**: **Main Administrator** verifies letter and assigns official reference `OUT/YYYY/NNNNN`.
+- **Dispatch**: **Registry Officer** dispatches via email, courier, or messenger and records proof of delivery.
+
+### 🏢 3. Internal Letter Workflow (Memos)
+- **Drafting**: Created by sending officer.
+- **Sending Manager Sign-off**: Approved by originating Department Manager.
+- **Admin Registration & Routing**: **Main Administrator** registers `INT/YYYY/NNNNN` and routes to target receiving department.
+- **Receiving Action**: Receiving Department Manager assigns officer to execute requested action.
+
+### 🔍 4. Letter Tracking & Task Management
+- **Letter Tracking**: Track letter location, responsible person, current action, SLA deadline, and movement timeline by entering reference number.
+- **My Tasks**: Dedicated dashboard for officers and managers to manage assigned correspondence with overdue alerts and deadline indicators.
+
+---
+
+## 👥 Role-Based Access Control (RBAC)
+
+| Role | Primary Responsibilities & Workflow Actions |
+| :--- | :--- |
+| **`ADMIN`** (Main Administrator) | System administration, routes incoming/internal letters to departments, verifies & approves outgoing letters, assigns official `OUT` reference numbers, manages users & audit logs. |
+| **`DEPARTMENT_MANAGER`** | Oversees directorate inbox, assigns incoming letters to officers with SLA deadlines, reviews and approves outgoing drafts & officer responses. |
+| **`REGISTRY_OFFICER`** | Registers incoming letters (`IN/YYYY/NNNNN`), records dispatch details (`COURIER`, `EMAIL`, `HAND_DELIVERY`), manages physical letter registry. |
+| **`EMPLOYEE`** (Officer) | Executes assigned letter tasks, drafts response letters, submits documents for manager review. |
   - 🔄 **Request Changes**: Sends letter back to author with revision feedback (`RETURNED` / `CHANGES_REQUESTED`).
 - **Priority Indicators**: High-priority and urgent flagging for time-critical correspondence.
 

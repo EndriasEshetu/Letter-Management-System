@@ -13,6 +13,7 @@ interface UserTableProps {
 const roleBadges: Record<UserRole, { label: string; variant: 'info' | 'warning' | 'neutral' }> = {
   ADMIN: { label: 'Administrator', variant: 'warning' },
   DEPARTMENT_MANAGER: { label: 'Dept Manager', variant: 'info' },
+  REGISTRY_OFFICER: { label: 'Registry Officer', variant: 'info' },
   EMPLOYEE: { label: 'Employee', variant: 'neutral' },
 };
 

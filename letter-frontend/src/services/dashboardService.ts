@@ -31,6 +31,13 @@ export interface RecentLetterItem {
   letterType?: string;
 }
 
+export interface RegistryDashboardData {
+  stats: DashboardStat[];
+  recentRegistrations: RecentLetterItem[];
+  pendingDispatches: RecentLetterItem[];
+  recentActivities: ActivityItem[];
+}
+
 export interface AdminDashboardData {
   stats: DashboardStat[];
   recentActivities: ActivityItem[];
@@ -61,34 +68,33 @@ export const dashboardService = {
     return {
       stats: [
         {
-          id: 'total_letters',
-          title: 'Total Letters',
-          value: '12,458',
-          description: '+142 registered this week',
-          trend: '+3.4%',
-          trendType: 'positive',
-        },
-        {
-          id: 'incoming',
-          title: 'Incoming Letters',
-          value: '4,812',
-          description: 'Received from external entities',
-          trend: '+2.1%',
-          trendType: 'positive',
-        },
-        {
-          id: 'pending',
-          title: 'Pending Approval',
-          value: '87',
-          description: 'Awaiting review or sign-off',
+          id: 'incoming_routing',
+          title: 'Incoming Awaiting Routing',
+          value: '5',
+          description: 'Registered by Registry Officer, needs department routing',
           highlight: true,
           trendType: 'negative',
         },
         {
-          id: 'overdue',
-          title: 'Overdue Letters',
-          value: '14',
-          description: 'Past response deadline',
+          id: 'outgoing_reg',
+          title: 'Outgoing Awaiting Ref #',
+          value: '3',
+          description: 'Manager approved, needs official OUT reference #',
+          highlight: true,
+          trendType: 'neutral',
+        },
+        {
+          id: 'internal_routing',
+          title: 'Internal Awaiting Routing',
+          value: '2',
+          description: 'Approved memo awaiting routing to receiving dept',
+          trendType: 'neutral',
+        },
+        {
+          id: 'overdue_org',
+          title: 'Organization Overdue',
+          value: '4',
+          description: 'Letters past action or response deadline',
           highlight: true,
           trendType: 'negative',
         },
@@ -96,50 +102,140 @@ export const dashboardService = {
       recentActivities: [
         {
           id: 'act-1',
-          user: 'Endrias Eshetu',
+          user: 'Abebe Demissie (Registry)',
           action: 'Registered incoming letter from',
-          target: 'Ministry of Finance (Ref: LMS/INC/2026/001)',
+          target: 'Ministry of Finance (Ref: IN/2026/00452)',
           timestamp: '15 minutes ago',
           type: 'registration',
         },
         {
           id: 'act-2',
-          user: 'Abebe Kebede',
-          action: 'Updated department permissions for',
-          target: 'Finance & Planning Directorate',
-          timestamp: '1 hour ago',
-          type: 'security',
-        },
-        {
-          id: 'act-3',
-          user: 'System',
-          action: 'Performed routine archive backup for',
-          target: 'Letter Archive Volume 2026-Q1',
-          timestamp: '3 hours ago',
+          user: 'Main Administrator',
+          action: 'Routed letter IN/2026/00452 to',
+          target: 'ICT Governance Directorate',
+          timestamp: '45 minutes ago',
           type: 'system',
         },
         {
-          id: 'act-4',
-          user: 'Sara Jenkins',
-          action: 'Approved letter from',
-          target: 'African Union Commission (Ref: LMS/INC/2026/033)',
-          timestamp: '5 hours ago',
+          id: 'act-3',
+          user: 'Tigist Haile (ICT Manager)',
+          action: 'Approved outgoing response',
+          target: 'Response to MOF (Ref: OUT/2026/00891)',
+          timestamp: '2 hours ago',
           type: 'approval',
         },
         {
-          id: 'act-5',
-          user: 'Tariku Bikila',
-          action: 'Dispatched outgoing letter to',
-          target: 'Huawei Technologies East Africa (Ref: LMS/OUT/2026/089)',
-          timestamp: '6 hours ago',
+          id: 'act-4',
+          user: 'Tariku Bikila (Dispatch)',
+          action: 'Dispatched official email to',
+          target: 'Ministry of Finance (Ref: OUT/2026/00891)',
+          timestamp: '3 hours ago',
           type: 'registration',
         },
       ],
       systemHealth: {
-        storageUsedPercent: 68,
-        activeSessions: 142,
+        storageUsedPercent: 64,
+        activeSessions: 128,
         uptimePercent: 99.98,
       },
+    };
+  },
+
+  async getRegistryDashboardData(): Promise<RegistryDashboardData> {
+    await new Promise((res) => setTimeout(res, 200));
+
+    return {
+      stats: [
+        {
+          id: 'registered_today',
+          title: 'Registered Today',
+          value: '18',
+          description: 'Incoming letters verified and uploaded',
+          trend: '+4 vs yesterday',
+          trendType: 'positive',
+        },
+        {
+          id: 'awaiting_admin',
+          title: 'Awaiting Admin Routing',
+          value: '5',
+          description: 'Sent to Main Admin for department selection',
+          highlight: true,
+        },
+        {
+          id: 'ready_dispatch',
+          title: 'Ready for Dispatch',
+          value: '3',
+          description: 'Approved outgoing letters awaiting dispatch recording',
+          highlight: true,
+        },
+        {
+          id: 'dispatched_week',
+          title: 'Dispatched This Week',
+          value: '42',
+          description: 'Sent via Official Email, Courier, or Hand Delivery',
+          trendType: 'positive',
+        },
+      ],
+      recentRegistrations: [
+        {
+          id: 'ltr-5',
+          referenceNumber: 'IN/2026/00501',
+          subject: 'Annual Compliance Audit Notification FY2026',
+          department: 'Unassigned',
+          status: 'REGISTERED',
+          date: 'Today, 08:45 AM',
+          author: 'Abebe Demissie',
+          letterType: 'NOTIFICATION',
+        },
+        {
+          id: 'ltr-1',
+          referenceNumber: 'IN/2026/00452',
+          subject: 'Request for Digital Transformation Progress Report',
+          department: 'ICT Governance',
+          status: 'IN_PROGRESS',
+          date: 'Aug 20, 2026',
+          author: 'Abebe Demissie',
+          letterType: 'REQUEST',
+        },
+      ],
+      pendingDispatches: [
+        {
+          id: 'ltr-2',
+          referenceNumber: 'OUT/2026/00891',
+          subject: 'Official Response – SITA Digital Transformation Progress',
+          department: 'ICT Governance',
+          status: 'READY_FOR_DISPATCH',
+          date: 'Today, 09:15 AM',
+          author: 'Endrias Eshetu',
+          letterType: 'RESPONSE',
+        },
+      ],
+      recentActivities: [
+        {
+          id: 'act-r1',
+          user: 'Abebe Demissie',
+          action: 'Registered Incoming Letter',
+          target: 'IN/2026/00501 (Ministry of Innovation)',
+          timestamp: '15 minutes ago',
+          type: 'registration',
+        },
+        {
+          id: 'act-r2',
+          user: 'Abebe Demissie',
+          action: 'Recorded Dispatch',
+          target: 'OUT/2026/00891 via Official Email',
+          timestamp: '1 hour ago',
+          type: 'system',
+        },
+        {
+          id: 'act-r3',
+          user: 'Main Administrator',
+          action: 'Routed Incoming Letter',
+          target: 'IN/2026/00452 → ICT Governance',
+          timestamp: '2 hours ago',
+          type: 'approval',
+        },
+      ],
     };
   },
 

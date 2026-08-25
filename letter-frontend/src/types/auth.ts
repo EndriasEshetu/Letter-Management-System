@@ -1,4 +1,4 @@
-export type Role = 'ADMIN' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE';
+export type Role = 'ADMIN' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE' | 'REGISTRY_OFFICER';
 export type UserStatus = 'ACTIVE' | 'INACTIVE';
 
 export interface AuthUser {

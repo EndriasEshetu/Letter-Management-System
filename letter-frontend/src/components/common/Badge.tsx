@@ -8,17 +8,23 @@ export type LetterStatus =
   | 'DRAFT'
   | 'REGISTERED'
   | 'RECEIVED'
+  | 'IN_PROGRESS'
+  | 'PENDING_REVIEW'
+  | 'CHANGES_REQUESTED'
+  | 'PENDING_APPROVAL'
+  | 'APPROVED'
+  | 'READY_FOR_DISPATCH'
+  | 'DISPATCHED'
+  | 'DELIVERED'
+  | 'COMPLETED'
+  | 'REJECTED'
+  | 'ARCHIVED'
+  /* Legacy aliases for backward compatibility */
   | 'ASSIGNED'
   | 'FORWARDED'
   | 'UNDER_REVIEW'
-  | 'PENDING_APPROVAL'
-  | 'APPROVED'
-  | 'REJECTED'
   | 'RETURNED'
-  | 'DISPATCHED'
-  | 'RESPONSE_REQUIRED'
-  | 'COMPLETED'
-  | 'ARCHIVED';
+  | 'RESPONSE_REQUIRED';
 
 /* ─── Keep DocumentStatus as alias for backward compat ──────── */
 /** @deprecated Use LetterStatus instead */
@@ -26,7 +32,7 @@ export type DocumentStatus = LetterStatus;
 
 interface BadgeProps {
   variant?: BadgeVariant;
-  status?: LetterStatus;
+  status?: LetterStatus | string;
   children?: React.ReactNode;
   className?: string;
   dot?: boolean;
@@ -50,21 +56,28 @@ const dotColors: Record<BadgeVariant, string> = {
   purple:  'bg-[#6B5A8E]',
 };
 
-const statusMap: Record<LetterStatus, { variant: BadgeVariant; label: string }> = {
-  DRAFT:             { variant: 'neutral', label: 'Draft' },
-  REGISTERED:        { variant: 'info',    label: 'Registered' },
-  RECEIVED:          { variant: 'info',    label: 'Received' },
-  ASSIGNED:          { variant: 'info',    label: 'Assigned' },
-  FORWARDED:         { variant: 'warning', label: 'Forwarded' },
-  UNDER_REVIEW:      { variant: 'warning', label: 'Under Review' },
-  PENDING_APPROVAL:  { variant: 'warning', label: 'Pending Approval' },
-  APPROVED:          { variant: 'success', label: 'Approved' },
-  REJECTED:          { variant: 'error',   label: 'Rejected' },
-  RETURNED:          { variant: 'error',   label: 'Returned' },
-  DISPATCHED:        { variant: 'success', label: 'Dispatched' },
-  RESPONSE_REQUIRED: { variant: 'warning', label: 'Response Required' },
-  COMPLETED:         { variant: 'success', label: 'Completed' },
-  ARCHIVED:          { variant: 'neutral', label: 'Archived' },
+const statusMap: Record<string, { variant: BadgeVariant; label: string }> = {
+  DRAFT:              { variant: 'neutral', label: 'Draft' },
+  REGISTERED:         { variant: 'info',    label: 'Registered' },
+  RECEIVED:           { variant: 'info',    label: 'Received' },
+  IN_PROGRESS:        { variant: 'info',    label: 'In Progress' },
+  PENDING_REVIEW:     { variant: 'warning', label: 'Pending Review' },
+  CHANGES_REQUESTED:  { variant: 'warning', label: 'Changes Requested' },
+  PENDING_APPROVAL:   { variant: 'warning', label: 'Pending Approval' },
+  APPROVED:           { variant: 'success', label: 'Approved' },
+  READY_FOR_DISPATCH: { variant: 'purple',  label: 'Ready for Dispatch' },
+  DISPATCHED:         { variant: 'purple',  label: 'Dispatched' },
+  DELIVERED:          { variant: 'success', label: 'Delivered' },
+  COMPLETED:          { variant: 'success', label: 'Completed' },
+  REJECTED:           { variant: 'error',   label: 'Rejected' },
+  ARCHIVED:           { variant: 'neutral', label: 'Archived' },
+
+  /* Legacy aliases */
+  ASSIGNED:           { variant: 'info',    label: 'Assigned' },
+  FORWARDED:          { variant: 'warning', label: 'Forwarded' },
+  UNDER_REVIEW:       { variant: 'warning', label: 'Under Review' },
+  RETURNED:           { variant: 'error',   label: 'Returned' },
+  RESPONSE_REQUIRED:  { variant: 'warning', label: 'Response Required' },
 };
 
 export const Badge: React.FC<BadgeProps> = ({

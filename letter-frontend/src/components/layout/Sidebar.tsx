@@ -102,37 +102,62 @@ export const Sidebar: React.FC<SidebarProps> = ({ onCloseMobile }) => {
         {/* Navigation Items List */}
         <nav className="space-y-1.5" aria-label="Main Navigation">
           {navItems.map((item) => {
-            const isActive =
+            const hasChildren = item.children && item.children.length > 0;
+            const isParentActive =
               location.pathname === item.path ||
               (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
 
             return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                onClick={onCloseMobile}
-                aria-current={isActive ? 'page' : undefined}
-                className={({ isActive: linkActive }) => {
-                  const active = isActive || linkActive;
-                  return `flex items-center space-x-3 px-3.5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-150 motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#526A55] ${
-                    active
-                      ? 'bg-[#526A55] text-[#F5F3ED] shadow-sm'
-                      : 'text-[#D8D7D1] hover:bg-[#383A35] hover:text-[#F5F3ED]'
-                  }`;
-                }}
-              >
-                <span className={isActive ? 'text-[#F5F3ED] flex-shrink-0' : 'text-[#A8A7A1] group-hover:text-[#F5F3ED] flex-shrink-0'}>
-                  {getNavIcon(item.path)}
-                </span>
-                <span className="truncate">{item.label}</span>
-                {item.badge && (
-                  <span className={`ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                    isActive ? 'bg-[#3E5140] text-[#F5F3ED]' : 'bg-[#526A55]/80 text-[#F5F3ED]'
-                  }`}>
-                    {item.badge}
+              <div key={item.path} className="space-y-1">
+                <NavLink
+                  to={item.path}
+                  onClick={onCloseMobile}
+                  aria-current={isParentActive ? 'page' : undefined}
+                  className={({ isActive: linkActive }) => {
+                    const active = isParentActive || linkActive;
+                    return `flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-150 motion-reduce:transition-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#526A55] ${
+                      active
+                        ? 'bg-[#526A55] text-[#F5F3ED] shadow-sm'
+                        : 'text-[#D8D7D1] hover:bg-[#383A35] hover:text-[#F5F3ED]'
+                    }`;
+                  }}
+                >
+                  <span className={isParentActive ? 'text-[#F5F3ED] flex-shrink-0' : 'text-[#A8A7A1] group-hover:text-[#F5F3ED] flex-shrink-0'}>
+                    {getNavIcon(item.path)}
                   </span>
+                  <span className="truncate">{item.label}</span>
+                  {item.badge && (
+                    <span className={`ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                      isParentActive ? 'bg-[#3E5140] text-[#F5F3ED]' : 'bg-[#526A55]/80 text-[#F5F3ED]'
+                    }`}>
+                      {item.badge}
+                    </span>
+                  )}
+                </NavLink>
+
+                {/* Render Sub Navigation links if active */}
+                {hasChildren && isParentActive && (
+                  <div className="pl-9 space-y-1 py-1">
+                    {item.children!.map((sub) => {
+                      const isSubActive = location.pathname + location.search === sub.path || (sub.path === '/letters' && location.pathname === '/letters' && !location.search);
+                      return (
+                        <NavLink
+                          key={sub.path}
+                          to={sub.path}
+                          onClick={onCloseMobile}
+                          className={`block px-3 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${
+                            isSubActive
+                              ? 'bg-[#3A3B37] text-[#F5F3ED] font-semibold'
+                              : 'text-[#A8A7A1] hover:text-[#F5F3ED] hover:bg-[#383A35]/50'
+                          }`}
+                        >
+                          {sub.label}
+                        </NavLink>
+                      );
+                    })}
+                  </div>
                 )}
-              </NavLink>
+              </div>
             );
           })}
         </nav>

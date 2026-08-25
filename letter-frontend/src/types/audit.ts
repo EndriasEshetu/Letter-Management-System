@@ -11,15 +11,30 @@ export type AuditAction =
   | 'ARCHIVE'
   | 'RESTORE'
   | 'DOWNLOAD'
-  | 'PERMISSION_CHANGE';
+  | 'PERMISSION_CHANGE'
+  | 'LETTER_REGISTERED'
+  | 'LETTER_CLASSIFIED'
+  | 'LETTER_ROUTED'
+  | 'LETTER_ASSIGNED'
+  | 'LETTER_REVIEWED'
+  | 'LETTER_APPROVED'
+  | 'LETTER_RETURNED'
+  | 'LETTER_REJECTED'
+  | 'LETTER_DISPATCHED'
+  | 'LETTER_DELIVERED'
+  | 'LETTER_COMPLETED'
+  | 'LETTER_ARCHIVED'
+  | 'LETTER_RESTORED';
 
 export type AuditEntityType =
+  | 'LETTER'
   | 'DOCUMENT'
   | 'USER'
   | 'DEPARTMENT'
   | 'WORKFLOW'
   | 'SYSTEM'
-  | 'ARCHIVE';
+  | 'ARCHIVE'
+  | 'DISPATCH';
 
 export interface AuditUserRef {
   id: string | number;

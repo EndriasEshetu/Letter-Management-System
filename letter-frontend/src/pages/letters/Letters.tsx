@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import letterService from '@/services/letterService';
-import { LetterFilterParams, LetterItem, PaginatedLetterResponse } from '@/types/letter';
+import { LetterFilterParams, LetterItem, PaginatedLetterResponse, LetterDirection } from '@/types/letter';
 import Table from '@/components/common/Table';
 import Badge, { LetterStatus } from '@/components/common/Badge';
 import Button from '@/components/common/Button';
@@ -16,17 +16,60 @@ import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { useToast } from '@/components/common/Toast';
 import { RegisterLetterModal } from '@/components/letters';
 
-const LETTER_TYPE_OPTIONS: SelectOption[] = [
-  { value: 'ALL', label: 'All Types' },
-  { value: 'INCOMING', label: 'Incoming' },
-  { value: 'OUTGOING', label: 'Outgoing' },
-  { value: 'MEMORANDUM', label: 'Memorandum' },
-  { value: 'REQUEST', label: 'Request' },
-  { value: 'RESPONSE', label: 'Response' },
-  { value: 'OFFICIAL', label: 'Official' },
-  { value: 'INVITATION', label: 'Invitation' },
-  { value: 'NOTIFICATION', label: 'Notification' },
-  { value: 'ADMINISTRATIVE', label: 'Administrative' },
+/* ─── Constants ───────────────────────────────────────────── */
+
+const DIRECTION_TABS: { value: string; label: string; icon: string; color: string; activeColor: string }[] = [
+  { value: 'ALL', label: 'All Letters', icon: '📋', color: 'text-[#6B6A64]', activeColor: 'bg-[#292A27] text-[#F5F3ED]' },
+  { value: 'INCOMING', label: 'Incoming', icon: '📥', color: 'text-[#526A55]', activeColor: 'bg-[#526A55] text-[#F5F3ED]' },
+  { value: 'OUTGOING', label: 'Outgoing', icon: '📤', color: 'text-[#C48D3F]', activeColor: 'bg-[#C48D3F] text-[#F5F3ED]' },
+  { value: 'INTERNAL', label: 'Internal', icon: '🏢', color: 'text-[#6B5A8E]', activeColor: 'bg-[#6B5A8E] text-[#F5F3ED]' },
+];
+
+const INCOMING_STATUS_PILLS = [
+  { label: 'ALL', value: 'ALL' },
+  { label: 'REGISTERED', value: 'REGISTERED' },
+  { label: 'RECEIVED', value: 'RECEIVED' },
+  { label: 'IN PROGRESS', value: 'IN_PROGRESS' },
+  { label: 'PENDING REVIEW', value: 'PENDING_REVIEW' },
+  { label: 'APPROVED', value: 'APPROVED' },
+  { label: 'DISPATCHED', value: 'DISPATCHED' },
+  { label: 'COMPLETED', value: 'COMPLETED' },
+  { label: 'ARCHIVED', value: 'ARCHIVED' },
+];
+
+const OUTGOING_STATUS_PILLS = [
+  { label: 'ALL', value: 'ALL' },
+  { label: 'DRAFT', value: 'DRAFT' },
+  { label: 'PENDING REVIEW', value: 'PENDING_REVIEW' },
+  { label: 'PENDING APPROVAL', value: 'PENDING_APPROVAL' },
+  { label: 'APPROVED', value: 'APPROVED' },
+  { label: 'REGISTERED', value: 'REGISTERED' },
+  { label: 'DISPATCHED', value: 'DISPATCHED' },
+  { label: 'COMPLETED', value: 'COMPLETED' },
+  { label: 'ARCHIVED', value: 'ARCHIVED' },
+];
+
+const INTERNAL_STATUS_PILLS = [
+  { label: 'ALL', value: 'ALL' },
+  { label: 'DRAFT', value: 'DRAFT' },
+  { label: 'PENDING APPROVAL', value: 'PENDING_APPROVAL' },
+  { label: 'REGISTERED', value: 'REGISTERED' },
+  { label: 'IN PROGRESS', value: 'IN_PROGRESS' },
+  { label: 'COMPLETED', value: 'COMPLETED' },
+  { label: 'ARCHIVED', value: 'ARCHIVED' },
+];
+
+const ALL_STATUS_PILLS = [
+  { label: 'ALL', value: 'ALL' },
+  { label: 'DRAFT', value: 'DRAFT' },
+  { label: 'REGISTERED', value: 'REGISTERED' },
+  { label: 'RECEIVED', value: 'RECEIVED' },
+  { label: 'IN PROGRESS', value: 'IN_PROGRESS' },
+  { label: 'PENDING REVIEW', value: 'PENDING_REVIEW' },
+  { label: 'APPROVED', value: 'APPROVED' },
+  { label: 'DISPATCHED', value: 'DISPATCHED' },
+  { label: 'COMPLETED', value: 'COMPLETED' },
+  { label: 'ARCHIVED', value: 'ARCHIVED' },
 ];
 
 const DEPARTMENT_FILTER_OPTIONS: SelectOption[] = [
@@ -39,51 +82,37 @@ const DEPARTMENT_FILTER_OPTIONS: SelectOption[] = [
   { value: 'City Clerk', label: 'City Clerk' },
 ];
 
-const STATUS_PILLS: { label: string; value: string }[] = [
-  { label: 'ALL', value: 'ALL' },
-  { label: 'DRAFT', value: 'DRAFT' },
-  { label: 'REGISTERED', value: 'REGISTERED' },
-  { label: 'RECEIVED', value: 'RECEIVED' },
-  { label: 'ASSIGNED', value: 'ASSIGNED' },
-  { label: 'FORWARDED', value: 'FORWARDED' },
-  { label: 'UNDER REVIEW', value: 'UNDER_REVIEW' },
-  { label: 'PENDING APPROVAL', value: 'PENDING_APPROVAL' },
-  { label: 'APPROVED', value: 'APPROVED' },
-  { label: 'DISPATCHED', value: 'DISPATCHED' },
-  { label: 'COMPLETED', value: 'COMPLETED' },
-  { label: 'ARCHIVED', value: 'ARCHIVED' },
+const LETTER_TYPE_OPTIONS: SelectOption[] = [
+  { value: 'ALL', label: 'All Types' },
+  { value: 'MEMORANDUM', label: 'Memorandum' },
+  { value: 'REQUEST', label: 'Request' },
+  { value: 'RESPONSE', label: 'Response' },
+  { value: 'OFFICIAL', label: 'Official' },
+  { value: 'INVITATION', label: 'Invitation' },
+  { value: 'NOTIFICATION', label: 'Notification' },
+  { value: 'ADMINISTRATIVE', label: 'Administrative' },
 ];
 
-const getLetterTypeIcon = (letterType: string) => {
-  switch (letterType) {
+/* ─── Direction Icon Component ────────────────────────────── */
+
+const DirectionIcon: React.FC<{ direction?: LetterDirection | string }> = ({ direction }) => {
+  switch (direction) {
     case 'INCOMING':
       return (
-        <div className="w-9 h-9 rounded-xl bg-[#526A55]/10 text-[#526A55] flex items-center justify-center flex-shrink-0 font-bold text-[9px] text-center leading-tight">
+        <div className="w-9 h-9 rounded-xl bg-[#526A55]/10 text-[#526A55] flex items-center justify-center flex-shrink-0 font-bold text-[9px]">
           IN
         </div>
       );
     case 'OUTGOING':
       return (
-        <div className="w-9 h-9 rounded-xl bg-[#C48D3F]/10 text-[#8A5D19] flex items-center justify-center flex-shrink-0 font-bold text-[9px] text-center leading-tight">
+        <div className="w-9 h-9 rounded-xl bg-[#C48D3F]/10 text-[#8A5D19] flex items-center justify-center flex-shrink-0 font-bold text-[9px]">
           OUT
         </div>
       );
-    case 'MEMORANDUM':
+    case 'INTERNAL':
       return (
         <div className="w-9 h-9 rounded-xl bg-[#6B5A8E]/10 text-[#4A3A6B] flex items-center justify-center flex-shrink-0 font-bold text-[9px]">
-          MEM
-        </div>
-      );
-    case 'REQUEST':
-      return (
-        <div className="w-9 h-9 rounded-xl bg-[#8B3232]/10 text-[#8B3232] flex items-center justify-center flex-shrink-0 font-bold text-[9px]">
-          REQ
-        </div>
-      );
-    case 'INVITATION':
-      return (
-        <div className="w-9 h-9 rounded-xl bg-[#4A6B4E]/10 text-[#4A6B4E] flex items-center justify-center flex-shrink-0 font-bold text-[9px]">
-          INV
+          INT
         </div>
       );
     default:
@@ -95,15 +124,20 @@ const getLetterTypeIcon = (letterType: string) => {
   }
 };
 
+/* ─── Main Component ──────────────────────────────────────── */
+
 export const Letters: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { addToast } = useToast();
 
   const [response, setResponse] = useState<PaginatedLetterResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filters State
+  // Direction from URL search params
+  const initialDirection = searchParams.get('direction') || 'ALL';
+  const [direction, setDirection] = useState(initialDirection);
   const [search, setSearch] = useState('');
   const [letterType, setLetterType] = useState('ALL');
   const [department, setDepartment] = useState('ALL');
@@ -113,8 +147,31 @@ export const Letters: React.FC = () => {
 
   // Modals state
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [registerDirection, setRegisterDirection] = useState<LetterDirection | undefined>(undefined);
   const [archiveTarget, setArchiveTarget] = useState<LetterItem | null>(null);
   const [isArchiving, setIsArchiving] = useState(false);
+
+  // Sync direction changes to URL
+  const handleDirectionChange = (newDir: string) => {
+    setDirection(newDir);
+    setStatus('ALL');
+    setPage(1);
+    if (newDir !== 'ALL') {
+      setSearchParams({ direction: newDir });
+    } else {
+      setSearchParams({});
+    }
+  };
+
+  // Get direction-appropriate status pills
+  const getStatusPills = () => {
+    switch (direction) {
+      case 'INCOMING': return INCOMING_STATUS_PILLS;
+      case 'OUTGOING': return OUTGOING_STATUS_PILLS;
+      case 'INTERNAL': return INTERNAL_STATUS_PILLS;
+      default: return ALL_STATUS_PILLS;
+    }
+  };
 
   const fetchLetters = useCallback(async () => {
     setIsLoading(true);
@@ -125,6 +182,7 @@ export const Letters: React.FC = () => {
         letterType: letterType !== 'ALL' ? letterType : undefined,
         department_id: department !== 'ALL' ? department : undefined,
         status: status !== 'ALL' ? status : undefined,
+        direction: direction !== 'ALL' ? (direction as LetterDirection) : undefined,
         page,
         limit: 10,
       };
@@ -135,7 +193,7 @@ export const Letters: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [search, letterType, department, status, page]);
+  }, [search, letterType, department, status, direction, page]);
 
   useEffect(() => {
     fetchLetters();
@@ -166,6 +224,11 @@ export const Letters: React.FC = () => {
     }
   };
 
+  const handleRegisterNew = (dir?: LetterDirection) => {
+    setRegisterDirection(dir);
+    setIsRegisterOpen(true);
+  };
+
   const getRowActions = (letter: LetterItem): DropdownItem[] => [
     {
       label: 'View Details',
@@ -178,11 +241,11 @@ export const Letters: React.FC = () => {
       ),
     },
     {
-      label: 'Preview Attachment',
-      onClick: () => navigate(`/letters/${letter.id}/preview`),
+      label: 'Track Letter',
+      onClick: () => navigate(`/letters/track?ref=${letter.referenceNumber}`),
       icon: (
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
         </svg>
       ),
     },
@@ -221,12 +284,12 @@ export const Letters: React.FC = () => {
             Letter Repository
           </h1>
           <p className="text-xs md:text-sm text-[#6B6A64] mt-1">
-            Search, filter, and manage all official incoming, outgoing, and internal letters.
+            Search, filter, and manage all official incoming, outgoing, and internal correspondence.
           </p>
         </div>
 
         <div className="flex items-center space-x-3">
-          {/* Grid / Table View Switcher */}
+          {/* View Switcher */}
           <div className="bg-[#ECEAE3] p-1 rounded-xl border border-[#D8D7D1] flex items-center space-x-1">
             <button
               type="button"
@@ -254,14 +317,43 @@ export const Letters: React.FC = () => {
             </button>
           </div>
 
-          {/* Register Letter Button */}
-          <Button variant="primary" onClick={() => setIsRegisterOpen(true)}>
-            <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Register Letter
-          </Button>
+          {/* Register Letter Dropdown */}
+          <Dropdown
+            align="right"
+            items={[
+              { label: '📥 Register Incoming Letter', onClick: () => handleRegisterNew('INCOMING') },
+              { label: '📤 Create Outgoing Letter', onClick: () => handleRegisterNew('OUTGOING') },
+              { label: '🏢 Create Internal Memo', onClick: () => handleRegisterNew('INTERNAL') },
+            ]}
+            trigger={
+              <Button variant="primary">
+                <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                New Letter
+              </Button>
+            }
+          />
         </div>
+      </div>
+
+      {/* Direction Tabs */}
+      <div className="flex items-center space-x-2 overflow-x-auto pb-1">
+        {DIRECTION_TABS.map((tab) => (
+          <button
+            key={tab.value}
+            type="button"
+            onClick={() => handleDirectionChange(tab.value)}
+            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap flex items-center space-x-2 ${
+              direction === tab.value
+                ? tab.activeColor + ' shadow-sm'
+                : 'bg-[#ECEAE3] ' + tab.color + ' hover:bg-[#D8D7D1]/60 border border-[#D8D7D1]'
+            }`}
+          >
+            <span>{tab.icon}</span>
+            <span>{tab.label}</span>
+          </button>
+        ))}
       </div>
 
       {/* Filter Toolbar Panel */}
@@ -295,9 +387,9 @@ export const Letters: React.FC = () => {
           </div>
         </div>
 
-        {/* Status Pill Filters */}
+        {/* Status Pill Filters — Direction-aware */}
         <div className="flex items-center space-x-2 overflow-x-auto pb-1">
-          {STATUS_PILLS.map((pill) => (
+          {getStatusPills().map((pill) => (
             <button
               key={pill.value}
               type="button"
@@ -317,6 +409,11 @@ export const Letters: React.FC = () => {
       {/* Result Count */}
       <div className="text-xs font-semibold text-[#6B6A64]">
         Showing {startCount}–{endCount} of {totalLetters} letters
+        {direction !== 'ALL' && (
+          <span className="ml-2 text-[#526A55]">
+            ({direction.charAt(0) + direction.slice(1).toLowerCase()} only)
+          </span>
+        )}
       </div>
 
       {/* Main Content */}
@@ -329,16 +426,20 @@ export const Letters: React.FC = () => {
       ) : !response || response.data.length === 0 ? (
         <EmptyState
           title="No letters found"
-          description="Try adjusting your search keywords or filter settings."
-          actionLabel="Register First Letter"
-          onAction={() => setIsRegisterOpen(true)}
+          description={
+            direction !== 'ALL'
+              ? `No ${direction.toLowerCase()} letters match your current filters.`
+              : 'Try adjusting your search keywords or filter settings.'
+          }
+          actionLabel={direction !== 'ALL' ? `Register ${direction.charAt(0) + direction.slice(1).toLowerCase()} Letter` : 'Register First Letter'}
+          onAction={() => handleRegisterNew(direction !== 'ALL' ? direction as LetterDirection : undefined)}
         />
       ) : viewMode === 'table' ? (
         <Table>
           <Table.Header>
-            <Table.Th>Subject / Reference</Table.Th>
+            <Table.Th>Direction & Subject</Table.Th>
             <Table.Th>Type & Department</Table.Th>
-            <Table.Th>Sender / Recipient</Table.Th>
+            <Table.Th>From / To</Table.Th>
             <Table.Th>Date</Table.Th>
             <Table.Th>Status</Table.Th>
             <Table.Th className="text-right">Actions</Table.Th>
@@ -348,7 +449,7 @@ export const Letters: React.FC = () => {
               <Table.Tr key={letter.id}>
                 <Table.Td>
                   <div className="flex items-center space-x-3">
-                    {getLetterTypeIcon(letter.letterType)}
+                    <DirectionIcon direction={letter.direction} />
                     <div className="min-w-0">
                       <div className="flex items-center space-x-2">
                         <span className="font-semibold text-[#292A27] truncate max-w-xs md:max-w-sm block">
@@ -381,6 +482,11 @@ export const Letters: React.FC = () => {
                   {letter.senderOrganization && (
                     <span className="text-[11px] text-[#6B6A64] block truncate max-w-[160px]">
                       {letter.senderOrganization}
+                    </span>
+                  )}
+                  {letter.recipient && !letter.sender && (
+                    <span className="text-xs font-medium text-[#292A27] block truncate max-w-[160px]">
+                      To: {letter.recipient}
                     </span>
                   )}
                 </Table.Td>
@@ -423,7 +529,7 @@ export const Letters: React.FC = () => {
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center space-x-3 min-w-0">
-                  {getLetterTypeIcon(letter.letterType)}
+                  <DirectionIcon direction={letter.direction} />
                   <div className="min-w-0">
                     <h4 className="text-sm font-semibold text-[#292A27] line-clamp-2">{letter.subject}</h4>
                     <p className="text-xs text-[#8A8983] font-mono mt-0.5">{letter.referenceNumber}</p>
@@ -474,8 +580,9 @@ export const Letters: React.FC = () => {
       {/* Register Letter Modal */}
       <RegisterLetterModal
         open={isRegisterOpen}
-        onClose={() => setIsRegisterOpen(false)}
+        onClose={() => { setIsRegisterOpen(false); setRegisterDirection(undefined); }}
         onSuccess={fetchLetters}
+        initialDirection={registerDirection}
       />
 
       {/* Archive Confirmation Dialog */}

@@ -4,7 +4,8 @@ import Login from '@/pages/auth/Login';
 import LandingPage from '@/pages/LandingPage';
 import Dashboard from '@/pages/dashboard/Dashboard';
 import Profile from '@/pages/profile/Profile';
-import { Letters, LetterDetails, LetterPreview } from '@/pages/letters';
+import { Letters, LetterDetails, LetterPreview, LetterTracking } from '@/pages/letters';
+import MyTasks from '@/pages/tasks/MyTasks';
 import Archives from '@/pages/archives/Archives';
 import ApprovalQueue from '@/pages/approvals/ApprovalQueue';
 import Users from '@/pages/users/Users';
@@ -34,7 +35,9 @@ export const AppRoutes: React.FC = () => {
           {/* Authenticated Routes (All Roles) */}
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/tasks" element={<MyTasks />} />
           <Route path="/letters" element={<Letters />} />
+          <Route path="/letters/track" element={<LetterTracking />} />
           <Route path="/letters/:id" element={<LetterDetails />} />
           <Route path="/letters/:id/preview" element={<LetterPreview />} />
           <Route path="/archives" element={<Archives />} />

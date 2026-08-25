@@ -1,10 +1,20 @@
 export type NotificationType =
-  | 'DOCUMENT_SUBMITTED'
-  | 'DOCUMENT_APPROVED'
-  | 'DOCUMENT_REJECTED'
-  | 'CHANGES_REQUESTED'
+  | 'LETTER_REGISTERED'
+  | 'LETTER_AWAITING_ROUTING'
+  | 'LETTER_ROUTED'
+  | 'LETTER_ASSIGNED'
+  | 'LETTER_RESPONSE_REQUIRED'
+  | 'LETTER_DEADLINE_APPROACHING'
+  | 'LETTER_OVERDUE'
+  | 'LETTER_APPROVED'
+  | 'LETTER_CHANGES_REQUESTED'
+  | 'LETTER_DISPATCHED'
+  | 'LETTER_DELIVERED'
+  | 'LETTER_COMPLETED'
+  | 'INTERNAL_LETTER_RECEIVED'
+  | 'INTERNAL_TASK_DUE'
   | 'COMMENT_ADDED'
-  | 'DOCUMENT_ARCHIVED';
+  | 'LETTER_ARCHIVED';
 
 export interface NotificationItem {
   id: string;
@@ -12,7 +22,11 @@ export interface NotificationItem {
   type: NotificationType;
   isRead: boolean;
   createdAt: string;
-  documentId?: string;
-  documentTitle?: string;
+  letterId?: string;
+  letterTitle?: string;
+  referenceNumber?: string;
+  documentId?: string; // legacy alias
+  documentTitle?: string; // legacy alias
   metadata?: Record<string, any>;
 }
+

@@ -125,9 +125,9 @@ export const ApprovalRequestCard: React.FC<ApprovalRequestCardProps> = ({
         <div className="pt-2 border-t border-[#D8D7D1]/50">
           <LetterTimeline
             currentStatus={request.status === 'PENDING' ? 'PENDING_APPROVAL' : request.status}
-            letterType={letter.letterType}
+            direction={letter.direction || 'INCOMING'}
             rejectionReason={request.comment}
-            timestamps={{ submitted_at: formatDate(submitted_at), reviewed_at: request.reviewed_at ? formatDate(request.reviewed_at) : undefined }}
+            timestamps={{ registered_at: formatDate(submitted_at), reviewed_at: request.reviewed_at ? formatDate(request.reviewed_at) : undefined }}
           />
         </div>
       </div>

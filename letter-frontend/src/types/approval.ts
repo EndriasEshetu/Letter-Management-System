@@ -8,11 +8,15 @@ export type ApprovalPriority = 'HIGH' | 'NORMAL';
 
 export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CHANGES_REQUESTED';
 
+export type ApprovalContext = 'OUTGOING_REVIEW' | 'RESPONSE_REVIEW' | 'INTERNAL_REVIEW';
+
 /* ─── Approval Request ──────────────────────────────────── */
 
 export interface ApprovalRequest {
   id: string;
   letter: LetterItem;
+  approvalContext?: ApprovalContext;
+  letterDirection?: 'INCOMING' | 'OUTGOING' | 'INTERNAL';
   submitter_name: string;
   submitter_email?: string;
   submitter_role?: string;

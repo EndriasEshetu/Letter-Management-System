@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import letterService from '@/services/letterService';
-import { LetterItem, AttachmentItem } from '@/types/letter';
+import { LetterItem, AttachmentItem, LetterDirection } from '@/types/letter';
 import { useToast } from '@/components/common/Toast';
 
 import Card from '@/components/common/Card';
@@ -13,10 +13,18 @@ import ErrorState from '@/components/common/ErrorState';
 import EmptyState from '@/components/common/EmptyState';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import Dropdown, { DropdownItem } from '@/components/common/Dropdown';
-import { UploadAttachmentModal, LetterTimeline } from '@/components/letters';
+import {
+  UploadAttachmentModal,
+  LetterTimeline,
+  LetterRoutingDialog,
+  LetterAssignmentDialog,
+  DispatchDialog,
+  RelatedLetters,
+  LetterTrackingCard,
+} from '@/components/letters';
 import CommentSection from '@/components/comments/CommentSection';
 
-/* ─── Confidentiality Badge ──────────────────────────────── */
+/* ─── Helper Components ─────────────────────────────────────── */
 
 const confidentialityStyles: Record<string, string> = {
   PUBLIC: 'bg-[#4A6B4E]/10 text-[#4A6B4E] border-[#4A6B4E]/20',
@@ -35,8 +43,6 @@ const ConfidentialityBadge: React.FC<{ level: string }> = ({ level }) => (
   </span>
 );
 
-/* ─── Priority Badge ─────────────────────────────────────── */
-
 const priorityStyles: Record<string, string> = {
   URGENT: 'bg-[#8B3232]/12 text-[#8B3232] border-[#8B3232]/20',
   HIGH: 'bg-[#C48D3F]/12 text-[#8A5D19] border-[#C48D3F]/20',
@@ -50,15 +56,20 @@ const PriorityBadge: React.FC<{ priority: string }> = ({ priority }) => (
   </span>
 );
 
-/* ─── Letter Type Chip ───────────────────────────────────── */
+const directionStyles: Record<string, { bg: string; text: string; label: string; icon: string }> = {
+  INCOMING: { bg: 'bg-[#526A55]/10', text: 'text-[#526A55]', label: 'Incoming Letter', icon: '📥' },
+  OUTGOING: { bg: 'bg-[#C48D3F]/10', text: 'text-[#8A5D19]', label: 'Outgoing Letter', icon: '📤' },
+  INTERNAL: { bg: 'bg-[#6B5A8E]/10', text: 'text-[#4A3A6B]', label: 'Internal Memo', icon: '🏢' },
+};
 
-const LetterTypeChip: React.FC<{ type: string }> = ({ type }) => (
-  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#292A27]/08 text-[#292A27] border border-[#292A27]/12">
-    {type.charAt(0) + type.slice(1).toLowerCase()}
-  </span>
-);
-
-/* ─── Meta Row Helper ────────────────────────────────────── */
+const DirectionBadge: React.FC<{ direction?: LetterDirection | string }> = ({ direction }) => {
+  const d = directionStyles[direction || 'INCOMING'] || directionStyles.INCOMING;
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${d.bg} ${d.text}`}>
+      {d.icon} {d.label}
+    </span>
+  );
+};
 
 const MetaField: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div className="space-y-1">
@@ -66,8 +77,6 @@ const MetaField: React.FC<{ label: string; children: React.ReactNode }> = ({ lab
     <dd className="text-sm font-medium text-[#292A27]">{children}</dd>
   </div>
 );
-
-/* ─── Attachment Timeline Item ───────────────────────────── */
 
 const AttachmentTimelineItem: React.FC<{ attachment: AttachmentItem; isLast: boolean }> = ({ attachment, isLast }) => (
   <div className="flex items-start space-x-4">
@@ -95,7 +104,7 @@ const AttachmentTimelineItem: React.FC<{ attachment: AttachmentItem; isLast: boo
   </div>
 );
 
-/* ─── Main Letter Details Component ─────────────────────── */
+/* ─── Main Component ────────────────────────────────────────── */
 
 export const LetterDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -108,10 +117,14 @@ export const LetterDetails: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Dialog states
   const [isUploadAttachmentOpen, setIsUploadAttachmentOpen] = useState(false);
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRoutingOpen, setIsRoutingOpen] = useState(false);
+  const [isAssignmentOpen, setIsAssignmentOpen] = useState(false);
+  const [isDispatchOpen, setIsDispatchOpen] = useState(false);
 
   const fetchLetter = useCallback(async () => {
     if (!id) return;
@@ -135,7 +148,7 @@ export const LetterDetails: React.FC = () => {
     fetchLetter();
   }, [fetchLetter]);
 
-  /* ─── Actions ─────────────────────────────────────────── */
+  /* ─── Actions ─────────────────────────────────────────────── */
 
   const handleDownload = async () => {
     if (!letter) return;
@@ -177,12 +190,116 @@ export const LetterDetails: React.FC = () => {
     }
   };
 
-  /* ─── Role-Based Action Visibility ──────────────────────── */
+  const handleComplete = async () => {
+    if (!letter) return;
+    try {
+      await letterService.completeLetter(letter.id);
+      addToast({ type: 'success', title: 'Letter Completed', message: `"${letter.subject}" has been marked as completed.` });
+      fetchLetter();
+    } catch (err: any) {
+      addToast({ type: 'error', title: 'Completion Failed', message: err.message || 'Could not complete letter.' });
+    }
+  };
 
-  const canUploadAttachment = letter?.status !== 'ARCHIVED';
-  const canSubmitForApproval = letter?.status === 'DRAFT' || letter?.status === 'REGISTERED' || letter?.status === 'RETURNED';
-  const canArchive = letter?.status !== 'ARCHIVED' && (user?.role === 'ADMIN' || user?.role === 'DEPARTMENT_MANAGER');
+  /* ─── Role-Based Workflow Actions ─────────────────────────── */
 
+  const role = user?.role;
+  const st = letter?.status?.toUpperCase();
+  const dir = letter?.direction?.toUpperCase();
+
+  // Determine workflow action visibility based on role, direction, and status
+  const canRoute = role === 'ADMIN' && (st === 'REGISTERED' || st === 'RECEIVED') && (dir === 'INCOMING' || dir === 'INTERNAL');
+  const canAssign = role === 'DEPARTMENT_MANAGER' && (st === 'RECEIVED' || st === 'IN_PROGRESS') && (dir === 'INCOMING' || dir === 'INTERNAL');
+  const canSubmitForReview = (role === 'EMPLOYEE') && (st === 'DRAFT' || st === 'IN_PROGRESS' || st === 'CHANGES_REQUESTED');
+  const canApproveReject = (role === 'DEPARTMENT_MANAGER' || role === 'ADMIN') && (st === 'PENDING_REVIEW' || st === 'PENDING_APPROVAL');
+  const canDispatch = (role === 'ADMIN' || role === 'REGISTRY_OFFICER') && (st === 'APPROVED' || st === 'READY_FOR_DISPATCH') && (dir === 'OUTGOING' || dir === 'INCOMING');
+  const canComplete = (role === 'ADMIN' || role === 'DEPARTMENT_MANAGER') && (st === 'DISPATCHED' || st === 'DELIVERED' || st === 'IN_PROGRESS');
+  const canArchive = st !== 'ARCHIVED' && (role === 'ADMIN' || role === 'DEPARTMENT_MANAGER');
+  const canUploadAttachment = st !== 'ARCHIVED' && st !== 'COMPLETED';
+
+  // Build workflow action buttons
+  const workflowActions: { label: string; variant: 'primary' | 'secondary' | 'outline'; icon: React.ReactNode; onClick: () => void; loading?: boolean }[] = [];
+
+  if (canRoute) {
+    workflowActions.push({
+      label: 'Route to Department',
+      variant: 'primary',
+      icon: (
+        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+        </svg>
+      ),
+      onClick: () => setIsRoutingOpen(true),
+    });
+  }
+
+  if (canAssign) {
+    workflowActions.push({
+      label: 'Assign Officer',
+      variant: 'primary',
+      icon: (
+        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+        </svg>
+      ),
+      onClick: () => setIsAssignmentOpen(true),
+    });
+  }
+
+  if (canSubmitForReview) {
+    workflowActions.push({
+      label: dir === 'OUTGOING' ? 'Submit for Manager Review' : 'Submit Response for Review',
+      variant: 'primary',
+      icon: (
+        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      onClick: handleSubmitForApproval,
+      loading: isSubmitting,
+    });
+  }
+
+  if (canApproveReject) {
+    workflowActions.push({
+      label: 'Approve',
+      variant: 'primary',
+      icon: (
+        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        </svg>
+      ),
+      onClick: handleSubmitForApproval, // Reuses submit flow for demo
+    });
+  }
+
+  if (canDispatch) {
+    workflowActions.push({
+      label: 'Record Dispatch',
+      variant: 'primary',
+      icon: (
+        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+        </svg>
+      ),
+      onClick: () => setIsDispatchOpen(true),
+    });
+  }
+
+  if (canComplete) {
+    workflowActions.push({
+      label: 'Mark as Completed',
+      variant: 'secondary',
+      icon: (
+        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      onClick: handleComplete,
+    });
+  }
+
+  // More (overflow) actions
   const moreActions: DropdownItem[] = [];
   if (canUploadAttachment) {
     moreActions.push({
@@ -191,17 +308,6 @@ export const LetterDetails: React.FC = () => {
       icon: (
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-        </svg>
-      ),
-    });
-  }
-  if (canSubmitForApproval) {
-    moreActions.push({
-      label: 'Submit for Approval',
-      onClick: handleSubmitForApproval,
-      icon: (
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       ),
     });
@@ -220,7 +326,7 @@ export const LetterDetails: React.FC = () => {
     });
   }
 
-  /* ─── Loading / Error / Not Found ───────────────────────── */
+  /* ─── Loading / Error ─────────────────────────────────────── */
 
   if (isLoading) {
     return (
@@ -245,7 +351,7 @@ export const LetterDetails: React.FC = () => {
     );
   }
 
-  /* ─── Render ─────────────────────────────────────────────── */
+  /* ─── Render ──────────────────────────────────────────────── */
 
   return (
     <div className="space-y-6">
@@ -261,7 +367,7 @@ export const LetterDetails: React.FC = () => {
         <span>Back to Letters</span>
       </button>
 
-      {/* ─── Page Header ─────────────────────────────────────── */}
+      {/* ─── Page Header ────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div className="space-y-2">
           <div className="flex items-center space-x-3 flex-wrap gap-y-2">
@@ -272,31 +378,26 @@ export const LetterDetails: React.FC = () => {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm text-[#6B6A64] font-mono font-medium">{letter.referenceNumber}</span>
-            {letter.registrationNumber && (
-              <>
-                <span className="text-[#D8D7D1]">·</span>
-                <span className="text-xs text-[#8A8983]">Reg: {letter.registrationNumber}</span>
-              </>
-            )}
-            <LetterTypeChip type={letter.letterType} />
+            <DirectionBadge direction={letter.direction} />
             {letter.priority && <PriorityBadge priority={letter.priority} />}
           </div>
         </div>
 
-        {/* Primary Action Buttons */}
+        {/* Action Buttons */}
         <div className="flex items-center space-x-2 flex-wrap gap-y-2">
+          {/* Primary workflow actions */}
+          {workflowActions.map((action, i) => (
+            <Button key={i} variant={action.variant} size="sm" onClick={action.onClick} isLoading={action.loading}>
+              {action.icon}
+              {action.label}
+            </Button>
+          ))}
+
           <Button variant="secondary" size="sm" onClick={handleDownload}>
             <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
             Download
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => navigate(`/letters/${letter.id}/preview`)}>
-            <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
-            Preview
           </Button>
 
           {moreActions.length > 0 && (
@@ -318,7 +419,7 @@ export const LetterDetails: React.FC = () => {
         </div>
       </div>
 
-      {/* ─── Main Grid Content ───────────────────────────────── */}
+      {/* ─── Main Grid Content ──────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2/3 */}
         <div className="lg:col-span-2 space-y-6">
@@ -326,8 +427,11 @@ export const LetterDetails: React.FC = () => {
           <Card>
             <LetterTimeline
               currentStatus={letter.status}
-              letterType={letter.letterType}
-              timestamps={{ created_at: letter.created_at, completed_at: letter.updated_at }}
+              direction={letter.direction}
+              timestamps={{
+                created_at: letter.created_at,
+                completed_at: letter.updated_at,
+              }}
             />
           </Card>
 
@@ -347,7 +451,19 @@ export const LetterDetails: React.FC = () => {
                   </span>
                 </MetaField>
               )}
-              <MetaField label="Letter Type"><LetterTypeChip type={letter.letterType} /></MetaField>
+              {letter.externalReferenceNumber && (
+                <MetaField label="External Reference">
+                  <span className="font-mono text-xs bg-[#ECEAE3] px-2 py-0.5 rounded-lg">
+                    {letter.externalReferenceNumber}
+                  </span>
+                </MetaField>
+              )}
+              <MetaField label="Direction"><DirectionBadge direction={letter.direction} /></MetaField>
+              <MetaField label="Letter Type">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#292A27]/08 text-[#292A27] border border-[#292A27]/12">
+                  {letter.letterType.charAt(0) + letter.letterType.slice(1).toLowerCase()}
+                </span>
+              </MetaField>
               <MetaField label="Category">{letter.category}</MetaField>
               <MetaField label="Department">{letter.department_name}</MetaField>
               {letter.originatingDepartment && (
@@ -365,11 +481,13 @@ export const LetterDetails: React.FC = () => {
           {/* Sender & Recipient */}
           {(letter.sender || letter.recipient) && (
             <Card>
-              <h2 className="text-base font-semibold text-[#292A27] mb-5">Sender & Recipient</h2>
+              <h2 className="text-base font-semibold text-[#292A27] mb-5">Correspondence Parties</h2>
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
                 {letter.sender && (
                   <div className="space-y-1">
-                    <dt className="text-[11px] font-bold uppercase tracking-wider text-[#8A8983]">Sender</dt>
+                    <dt className="text-[11px] font-bold uppercase tracking-wider text-[#8A8983]">
+                      {dir === 'INCOMING' ? 'External Sender' : dir === 'INTERNAL' ? 'Sending Officer' : 'Author'}
+                    </dt>
                     <dd className="text-sm font-medium text-[#292A27]">{letter.sender}</dd>
                     {letter.senderOrganization && (
                       <dd className="text-xs text-[#6B6A64]">{letter.senderOrganization}</dd>
@@ -378,7 +496,9 @@ export const LetterDetails: React.FC = () => {
                 )}
                 {letter.recipient && (
                   <div className="space-y-1">
-                    <dt className="text-[11px] font-bold uppercase tracking-wider text-[#8A8983]">Recipient</dt>
+                    <dt className="text-[11px] font-bold uppercase tracking-wider text-[#8A8983]">
+                      {dir === 'OUTGOING' ? 'External Recipient' : dir === 'INTERNAL' ? 'Receiving Department' : 'Addressed To'}
+                    </dt>
                     <dd className="text-sm font-medium text-[#292A27]">{letter.recipient}</dd>
                     {letter.recipientOrganization && (
                       <dd className="text-xs text-[#6B6A64]">{letter.recipientOrganization}</dd>
@@ -392,6 +512,40 @@ export const LetterDetails: React.FC = () => {
                   <MetaField label="Date Sent">{letter.dateSent}</MetaField>
                 )}
               </dl>
+            </Card>
+          )}
+
+          {/* Assignments */}
+          {letter.assignments && letter.assignments.length > 0 && (
+            <Card>
+              <h2 className="text-base font-semibold text-[#292A27] mb-5">Officer Assignments</h2>
+              <div className="space-y-3">
+                {letter.assignments.map((assignment, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-[#ECEAE3] border border-[#D8D7D1]">
+                    <div>
+                      <p className="text-sm font-semibold text-[#292A27]">{assignment.officerName}</p>
+                      <p className="text-xs text-[#6B6A64]">
+                        Assigned by {assignment.assignedBy} · {assignment.assignedAt}
+                      </p>
+                      {assignment.instructions && (
+                        <p className="text-xs text-[#6B6A64] mt-1 italic">"{assignment.instructions}"</p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      {assignment.dueDate && (
+                        <p className="text-xs font-semibold text-[#8B3232]">Due: {assignment.dueDate}</p>
+                      )}
+                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                        assignment.taskStatus === 'COMPLETED' ? 'bg-[#4A6B4E]/15 text-[#4A6B4E]' :
+                        assignment.taskStatus === 'OVERDUE' ? 'bg-[#8B3232]/15 text-[#8B3232]' :
+                        'bg-[#C48D3F]/15 text-[#8A5D19]'
+                      }`}>
+                        {assignment.taskStatus}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </Card>
           )}
 
@@ -411,6 +565,63 @@ export const LetterDetails: React.FC = () => {
 
         {/* Right 1/3 */}
         <div className="space-y-6">
+          {/* Tracking Card */}
+          <LetterTrackingCard
+            referenceNumber={letter.referenceNumber}
+            subject={letter.subject}
+            status={letter.status}
+            currentDepartment={letter.department_name}
+            responsibleUser={letter.assignedEmployee || letter.created_by}
+            currentTask={
+              st === 'REGISTERED' ? 'Awaiting Admin Routing' :
+              st === 'RECEIVED' ? 'Awaiting Officer Assignment' :
+              st === 'IN_PROGRESS' ? 'Officer Processing' :
+              st === 'PENDING_REVIEW' ? 'Awaiting Manager Review' :
+              st === 'PENDING_APPROVAL' ? 'Awaiting Approval' :
+              st === 'APPROVED' ? 'Ready for Dispatch' :
+              st === 'DISPATCHED' ? 'Awaiting Delivery Confirmation' :
+              st === 'COMPLETED' ? 'Complete' :
+              st === 'DRAFT' ? 'Draft in Progress' :
+              'Workflow Processing'
+            }
+            dueDate={letter.dueDate}
+            priority={letter.priority}
+          />
+
+          {/* Related Letters */}
+          {letter.relatedLetters && letter.relatedLetters.length > 0 && (
+            <RelatedLetters relations={letter.relatedLetters} currentLetterId={letter.id} />
+          )}
+
+          {/* Dispatch Info */}
+          {letter.dispatchInfo && (
+            <Card>
+              <h3 className="text-sm font-semibold text-[#292A27] mb-3">Dispatch Record</h3>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-[#6B6A64]">Method</span>
+                  <span className="font-semibold text-[#292A27]">{letter.dispatchInfo.dispatchMethod.replace('_', ' ')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#6B6A64]">Dispatched</span>
+                  <span className="font-semibold text-[#292A27]">{letter.dispatchInfo.dispatchDate}</span>
+                </div>
+                {letter.dispatchInfo.courierReferenceNumber && (
+                  <div className="flex justify-between">
+                    <span className="text-[#6B6A64]">Courier Ref</span>
+                    <span className="font-mono font-semibold text-[#292A27]">{letter.dispatchInfo.courierReferenceNumber}</span>
+                  </div>
+                )}
+                {letter.dispatchInfo.deliveryConfirmation && (
+                  <div className="flex items-center justify-between pt-1 border-t border-[#D8D7D1]/50">
+                    <span className="text-[#6B6A64]">Delivery</span>
+                    <span className="font-bold text-[#4A6B4E]">✓ Confirmed</span>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
           {/* Attachments */}
           <Card>
             <div className="flex items-center justify-between mb-5">
@@ -451,56 +662,6 @@ export const LetterDetails: React.FC = () => {
             )}
           </Card>
 
-          {/* Letter Status Card */}
-          <Card className="bg-[#ECEAE3]">
-            <h3 className="text-sm font-semibold text-[#292A27] mb-3">Current Status</h3>
-            <div className="space-y-3 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[#6B6A64]">Status</span>
-                <Badge status={letter.status as LetterStatus} dot />
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#6B6A64]">Confidentiality</span>
-                <ConfidentialityBadge level={letter.confidentialityLevel} />
-              </div>
-              {letter.assignedEmployee && (
-                <div className="flex items-center justify-between">
-                  <span className="text-[#6B6A64]">Assigned To</span>
-                  <span className="font-semibold text-[#292A27] truncate ml-2">{letter.assignedEmployee}</span>
-                </div>
-              )}
-              {letter.responseRequired && (
-                <div className="flex items-center justify-between">
-                  <span className="text-[#6B6A64]">Response Required</span>
-                  <span className="font-semibold text-[#8B3232]">Yes</span>
-                </div>
-              )}
-              {letter.dueDate && (
-                <div className="flex items-center justify-between">
-                  <span className="text-[#6B6A64]">Due Date</span>
-                  <span className="font-semibold text-[#8B3232]">{letter.dueDate}</span>
-                </div>
-              )}
-            </div>
-
-            {canSubmitForApproval && (
-              <div className="mt-4 pt-3 border-t border-[#D8D7D1]/50">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  className="w-full"
-                  onClick={handleSubmitForApproval}
-                  isLoading={isSubmitting}
-                >
-                  <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Submit for Approval
-                </Button>
-              </div>
-            )}
-          </Card>
-
           {/* Tags */}
           {letter.tags && letter.tags.length > 0 && (
             <Card>
@@ -520,13 +681,43 @@ export const LetterDetails: React.FC = () => {
         </div>
       </div>
 
-      {/* ─── Modals ──────────────────────────────────────────── */}
+      {/* ─── Modals & Dialogs ───────────────────────────────────── */}
 
       <UploadAttachmentModal
         open={isUploadAttachmentOpen}
         letterId={letter.id}
         letterSubject={letter.subject}
         onClose={() => setIsUploadAttachmentOpen(false)}
+        onSuccess={fetchLetter}
+      />
+
+      <LetterRoutingDialog
+        open={isRoutingOpen}
+        letterId={letter.id}
+        referenceNumber={letter.referenceNumber}
+        subject={letter.subject}
+        onClose={() => setIsRoutingOpen(false)}
+        onSuccess={fetchLetter}
+      />
+
+      <LetterAssignmentDialog
+        open={isAssignmentOpen}
+        letterId={letter.id}
+        referenceNumber={letter.referenceNumber}
+        subject={letter.subject}
+        departmentName={letter.department_name}
+        onClose={() => setIsAssignmentOpen(false)}
+        onSuccess={fetchLetter}
+      />
+
+      <DispatchDialog
+        open={isDispatchOpen}
+        letterId={letter.id}
+        referenceNumber={letter.referenceNumber}
+        subject={letter.subject}
+        recipientName={letter.recipient || ''}
+        recipientOrg={letter.recipientOrganization || ''}
+        onClose={() => setIsDispatchOpen(false)}
         onSuccess={fetchLetter}
       />
 

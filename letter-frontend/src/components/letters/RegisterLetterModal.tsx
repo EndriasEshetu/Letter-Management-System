@@ -1,16 +1,16 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import letterService from '@/services/letterService';
 import { useToast } from '@/components/common/Toast';
 import Button from '@/components/common/Button';
 import Select, { SelectOption } from '@/components/common/Select';
+import { LetterDirection } from '@/types/letter';
 
 interface RegisterLetterModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialDirection?: LetterDirection;
 }
-
-type LetterDirection = 'INCOMING' | 'OUTGOING' | 'INTERNAL';
 
 const CATEGORY_OPTIONS: SelectOption[] = [
   { value: 'General / Correspondence', label: 'General / Correspondence' },
@@ -140,23 +140,37 @@ export const RegisterLetterModal: React.FC<RegisterLetterModalProps> = ({
   open,
   onClose,
   onSuccess,
+  initialDirection,
 }) => {
   const { addToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [direction, setDirection] = useState<LetterDirection>('INCOMING');
-  const [letterType, setLetterType] = useState('INCOMING');
+  const [direction, setDirection] = useState<LetterDirection>(initialDirection || 'INCOMING');
+
+  useEffect(() => {
+    if (initialDirection) {
+      setDirection(initialDirection);
+      setLetterType(initialDirection);
+    }
+  }, [initialDirection]);
+
+  const [letterType, setLetterType] = useState(initialDirection || 'INCOMING');
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
   const [sender, setSender] = useState('');
   const [senderOrganization, setSenderOrganization] = useState('');
   const [recipient, setRecipient] = useState('');
   const [recipientOrganization, setRecipientOrganization] = useState('');
+  const [externalReferenceNumber, setExternalReferenceNumber] = useState('');
   const [category, setCategory] = useState('General / Correspondence');
-  const [department, setDepartment] = useState('General Administration');
+  const [department, setDepartment] = useState('ICT Governance');
+  const [targetDepartment, setTargetDepartment] = useState('Finance & Planning');
   const [confidentiality, setConfidentiality] = useState('INTERNAL');
   const [priority, setPriority] = useState('NORMAL');
   const [dateReceivedSent, setDateReceivedSent] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [instructions, setInstructions] = useState('');
+  const [relatedIncomingId, setRelatedIncomingId] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -164,7 +178,6 @@ export const RegisterLetterModal: React.FC<RegisterLetterModalProps> = ({
 
   const handleDirectionChange = (dir: LetterDirection) => {
     setDirection(dir);
-    // Reset type to direction's default
     setLetterType(dir);
     setErrors({});
   };
@@ -172,10 +185,18 @@ export const RegisterLetterModal: React.FC<RegisterLetterModalProps> = ({
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
     if (!subject.trim()) errs.subject = 'Subject is required.';
-    if (direction === 'INCOMING' && !sender.trim()) errs.sender = 'Sender name is required.';
-    if (direction === 'OUTGOING' && !recipient.trim()) errs.recipient = 'Recipient name is required.';
-    if (!department) errs.department = 'Department is required.';
-    if (!file) errs.file = 'Please attach the letter document.';
+    
+    if (direction === 'INCOMING') {
+      if (!sender.trim()) errs.sender = 'External sender name is required.';
+      if (!senderOrganization.trim()) errs.senderOrganization = 'External sender organization is required.';
+    } else if (direction === 'OUTGOING') {
+      if (!recipient.trim()) errs.recipient = 'Recipient name is required.';
+      if (!recipientOrganization.trim()) errs.recipientOrganization = 'Recipient organization is required.';
+    } else if (direction === 'INTERNAL') {
+      if (!targetDepartment) errs.targetDepartment = 'Destination department is required.';
+    }
+
+    if (!file) errs.file = 'Please attach the letter document file.';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -188,6 +209,7 @@ export const RegisterLetterModal: React.FC<RegisterLetterModalProps> = ({
     setUploadProgress(0);
 
     const formData = new FormData();
+    formData.append('direction', direction);
     formData.append('subject', subject.trim());
     formData.append('letterType', letterType);
     formData.append('description', description.trim());
@@ -195,10 +217,15 @@ export const RegisterLetterModal: React.FC<RegisterLetterModalProps> = ({
     formData.append('senderOrganization', senderOrganization.trim());
     formData.append('recipient', recipient.trim());
     formData.append('recipientOrganization', recipientOrganization.trim());
+    formData.append('externalReferenceNumber', externalReferenceNumber.trim());
     formData.append('category', category);
-    formData.append('department_name', department);
+    formData.append('department_name', direction === 'INTERNAL' ? targetDepartment : department);
+    formData.append('targetDepartment', targetDepartment);
     formData.append('confidentialityLevel', confidentiality);
     formData.append('priority', priority);
+    if (dueDate) formData.append('dueDate', dueDate);
+    if (instructions) formData.append('instructions', instructions);
+    if (relatedIncomingId) formData.append('relatedLetterId', relatedIncomingId);
     if (dateReceivedSent) formData.append(direction === 'INCOMING' ? 'dateReceived' : 'dateSent', dateReceivedSent);
     if (file) formData.append('file', file);
 
@@ -206,8 +233,10 @@ export const RegisterLetterModal: React.FC<RegisterLetterModalProps> = ({
       await letterService.createLetter(formData, setUploadProgress);
       addToast({
         type: 'success',
-        title: 'Letter Registered',
-        message: `"${subject}" has been registered successfully.`,
+        title: direction === 'INCOMING' ? 'Incoming Letter Registered' : 'Letter Draft Created',
+        message: direction === 'INCOMING'
+          ? `"${subject}" registered and sent to Main Administrator for routing.`
+          : `"${subject}" created as ${direction.toLowerCase()} letter draft.`,
       });
       onSuccess();
       handleClose();
@@ -225,7 +254,6 @@ export const RegisterLetterModal: React.FC<RegisterLetterModalProps> = ({
 
   const handleClose = () => {
     if (isSubmitting) return;
-    // Reset state
     setDirection('INCOMING');
     setLetterType('INCOMING');
     setSubject('');
@@ -234,11 +262,16 @@ export const RegisterLetterModal: React.FC<RegisterLetterModalProps> = ({
     setSenderOrganization('');
     setRecipient('');
     setRecipientOrganization('');
+    setExternalReferenceNumber('');
     setCategory('General / Correspondence');
-    setDepartment('General Administration');
+    setDepartment('ICT Governance');
+    setTargetDepartment('Finance & Planning');
     setConfidentiality('INTERNAL');
     setPriority('NORMAL');
     setDateReceivedSent('');
+    setDueDate('');
+    setInstructions('');
+    setRelatedIncomingId('');
     setFile(null);
     setErrors({});
     setUploadProgress(0);
@@ -309,6 +342,25 @@ export const RegisterLetterModal: React.FC<RegisterLetterModalProps> = ({
 
         {/* Scrollable Form Body */}
         <form onSubmit={handleSubmit} noValidate className="flex-1 overflow-y-auto px-7 py-5 space-y-5">
+          {/* Workflow Guidance Banner */}
+          <div className="p-3.5 rounded-2xl bg-[#526A55]/08 border border-[#526A55]/20 text-xs text-[#292A27]">
+            {direction === 'INCOMING' && (
+              <p>
+                <span className="font-bold text-[#526A55]">📥 Incoming Workflow:</span> Registry Officer registers external letter → Sent to <span className="font-semibold">Main Administrator</span> to select destination department. (Department selection is performed by Main Admin after registration).
+              </p>
+            )}
+            {direction === 'OUTGOING' && (
+              <p>
+                <span className="font-bold text-[#C48D3F]">📤 Outgoing Workflow:</span> Created as Draft → Department Manager reviews → Main Administrator verifies & assigns official reference # → Dispatch Officer sends letter.
+              </p>
+            )}
+            {direction === 'INTERNAL' && (
+              <p>
+                <span className="font-bold text-[#6B5A8E]">🏢 Internal Workflow:</span> Created by sending officer → Sending Manager approves → Main Administrator routes to target department → Receiving Manager assigns officer.
+              </p>
+            )}
+          </div>
+
           {/* Letter Type & Priority */}
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -316,7 +368,7 @@ export const RegisterLetterModal: React.FC<RegisterLetterModalProps> = ({
               <Select
                 options={typeOptions}
                 value={letterType}
-                onChange={setLetterType}
+                onChange={(val) => setLetterType(val as any)}
               />
             </div>
             <div>
@@ -333,119 +385,157 @@ export const RegisterLetterModal: React.FC<RegisterLetterModalProps> = ({
               type="text"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder="e.g., Request for Budget Allocation Q4 FY2026"
+              placeholder="e.g., Request for Digital Transformation Progress Report"
             />
             {errors.subject && <p className="text-xs text-[#8B3232] mt-1">{errors.subject}</p>}
           </div>
 
-          {/* Sender — for INCOMING */}
-          {(direction === 'INCOMING') && (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <InputLabel htmlFor="sender" required>Sender Name</InputLabel>
-                <TextInput
-                  id="sender"
-                  type="text"
-                  value={sender}
-                  onChange={(e) => setSender(e.target.value)}
-                  placeholder="e.g., Ato Kebede Tadesse"
-                />
-                {errors.sender && <p className="text-xs text-[#8B3232] mt-1">{errors.sender}</p>}
+          {/* Fields for INCOMING */}
+          {direction === 'INCOMING' && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <InputLabel htmlFor="sender" required>External Sender Name</InputLabel>
+                  <TextInput
+                    id="sender"
+                    type="text"
+                    value={sender}
+                    onChange={(e) => setSender(e.target.value)}
+                    placeholder="e.g., Ato Kebede Tadesse (State Minister)"
+                  />
+                  {errors.sender && <p className="text-xs text-[#8B3232] mt-1">{errors.sender}</p>}
+                </div>
+                <div>
+                  <InputLabel htmlFor="sender-org" required>Sender Organization</InputLabel>
+                  <TextInput
+                    id="sender-org"
+                    type="text"
+                    value={senderOrganization}
+                    onChange={(e) => setSenderOrganization(e.target.value)}
+                    placeholder="e.g., Ministry of Finance"
+                  />
+                  {errors.senderOrganization && <p className="text-xs text-[#8B3232] mt-1">{errors.senderOrganization}</p>}
+                </div>
               </div>
-              <div>
-                <InputLabel htmlFor="sender-org">Sender Organization</InputLabel>
-                <TextInput
-                  id="sender-org"
-                  type="text"
-                  value={senderOrganization}
-                  onChange={(e) => setSenderOrganization(e.target.value)}
-                  placeholder="e.g., Ministry of Finance"
-                />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <InputLabel htmlFor="ext-ref">External Reference Number</InputLabel>
+                  <TextInput
+                    id="ext-ref"
+                    type="text"
+                    value={externalReferenceNumber}
+                    onChange={(e) => setExternalReferenceNumber(e.target.value)}
+                    placeholder="e.g., MOF/DE/982/2026"
+                  />
+                </div>
+                <div>
+                  <InputLabel htmlFor="date-received">Received Date</InputLabel>
+                  <TextInput
+                    id="date-received"
+                    type="date"
+                    value={dateReceivedSent}
+                    onChange={(e) => setDateReceivedSent(e.target.value)}
+                  />
+                </div>
               </div>
-            </div>
+            </>
           )}
 
-          {/* Recipient — for OUTGOING */}
-          {(direction === 'OUTGOING') && (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <InputLabel htmlFor="recipient" required>Recipient Name</InputLabel>
-                <TextInput
-                  id="recipient"
-                  type="text"
-                  value={recipient}
-                  onChange={(e) => setRecipient(e.target.value)}
-                  placeholder="e.g., Director General"
-                />
-                {errors.recipient && <p className="text-xs text-[#8B3232] mt-1">{errors.recipient}</p>}
+          {/* Fields for OUTGOING */}
+          {direction === 'OUTGOING' && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <InputLabel htmlFor="recipient" required>Recipient Name</InputLabel>
+                  <TextInput
+                    id="recipient"
+                    type="text"
+                    value={recipient}
+                    onChange={(e) => setRecipient(e.target.value)}
+                    placeholder="e.g., Regional Director"
+                  />
+                  {errors.recipient && <p className="text-xs text-[#8B3232] mt-1">{errors.recipient}</p>}
+                </div>
+                <div>
+                  <InputLabel htmlFor="recipient-org" required>Recipient Organization</InputLabel>
+                  <TextInput
+                    id="recipient-org"
+                    type="text"
+                    value={recipientOrganization}
+                    onChange={(e) => setRecipientOrganization(e.target.value)}
+                    placeholder="e.g., Ministry of Innovation & Technology"
+                  />
+                  {errors.recipientOrganization && <p className="text-xs text-[#8B3232] mt-1">{errors.recipientOrganization}</p>}
+                </div>
               </div>
-              <div>
-                <InputLabel htmlFor="recipient-org">Recipient Organization</InputLabel>
-                <TextInput
-                  id="recipient-org"
-                  type="text"
-                  value={recipientOrganization}
-                  onChange={(e) => setRecipientOrganization(e.target.value)}
-                  placeholder="e.g., SITA"
-                />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <InputLabel htmlFor="department">Originating Department</InputLabel>
+                  <Select options={DEPARTMENT_OPTIONS} value={department} onChange={setDepartment} />
+                </div>
+                <div>
+                  <InputLabel htmlFor="related-inc">Related Incoming Letter Ref (Optional)</InputLabel>
+                  <TextInput
+                    id="related-inc"
+                    type="text"
+                    value={relatedIncomingId}
+                    onChange={(e) => setRelatedIncomingId(e.target.value)}
+                    placeholder="e.g., IN/2026/00452"
+                  />
+                </div>
               </div>
-            </div>
+            </>
           )}
 
-          {/* For INTERNAL — both sender and recipient */}
+          {/* Fields for INTERNAL */}
           {direction === 'INTERNAL' && (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <InputLabel htmlFor="sender">From (Person / Unit)</InputLabel>
-                <TextInput
-                  id="sender"
-                  type="text"
-                  value={sender}
-                  onChange={(e) => setSender(e.target.value)}
-                  placeholder="e.g., HR Director"
-                />
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <InputLabel htmlFor="from-dept">From Department</InputLabel>
+                  <Select options={DEPARTMENT_OPTIONS} value={department} onChange={setDepartment} />
+                </div>
+                <div>
+                  <InputLabel htmlFor="target-dept" required>To Department (Destination)</InputLabel>
+                  <Select options={DEPARTMENT_OPTIONS} value={targetDepartment} onChange={setTargetDepartment} />
+                  {errors.targetDepartment && <p className="text-xs text-[#8B3232] mt-1">{errors.targetDepartment}</p>}
+                </div>
               </div>
-              <div>
-                <InputLabel htmlFor="recipient">To (Person / Unit)</InputLabel>
-                <TextInput
-                  id="recipient"
-                  type="text"
-                  value={recipient}
-                  onChange={(e) => setRecipient(e.target.value)}
-                  placeholder="e.g., All Department Heads"
-                />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <InputLabel htmlFor="due-date">Requested Completion Date</InputLabel>
+                  <TextInput
+                    id="due-date"
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <InputLabel htmlFor="instructions-in">Action Required / Instructions</InputLabel>
+                  <TextInput
+                    id="instructions-in"
+                    type="text"
+                    value={instructions}
+                    onChange={(e) => setInstructions(e.target.value)}
+                    placeholder="e.g., Please process equipment requisition"
+                  />
+                </div>
               </div>
-            </div>
+            </>
           )}
 
-          {/* Category & Department */}
+          {/* Category & Confidentiality */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <InputLabel htmlFor="category">Category</InputLabel>
               <Select options={CATEGORY_OPTIONS} value={category} onChange={setCategory} />
             </div>
             <div>
-              <InputLabel htmlFor="department" required>Department</InputLabel>
-              <Select options={DEPARTMENT_OPTIONS} value={department} onChange={setDepartment} />
-              {errors.department && <p className="text-xs text-[#8B3232] mt-1">{errors.department}</p>}
-            </div>
-          </div>
-
-          {/* Date + Confidentiality */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <InputLabel htmlFor="date-received">
-                {direction === 'INCOMING' ? 'Date Received' : 'Date Sent'}
-              </InputLabel>
-              <TextInput
-                id="date-received"
-                type="date"
-                value={dateReceivedSent}
-                onChange={(e) => setDateReceivedSent(e.target.value)}
-              />
-            </div>
-            <div>
-              <InputLabel htmlFor="confidentiality">Confidentiality</InputLabel>
+              <InputLabel htmlFor="confidentiality">Confidentiality Level</InputLabel>
               <Select
                 options={CONFIDENTIALITY_OPTIONS}
                 value={confidentiality}
