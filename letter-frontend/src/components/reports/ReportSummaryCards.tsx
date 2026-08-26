@@ -1,21 +1,27 @@
 import React from 'react';
-import { FileText, Clock, CheckCircle, XCircle, Archive, Users, Building } from 'lucide-react';
+import { FileText, Clock, CheckCircle, XCircle, Archive } from 'lucide-react';
 import { AnalyticsOverview } from '@/types/report';
 import StatCard from '@/components/dashboard/StatCard';
 
 interface ReportSummaryCardsProps {
-  overview: AnalyticsOverview;
+  overview?: AnalyticsOverview | null;
 }
 
 export const ReportSummaryCards: React.FC<ReportSummaryCardsProps> = ({ overview }) => {
+  const totalDocs = overview?.totalDocuments || 0;
+  const pending = overview?.pendingApprovals || 0;
+  const approved = overview?.approvedDocuments || 0;
+  const rejected = overview?.rejectedDocuments || 0;
+  const archived = overview?.archivedDocuments || 0;
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
       {/* Total Documents */}
       <StatCard
         title="Total Documents"
-        value={overview.totalDocuments.toLocaleString()}
+        value={totalDocs.toLocaleString()}
         description="Uploaded across departments"
-        trend={overview.totalDocumentsTrend}
+        trend={overview?.totalDocumentsTrend}
         trendType="positive"
         icon={<FileText className="w-5 h-5 text-[#526A55]" />}
       />
@@ -23,20 +29,20 @@ export const ReportSummaryCards: React.FC<ReportSummaryCardsProps> = ({ overview
       {/* Pending Approvals */}
       <StatCard
         title="Pending Approvals"
-        value={overview.pendingApprovals.toLocaleString()}
+        value={pending.toLocaleString()}
         description="Awaiting workflow sign-off"
-        trend={overview.pendingApprovalsTrend}
+        trend={overview?.pendingApprovalsTrend}
         trendType="neutral"
-        highlight={overview.pendingApprovals > 0}
+        highlight={pending > 0}
         icon={<Clock className="w-5 h-5 text-[#C48D3F]" />}
       />
 
       {/* Approved Documents */}
       <StatCard
         title="Approved Documents"
-        value={overview.approvedDocuments.toLocaleString()}
+        value={approved.toLocaleString()}
         description="Official verified records"
-        trend={overview.approvedTrend}
+        trend={overview?.approvedTrend}
         trendType="positive"
         icon={<CheckCircle className="w-5 h-5 text-[#4A6B4E]" />}
       />
@@ -44,9 +50,9 @@ export const ReportSummaryCards: React.FC<ReportSummaryCardsProps> = ({ overview
       {/* Rejected Documents */}
       <StatCard
         title="Rejected Documents"
-        value={overview.rejectedDocuments.toLocaleString()}
+        value={rejected.toLocaleString()}
         description="Returned for revision"
-        trend={overview.rejectedTrend}
+        trend={overview?.rejectedTrend}
         trendType="negative"
         icon={<XCircle className="w-5 h-5 text-[#8B3232]" />}
       />
@@ -54,25 +60,9 @@ export const ReportSummaryCards: React.FC<ReportSummaryCardsProps> = ({ overview
       {/* Archived Documents */}
       <StatCard
         title="Archived Documents"
-        value={overview.archivedDocuments.toLocaleString()}
+        value={archived.toLocaleString()}
         description="Vault historical records"
         icon={<Archive className="w-5 h-5 text-[#6B6A64]" />}
-      />
-
-      {/* Active Users */}
-      <StatCard
-        title="Active System Users"
-        value={overview.activeUsers.toLocaleString()}
-        description="Registered active personnel"
-        icon={<Users className="w-5 h-5 text-[#526A55]" />}
-      />
-
-      {/* Total Departments */}
-      <StatCard
-        title="Departments"
-        value={overview.departmentsCount.toLocaleString()}
-        description="Active organizational units"
-        icon={<Building className="w-5 h-5 text-[#526A55]" />}
       />
     </div>
   );
