@@ -62,7 +62,7 @@ const ROLE_GOVERNANCE: Record<string, RoleGovernanceConfig> = {
     cardTitle: 'Directorate Manager Profile',
     accessLevel: 'Directorate Management',
     scopeType: 'DIRECTORATE',
-    scopeTitle: 'Official Directorate',
+    scopeTitle: 'Department',
     badgeColor: 'bg-[#526A55]/15 text-[#526A55] border-[#526A55]/30',
     responsibilities: [
       'Review correspondence',
@@ -80,7 +80,7 @@ const ROLE_GOVERNANCE: Record<string, RoleGovernanceConfig> = {
     cardTitle: 'Professional Profile',
     accessLevel: 'Standard User',
     scopeType: 'DIRECTORATE',
-    scopeTitle: 'Official Directorate',
+    scopeTitle: 'Department',
     badgeColor: 'bg-[#292A27]/10 text-[#292A27] border-[#292A27]/20',
     responsibilities: [
       'Create outgoing/internal letters',
