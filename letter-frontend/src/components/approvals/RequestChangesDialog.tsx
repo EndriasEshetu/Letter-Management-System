@@ -42,7 +42,7 @@ export const RequestChangesDialog: React.FC<RequestChangesDialogProps> = ({
 
   if (!request) return null;
 
-  const doc = request?.letter || (request as any)?.document || {};
+  const doc = request?.letter || {};
   const subject = doc.subject || doc.title || 'Selected Letter';
 
   return (

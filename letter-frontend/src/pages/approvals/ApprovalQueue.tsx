@@ -78,7 +78,7 @@ export const ApprovalQueue: React.FC = () => {
   /* 1. Approve Letter */
   const handleConfirmApprove = async () => {
     if (!approveRequest) return;
-    const doc = approveRequest.letter || (approveRequest as any).document || {};
+    const doc = approveRequest.letter || {};
     const id = doc.id;
     const subject = doc.subject || doc.title || 'Selected Letter';
     setIsProcessingAction(true);
@@ -105,7 +105,7 @@ export const ApprovalQueue: React.FC = () => {
   /* 2. Reject Letter */
   const handleConfirmReject = async (reason: string) => {
     if (!rejectRequest) return;
-    const doc = rejectRequest.letter || (rejectRequest as any).document || {};
+    const doc = rejectRequest.letter || {};
     const id = doc.id;
     const subject = doc.subject || doc.title || 'Selected Letter';
     setIsProcessingAction(true);
@@ -135,7 +135,7 @@ export const ApprovalQueue: React.FC = () => {
   /* 3. Request Changes */
   const handleConfirmRequestChanges = async (reason: string) => {
     if (!requestChangesReq) return;
-    const doc = requestChangesReq.letter || (requestChangesReq as any).document || {};
+    const doc = requestChangesReq.letter || {};
     const id = doc.id;
     const subject = doc.subject || doc.title || 'Selected Letter';
     setIsProcessingAction(true);
@@ -277,7 +277,7 @@ export const ApprovalQueue: React.FC = () => {
       <ConfirmDialog
         open={Boolean(approveRequest)}
         title="Approve Letter?"
-        description={`Are you sure you want to approve "${(approveRequest?.letter || (approveRequest as any)?.document)?.subject || (approveRequest?.letter || (approveRequest as any)?.document)?.title || 'this letter'}"? This will change the letter status to Approved.`}
+        description={`Are you sure you want to approve "${approveRequest?.letter?.subject || approveRequest?.letter?.title || 'this letter'}"? This will change the letter status to Approved.`}
         confirmLabel="Approve Letter"
         cancelLabel="Cancel"
         onConfirm={handleConfirmApprove}

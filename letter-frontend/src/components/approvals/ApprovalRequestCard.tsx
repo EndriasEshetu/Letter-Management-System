@@ -44,7 +44,7 @@ export const ApprovalRequestCard: React.FC<ApprovalRequestCardProps> = ({
   isProcessing = false,
 }) => {
   const navigate = useNavigate();
-  const letter = request.letter || (request as any).document || {};
+  const letter = request.letter || {};
   const { submitter_name, submitter_role, submitter_department, priority, submitted_at, page_count } = request;
 
   const isHighPriority = priority === 'HIGH';

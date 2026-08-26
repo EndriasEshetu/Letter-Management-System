@@ -87,7 +87,7 @@ function serializeApprovalRequest(row: ApprovalJoinRow) {
 
   return {
     id: String(row.id),
-    document: serializeDocument(doc as unknown as DocumentRow),
+    letter: serializeDocument(doc as unknown as DocumentRow),
     submitter_name: row.submitter_name,
     submitter_role: row.submitter_role ?? undefined,
     submitter_department: row.submitter_department ?? undefined,
