@@ -203,6 +203,10 @@ async function seed() {
     full_name: 'Endrias Eshetu', email: 'employee@sita.gov.et', role: 'EMPLOYEE',
     departmentId: deptFinance, jobTitle: 'Senior Finance Officer',
   });
+  await upsertUser({
+    full_name: 'Abebe Demissie', email: 'registry@sita.gov.et', role: 'REGISTRY_OFFICER',
+    departmentId: deptIct, jobTitle: 'Senior Registry Officer',
+  });
 
   // Sample documents
   const pendingDoc = await seedDocument({
