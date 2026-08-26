@@ -169,6 +169,8 @@ export function serializeDocument(row: DocumentRow & { letter_type?: string; sen
     version: row.version ?? undefined,
     
     // Letter shape properties (frontend)
+    // direction is the same semantic value as letterType (INCOMING/OUTGOING/INTERNAL)
+    direction: letterType as 'INCOMING' | 'OUTGOING' | 'INTERNAL',
     referenceNumber: row.document_number,
     registrationNumber: (row as any).registration_number ?? undefined,
     subject: row.title,

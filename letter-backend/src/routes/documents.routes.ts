@@ -76,15 +76,52 @@ router.get(
   '/audit-logs',
   requireAuth,
   asyncHandler(async (req, res) => {
+    const { search, action, user_id, entity_type, start_date, end_date } =
+      req.query as Record<string, string | undefined>;
     const page = toNumber(req.query.page, 1);
     const limit = Math.min(toNumber(req.query.limit, 20), 100);
     const offset = (page - 1) * limit;
 
+    const where: string[] = [];
+    const params: unknown[] = [];
+
+    if (search) {
+      const q = `%${search.toLowerCase()}%`;
+      where.push(
+        `(LOWER(user_name) LIKE $${params.length + 1} OR LOWER(action) LIKE $${params.length + 2} OR LOWER(COALESCE(details::text, '')) LIKE $${params.length + 3})`
+      );
+      params.push(q, q, q);
+    }
+    if (action && action !== 'ALL') {
+      where.push(`action = $${params.length + 1}`);
+      params.push(action);
+    }
+    if (user_id && user_id !== 'ALL') {
+      where.push(`user_id = $${params.length + 1}`);
+      params.push(Number(user_id));
+    }
+    if (entity_type && entity_type !== 'ALL') {
+      where.push(`entity_type = $${params.length + 1}`);
+      params.push(entity_type);
+    }
+    if (start_date) {
+      where.push(`timestamp >= $${params.length + 1}`);
+      params.push(start_date);
+    }
+    if (end_date) {
+      where.push(`timestamp <= $${params.length + 1}`);
+      params.push(end_date);
+    }
+
+    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    const countParams = [...params];
+    const pageParams = [...params, limit, offset];
+
     const [{ rows: countRows }, { rows }] = await Promise.all([
-      query(`SELECT COUNT(*)::int AS total FROM audit_logs`),
+      query(`SELECT COUNT(*)::int AS total FROM audit_logs ${whereSql}`, countParams),
       query(
-        `SELECT * FROM audit_logs ORDER BY timestamp DESC, id DESC LIMIT $1 OFFSET $2`,
-        [limit, offset]
+        `SELECT * FROM audit_logs ${whereSql} ORDER BY timestamp DESC, id DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        pageParams
       ),
     ]);
 
@@ -105,7 +142,7 @@ router.get(
   '/',
   requireAuth,
   asyncHandler(async (req, res) => {
-    const { search, category, status, securityLevel, start_date, end_date } =
+    const { search, category, status, securityLevel, start_date, end_date, direction } =
       req.query as Record<string, string | undefined>;
     const dept = normalizeDepartmentParam(req.query.department_id);
     const page = toNumber(req.query.page, 1);
@@ -140,6 +177,11 @@ router.get(
     if (securityLevel && securityLevel !== 'ALL') {
       where.push(`d.security_level = $${params.length + 1}`);
       params.push(securityLevel);
+    }
+    // direction maps to the letter_type column in the database
+    if (direction && direction !== 'ALL') {
+      where.push(`d.letter_type = $${params.length + 1}`);
+      params.push(direction.toUpperCase());
     }
     if (start_date) {
       where.push(`d.created_at >= $${params.length + 1}`);
@@ -381,6 +423,68 @@ router.patch(
   })
 );
 
+/* ─── POST /documents/:id/route — Route letter to department (Admin) ── */
+
+router.post(
+  '/:id/route',
+  requireAuth,
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) throw ApiError.badRequest('Invalid document id.');
+
+    const { department, notes } = req.body || {};
+    if (!department || typeof department !== 'string') {
+      throw ApiError.badRequest('A destination department is required.');
+    }
+
+    const user = req.user!;
+
+    const { rows: existing } = await query(`SELECT * FROM documents WHERE id = $1`, [id]);
+    if (existing.length === 0) throw ApiError.notFound('Document not found.');
+    const oldDoc = existing[0] as DocumentRow;
+
+    // Resolve department by name
+    let deptId: number | null = oldDoc.department_id;
+    let deptName = department.trim();
+    const deptRes = await query(
+      `SELECT id, name FROM departments WHERE LOWER(name) LIKE LOWER($1) LIMIT 1`,
+      [`%${deptName}%`]
+    );
+    if (deptRes.rows.length > 0) {
+      deptId = (deptRes.rows[0] as { id: number }).id;
+      deptName = (deptRes.rows[0] as { name: string }).name;
+    }
+
+    const newStatus = 'ASSIGNED';
+    await query(
+      `UPDATE documents
+          SET department_id = COALESCE($2, department_id),
+              department_name = $3,
+              assignment_instructions = COALESCE($4, assignment_instructions),
+              status = $5,
+              updated_at = NOW()
+        WHERE id = $1`,
+      [id, deptId, deptName, notes || null, newStatus]
+    );
+
+    await logAudit({
+      userId: user.id,
+      userName: user.full_name,
+      action: 'ROUTE_LETTER',
+      entityId: id,
+      previousStatus: oldDoc.status,
+      newStatus,
+      details: { department: deptName, notes: notes || null },
+    });
+
+    const { rows: full } = await query(`${DOC_SELECT} WHERE d.id = $1`, [id]);
+    res.json({
+      message: `Letter routed to ${deptName} successfully.`,
+      letter: serializeDocument(full[0] as DocumentRow),
+    });
+  })
+);
+
 /* ─── POST /documents/:id/assign — Assign letter to officer/dept ── */
 
 router.post(
@@ -390,8 +494,10 @@ router.post(
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) throw ApiError.badRequest('Invalid document id.');
 
-    const { assignedEmployee, departmentId, instructions, dueDate } = req.body || {};
+    const { assignedEmployee, officerName, departmentId, instructions, dueDate } = req.body || {};
     const user = req.user!;
+    // Accept `officerName` (sent by LetterAssignmentDialog) as alias for `assignedEmployee`
+    const employeeName = assignedEmployee || officerName || null;
 
     const { rows: existing } = await query(`SELECT * FROM documents WHERE id = $1`, [id]);
     if (existing.length === 0) throw ApiError.notFound('Document not found.');
@@ -420,7 +526,7 @@ router.post(
         WHERE id = $1 RETURNING *`,
       [
         id,
-        assignedEmployee || null,
+        employeeName,
         deptId,
         deptName,
         instructions || null,
@@ -436,7 +542,7 @@ router.post(
       entityId: id,
       previousStatus: oldDoc.status,
       newStatus,
-      details: { assignedEmployee, departmentId: deptId, instructions, dueDate },
+      details: { assignedEmployee: employeeName, departmentId: deptId, instructions, dueDate },
     });
 
     const { rows: full } = await query(`${DOC_SELECT} WHERE d.id = $1`, [id]);
@@ -495,6 +601,106 @@ router.post(
     res.json({
       message: 'Letter dispatched successfully.',
       document: serializeDocument(full[0] as DocumentRow),
+    });
+  })
+);
+
+/* ─── POST /documents/:id/register-outgoing — Assign outgoing ref # ── */
+
+router.post(
+  '/:id/register-outgoing',
+  requireAuth,
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) throw ApiError.badRequest('Invalid document id.');
+
+    const user = req.user!;
+
+    const { rows: existing } = await query(`SELECT * FROM documents WHERE id = $1`, [id]);
+    if (existing.length === 0) throw ApiError.notFound('Document not found.');
+    const oldDoc = existing[0] as DocumentRow;
+
+    // Generate an outgoing registration number: OUT-YYYY-NNN
+    const year = new Date().getFullYear();
+    const { rows: countRows } = await query(
+      `SELECT COUNT(*)::int AS n FROM documents WHERE letter_type = 'OUTGOING' AND EXTRACT(YEAR FROM created_at) = $1`,
+      [year]
+    );
+    const n = (countRows[0] as { n: number }).n;
+    const registrationNumber = `OUT-${year}-${String(n).padStart(3, '0')}`;
+
+    await query(
+      `UPDATE documents
+          SET registration_number = $2,
+              status = 'REGISTERED',
+              updated_at = NOW()
+        WHERE id = $1`,
+      [id, registrationNumber]
+    );
+
+    await logAudit({
+      userId: user.id,
+      userName: user.full_name,
+      action: 'REGISTER_OUTGOING',
+      entityId: id,
+      previousStatus: oldDoc.status,
+      newStatus: 'REGISTERED',
+      details: { registrationNumber },
+    });
+
+    const { rows: full } = await query(`${DOC_SELECT} WHERE d.id = $1`, [id]);
+    res.json({
+      message: `Outgoing letter registered with number ${registrationNumber}.`,
+      letter: serializeDocument(full[0] as DocumentRow),
+    });
+  })
+);
+
+/* ─── POST /documents/:id/complete — Mark letter as completed ── */
+
+router.post(
+  '/:id/complete',
+  requireAuth,
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) throw ApiError.badRequest('Invalid document id.');
+
+    const { comment } = req.body || {};
+    const user = req.user!;
+
+    const { rows: existing } = await query(`SELECT * FROM documents WHERE id = $1`, [id]);
+    if (existing.length === 0) throw ApiError.notFound('Document not found.');
+    const oldDoc = existing[0] as DocumentRow;
+
+    await query(
+      `UPDATE documents SET status = 'COMPLETED', updated_at = NOW() WHERE id = $1`,
+      [id]
+    );
+
+    await logAudit({
+      userId: user.id,
+      userName: user.full_name,
+      action: 'COMPLETE_LETTER',
+      entityId: id,
+      previousStatus: oldDoc.status,
+      newStatus: 'COMPLETED',
+      details: { comment: comment || null },
+    });
+
+    if (oldDoc.author_id) {
+      await createNotification({
+        userId: oldDoc.author_id,
+        type: 'DOCUMENT_APPROVED',
+        message: `Your letter "${oldDoc.title}" has been marked as completed.`,
+        documentId: oldDoc.id,
+        documentTitle: oldDoc.title,
+      });
+    }
+
+    const { rows: full } = await query(`${DOC_SELECT} WHERE d.id = $1`, [id]);
+    res.json({
+      message: 'Letter marked as completed.',
+      letter: serializeDocument(full[0] as DocumentRow),
     });
   })
 );
@@ -742,6 +948,56 @@ router.get(
         isCurrent: v.is_current,
       }))
     );
+  })
+);
+
+/* ─── POST /documents/:id/attachments — alias for version upload ── */
+
+router.post(
+  '/:id/attachments',
+  requireAuth,
+  upload.single('file'),
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) throw ApiError.badRequest('Invalid document id.');
+    if (!req.file) throw ApiError.badRequest('No file provided.');
+
+    const user = req.user!;
+    const { rows } = await query(`SELECT * FROM documents WHERE id = $1`, [id]);
+    if (rows.length === 0) throw ApiError.notFound('Document not found.');
+
+    const countRes = await query(
+      `SELECT COUNT(*)::int AS n FROM document_versions WHERE document_id = $1`,
+      [id]
+    );
+    const versionNumber = `v${(countRes.rows[0] as { n: number }).n + 1}.0`;
+
+    const safeName = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const relativePath = `documents/${id}/${versionNumber}-${safeName}`;
+    await saveToLocalDisk(req.file.buffer, relativePath);
+
+    await query(`UPDATE document_versions SET is_current = false WHERE document_id = $1`, [id]);
+    await query(
+      `INSERT INTO document_versions
+         (document_id, version_number, uploaded_by, uploaded_by_id, date, file_size, file_name, storage_path, is_current)
+       VALUES ($1,$2,$3,$4,now(),$5,$6,$7,true)`,
+      [id, versionNumber, user.full_name, user.id, req.file.size, req.file.originalname, relativePath]
+    );
+    await query(
+      `UPDATE documents SET version = $2, file_name = $3, file_size = $4, file_type = $5, storage_path = $6, updated_at = now()
+        WHERE id = $1`,
+      [id, versionNumber, req.file.originalname, req.file.size, req.file.mimetype, relativePath]
+    );
+
+    await logAudit({
+      userId: user.id,
+      userName: user.full_name,
+      action: 'UPLOAD_ATTACHMENT',
+      entityId: id,
+      details: { versionNumber, fileName: req.file.originalname },
+    });
+
+    res.json({ message: 'Attachment uploaded successfully.', version: versionNumber });
   })
 );
 
