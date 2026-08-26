@@ -182,8 +182,8 @@ router.get(
       rows.map((r) => ({
         id: String(r.id),
         action: r.action,
-        document_title: r.document_title,
-        document_id: r.document_id != null ? String(r.document_id) : undefined,
+        letter_subject: r.document_title,
+        letter_id: r.document_id != null ? String(r.document_id) : undefined,
         user_name: r.user_name,
         timestamp: toIso(r.timestamp),
       }))
