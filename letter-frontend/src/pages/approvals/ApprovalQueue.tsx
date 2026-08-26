@@ -80,7 +80,7 @@ export const ApprovalQueue: React.FC = () => {
     if (!approveRequest) return;
     const doc = approveRequest.letter || {};
     const id = doc.id;
-    const subject = doc.subject || doc.title || 'Selected Letter';
+    const subject = doc.subject || 'Selected Letter';
     setIsProcessingAction(true);
     try {
       await approvalService.approveLetter({ letter_id: id });
@@ -107,7 +107,7 @@ export const ApprovalQueue: React.FC = () => {
     if (!rejectRequest) return;
     const doc = rejectRequest.letter || {};
     const id = doc.id;
-    const subject = doc.subject || doc.title || 'Selected Letter';
+    const subject = doc.subject || 'Selected Letter';
     setIsProcessingAction(true);
     try {
       await approvalService.rejectLetter({
@@ -137,7 +137,7 @@ export const ApprovalQueue: React.FC = () => {
     if (!requestChangesReq) return;
     const doc = requestChangesReq.letter || {};
     const id = doc.id;
-    const subject = doc.subject || doc.title || 'Selected Letter';
+    const subject = doc.subject || 'Selected Letter';
     setIsProcessingAction(true);
     try {
       await approvalService.requestChanges({
@@ -277,7 +277,7 @@ export const ApprovalQueue: React.FC = () => {
       <ConfirmDialog
         open={Boolean(approveRequest)}
         title="Approve Letter?"
-        description={`Are you sure you want to approve "${approveRequest?.letter?.subject || approveRequest?.letter?.title || 'this letter'}"? This will change the letter status to Approved.`}
+        description={`Are you sure you want to approve "${approveRequest?.letter?.subject || 'this letter'}"? This will change the letter status to Approved.`}
         confirmLabel="Approve Letter"
         cancelLabel="Cancel"
         onConfirm={handleConfirmApprove}

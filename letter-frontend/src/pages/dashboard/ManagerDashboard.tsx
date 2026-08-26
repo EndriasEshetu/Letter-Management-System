@@ -72,7 +72,7 @@ export const ManagerDashboard: React.FC = () => {
         {/* Left 2 Cols: Letters Requiring Approval */}
         <div className="lg:col-span-2">
           <RecentDocumentsTable
-            documents={data.pendingApprovals}
+            documents={data.pendingApprovals || []}
             title="Letters Pending Approval"
             subtitle="Letters awaiting sign-off and verification"
             emptyTitle="No Pending Approvals"
@@ -83,7 +83,7 @@ export const ManagerDashboard: React.FC = () => {
         {/* Right 1 Col: Department Recent Activities */}
         <div>
           <RecentActivityList
-            activities={data.recentActivities}
+            activities={data.recentActivities || []}
             title="Unit Activity Stream"
           />
         </div>

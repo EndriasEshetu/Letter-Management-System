@@ -3,9 +3,6 @@ import {
   ApprovalRequest,
   ApprovalMetrics,
   ApprovalActivity,
-  ApprovePayload,
-  RejectPayload,
-  RequestChangesPayload,
   ApprovalFilterTab,
 } from '@/types/approval';
 
@@ -43,7 +40,7 @@ export const approvalService = {
    */
   async approveRequest(
     documentId: string,
-    payload?: ApprovePayload
+    payload?: { comment?: string }
   ): Promise<{ message: string }> {
     const response = await api.post<{ message: string }>(
       `/approvals/${documentId}/approve`,
@@ -57,7 +54,7 @@ export const approvalService = {
    */
   async rejectRequest(
     documentId: string,
-    payload: RejectPayload
+    payload: { reason: string }
   ): Promise<{ message: string }> {
     const response = await api.post<{ message: string }>(
       `/approvals/${documentId}/reject`,
@@ -87,7 +84,7 @@ export const approvalService = {
    */
   async requestChanges(
     arg1: string | { letter_id?: string; documentId?: string; reason: string },
-    arg2?: RequestChangesPayload
+    arg2?: { reason: string }
   ): Promise<{ message: string }> {
     if (typeof arg1 === 'string') {
       const response = await api.post<{ message: string }>(

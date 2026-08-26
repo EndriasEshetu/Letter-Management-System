@@ -72,7 +72,7 @@ export const AdminDashboard: React.FC = () => {
         {/* Left 2 Cols: System Activity Stream */}
         <div className="lg:col-span-2">
           <RecentActivityList
-            activities={data.recentActivities}
+            activities={data.recentActivities || []}
             title="Letter Operations & System Audit Trail"
           />
         </div>
@@ -86,24 +86,24 @@ export const AdminDashboard: React.FC = () => {
               <div>
                 <div className="flex justify-between font-medium text-[#292A27] mb-1">
                   <span>Letter Vault Storage Used</span>
-                  <span>{data.systemHealth.storageUsedPercent}%</span>
+                  <span>{data.systemHealth?.storageUsedPercent ?? 0}%</span>
                 </div>
                 <div className="w-full bg-[#D8D7D1] h-2 rounded-full overflow-hidden">
                   <div
                     className="bg-[#526A55] h-full rounded-full transition-all duration-300"
-                    style={{ width: `${data.systemHealth.storageUsedPercent}%` }}
+                    style={{ width: `${data.systemHealth?.storageUsedPercent ?? 0}%` }}
                   />
                 </div>
               </div>
 
               <div className="pt-2 border-t border-[#D8D7D1]/60 flex items-center justify-between">
                 <span className="text-[#6B6A64]">Active User Sessions</span>
-                <span className="font-semibold text-[#292A27]">{data.systemHealth.activeSessions}</span>
+                <span className="font-semibold text-[#292A27]">{data.systemHealth?.activeSessions ?? 0}</span>
               </div>
 
               <div className="pt-2 border-t border-[#D8D7D1]/60 flex items-center justify-between">
                 <span className="text-[#6B6A64]">System Uptime</span>
-                <span className="font-semibold text-[#4A6B4E]">{data.systemHealth.uptimePercent}%</span>
+                <span className="font-semibold text-[#4A6B4E]">{data.systemHealth?.uptimePercent ?? 0}%</span>
               </div>
             </div>
           </Card>

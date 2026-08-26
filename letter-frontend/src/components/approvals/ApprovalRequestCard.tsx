@@ -48,8 +48,8 @@ export const ApprovalRequestCard: React.FC<ApprovalRequestCardProps> = ({
   const { submitter_name, submitter_role, submitter_department, priority, submitted_at, page_count } = request;
 
   const isHighPriority = priority === 'HIGH';
-  const subject = letter.subject || letter.title || 'Untitled Letter';
-  const referenceNumber = letter.referenceNumber || letter.documentNumber || 'N/A';
+  const subject = letter.subject || 'Untitled Letter';
+  const referenceNumber = letter.referenceNumber || 'N/A';
 
   return (
     <div className="bg-[#ECEAE3] border border-[#D8D7D1] rounded-2xl p-5 sm:p-6 space-y-4 hover:border-[#526A55]/40 transition-all duration-200">

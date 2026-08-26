@@ -13,10 +13,10 @@ export const auditService = {
     const params: Record<string, any> = {};
     if (filters?.search) params.search = filters.search;
     if (filters?.action && filters.action !== 'ALL') params.action = filters.action;
-    if (filters?.user_id && filters.user_id !== 'ALL') params.user_id = filters.user_id;
-    if (filters?.entity_type && filters.entity_type !== 'ALL') params.entity_type = filters.entity_type;
-    if (filters?.start_date) params.start_date = filters.start_date;
-    if (filters?.end_date) params.end_date = filters.end_date;
+    if (filters?.userId && filters.userId !== 'ALL') params.user_id = filters.userId;
+    if (filters?.entityType && filters.entityType !== 'ALL') params.entity_type = filters.entityType;
+    if (filters?.startDate) params.start_date = filters.startDate;
+    if (filters?.endDate) params.end_date = filters.endDate;
     if (filters?.page) params.page = filters.page;
     if (filters?.limit) params.limit = filters.limit;
 

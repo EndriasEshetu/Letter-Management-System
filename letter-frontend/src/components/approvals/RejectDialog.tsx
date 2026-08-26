@@ -43,7 +43,7 @@ export const RejectDialog: React.FC<RejectDialogProps> = ({
   if (!request) return null;
 
   const doc = request?.letter || {};
-  const subject = doc.subject || doc.title || 'Selected Letter';
+  const subject = doc.subject || 'Selected Letter';
 
   return (
     <Modal
