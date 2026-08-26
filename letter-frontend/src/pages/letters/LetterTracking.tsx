@@ -95,7 +95,7 @@ export const LetterTracking: React.FC = () => {
             referenceNumber={letter.referenceNumber}
             subject={letter.subject}
             status={letter.status}
-            currentDepartment={letter.department_name}
+            currentLocation={letter.currentLocation || letter.department_name}
             responsibleUser={letter.assignedEmployee || letter.created_by}
             dueDate={letter.dueDate}
             priority={letter.priority}

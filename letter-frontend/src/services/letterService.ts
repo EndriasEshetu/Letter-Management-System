@@ -27,6 +27,7 @@ const MOCK_LETTERS: LetterItem[] = [
     category: 'Finance / Budget',
     department_name: 'ICT Infrastructure Development Directorate',
     currentDepartment: 'ICT Infrastructure Development Directorate',
+    currentLocation: 'ICT Infrastructure Development Directorate',
     currentResponsibleUser: 'Endrias Eshetu (IT Officer)',
     currentTask: 'Prepare Outgoing Response Letter',
     originatingDepartment: 'Ministry of Finance',
@@ -137,6 +138,7 @@ const MOCK_LETTERS: LetterItem[] = [
     category: 'Finance / Budget',
     department_name: 'App Development Directorate',
     currentDepartment: 'Registry & Dispatch',
+    currentLocation: 'Central Registry',
     currentResponsibleUser: 'Registry Dispatch Officer',
     currentTask: 'Dispatch Official Letter to Ministry of Finance',
     sender: 'Director General, SITA',
@@ -239,7 +241,10 @@ const MOCK_LETTERS: LetterItem[] = [
     targetDepartment: 'ICT Infrastructure Development Directorate',
     originatingDepartment: 'App Development Directorate',
     currentDepartment: 'ICT Infrastructure Development Directorate',
+    currentLocation: 'ICT Infrastructure Development Directorate',
     currentResponsibleUser: 'Infrastructure Manager',
+    fromDirectorate: 'App Development Directorate',
+    toDirectorate: 'ICT Infrastructure Development Directorate',
     currentTask: 'Assign Infrastructure Specialist',
     sender: 'App Development Lead (Endrias Eshetu)',
     senderOrganization: 'SITA - App Development Directorate',
@@ -317,6 +322,7 @@ const MOCK_LETTERS: LetterItem[] = [
     category: 'Events / International',
     department_name: 'Science and Technology Directorate',
     currentDepartment: 'Archive',
+    currentLocation: 'Archive',
     currentResponsibleUser: 'System Archive',
     currentTask: 'Completed & Filed',
     sender: 'Commissioner for Infrastructure & Energy',
@@ -358,6 +364,7 @@ const MOCK_LETTERS: LetterItem[] = [
     category: 'Legal / Audit',
     department_name: 'Unassigned (Awaiting Main Admin Routing)',
     currentDepartment: 'Main Administrator Office',
+    currentLocation: 'Main Administration',
     currentResponsibleUser: 'Main Administrator',
     currentTask: 'Determine Destination Department',
     sender: 'Deputy Auditor General',
@@ -403,6 +410,23 @@ export const letterService = {
     } catch (error: any) {
       if (error.code === 'ERR_NETWORK' || !error.response) {
         let filtered = [...inMemoryLetters];
+
+        if (params?.my_letters) {
+          filtered = filtered.filter(
+            (l) =>
+              l.assignedEmployee === 'Current User' ||
+              l.created_by === 'Current User' ||
+              l.assignment?.assignedUser === 'Current User'
+          );
+        }
+
+        if (params?.assignedToMe) {
+          filtered = filtered.filter(
+            (l) =>
+              l.assignedEmployee === 'Current User' ||
+              l.assignment?.assignedUser === 'Current User'
+          );
+        }
 
         if (params?.direction && params.direction !== 'ALL') {
           filtered = filtered.filter((l) => l.direction === params.direction);
@@ -962,6 +986,108 @@ export const letterService = {
         if (target) {
           target.status = 'APPROVED';
           return { message: 'Letter restored from archive', letter: target };
+        }
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Approve a letter (Directorate Manager / Administrator)
+   */
+  async approveLetter(id: string, comment?: string): Promise<{ message: string; letter: LetterItem }> {
+    try {
+      const response = await api.post<{ message: string; letter: LetterItem }>(
+        `/letters/${id}/approve`,
+        { comment }
+      );
+      return response.data;
+    } catch (error: any) {
+      if (error.code === 'ERR_NETWORK' || !error.response) {
+        const target = inMemoryLetters.find((l) => l.id === id);
+        if (target) {
+          const prevStatus = target.status;
+          target.status = 'APPROVED';
+          if (!target.movements) target.movements = [];
+          target.movements.unshift({
+            id: `mov-${Date.now()}`,
+            actorName: 'Directorate Manager',
+            actorRole: 'DEPARTMENT_MANAGER',
+            action: 'Approved Letter',
+            timestamp: new Date().toLocaleString(),
+            previousStatus: prevStatus,
+            newStatus: 'APPROVED',
+            comment,
+          });
+          return { message: 'Letter approved successfully.', letter: target };
+        }
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Reject a letter (Directorate Manager / Administrator)
+   */
+  async rejectLetter(id: string, reason: string): Promise<{ message: string; letter: LetterItem }> {
+    try {
+      const response = await api.post<{ message: string; letter: LetterItem }>(
+        `/letters/${id}/reject`,
+        { reason }
+      );
+      return response.data;
+    } catch (error: any) {
+      if (error.code === 'ERR_NETWORK' || !error.response) {
+        const target = inMemoryLetters.find((l) => l.id === id);
+        if (target) {
+          const prevStatus = target.status;
+          target.status = 'CHANGES_REQUESTED';
+          if (!target.movements) target.movements = [];
+          target.movements.unshift({
+            id: `mov-${Date.now()}`,
+            actorName: 'Directorate Manager',
+            actorRole: 'DEPARTMENT_MANAGER',
+            action: 'Rejected / Returned for Changes',
+            timestamp: new Date().toLocaleString(),
+            previousStatus: prevStatus,
+            newStatus: 'CHANGES_REQUESTED',
+            comment: reason,
+          });
+          return { message: 'Letter rejected and returned for changes.', letter: target };
+        }
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Request changes on a pending letter (Manager / Admin)
+   */
+  async requestChanges(id: string, instructions: string): Promise<{ message: string; letter: LetterItem }> {
+    try {
+      const response = await api.post<{ message: string; letter: LetterItem }>(
+        `/letters/${id}/request-changes`,
+        { instructions }
+      );
+      return response.data;
+    } catch (error: any) {
+      if (error.code === 'ERR_NETWORK' || !error.response) {
+        const target = inMemoryLetters.find((l) => l.id === id);
+        if (target) {
+          const prevStatus = target.status;
+          target.status = 'CHANGES_REQUESTED';
+          if (!target.movements) target.movements = [];
+          target.movements.unshift({
+            id: `mov-${Date.now()}`,
+            actorName: 'Reviewer',
+            actorRole: 'DEPARTMENT_MANAGER',
+            action: 'Requested Changes',
+            timestamp: new Date().toLocaleString(),
+            previousStatus: prevStatus,
+            newStatus: 'CHANGES_REQUESTED',
+            comment: instructions,
+          });
+          return { message: 'Changes requested.', letter: target };
         }
       }
       throw error;

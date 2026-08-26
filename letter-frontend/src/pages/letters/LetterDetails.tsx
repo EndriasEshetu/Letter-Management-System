@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useLetterPermissions } from '@/hooks/useLetterPermissions';
 import letterService from '@/services/letterService';
 import { LetterItem, AttachmentItem, LetterDirection } from '@/types/letter';
 import { useToast } from '@/components/common/Toast';
@@ -13,7 +14,6 @@ import LoadingSpinner from '@/components/common/LoadingSpinner';
 import ErrorState from '@/components/common/ErrorState';
 import EmptyState from '@/components/common/EmptyState';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
-import Dropdown, { DropdownItem } from '@/components/common/Dropdown';
 import {
   UploadAttachmentModal,
   LetterTimeline,
@@ -25,32 +25,26 @@ import {
 } from '@/components/letters';
 import CommentSection from '@/components/comments/CommentSection';
 
-/* ─── Helper Components ─────────────────────────────────────── */
+/* ─── Helper sub-components ──────────────────────────────────── */
 
 const confidentialityStyles: Record<string, string> = {
-  PUBLIC: 'bg-[#4A6B4E]/10 text-[#4A6B4E] border-[#4A6B4E]/20',
-  INTERNAL: 'bg-[#526A55]/10 text-[#526A55] border-[#526A55]/20',
+  PUBLIC:       'bg-[#4A6B4E]/10 text-[#4A6B4E] border-[#4A6B4E]/20',
+  INTERNAL:     'bg-[#526A55]/10 text-[#526A55] border-[#526A55]/20',
   CONFIDENTIAL: 'bg-[#C48D3F]/10 text-[#8A5D19] border-[#C48D3F]/20',
-  RESTRICTED: 'bg-[#8B3232]/10 text-[#8B3232] border-[#8B3232]/20',
+  RESTRICTED:   'bg-[#8B3232]/10 text-[#8B3232] border-[#8B3232]/20',
 };
-
 const ConfidentialityBadge: React.FC<{ level: string }> = ({ level }) => (
-  <span
-    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
-      confidentialityStyles[level] || 'bg-[#D8D7D1]/60 text-[#6B6A64]'
-    }`}
-  >
+  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${confidentialityStyles[level] || 'bg-[#D8D7D1]/60 text-[#6B6A64]'}`}>
     {level || 'Not specified'}
   </span>
 );
 
 const priorityStyles: Record<string, string> = {
   URGENT: 'bg-[#8B3232]/12 text-[#8B3232] border-[#8B3232]/20',
-  HIGH: 'bg-[#C48D3F]/12 text-[#8A5D19] border-[#C48D3F]/20',
+  HIGH:   'bg-[#C48D3F]/12 text-[#8A5D19] border-[#C48D3F]/20',
   NORMAL: 'bg-[#526A55]/12 text-[#3E5140] border-[#526A55]/20',
-  LOW: 'bg-[#D8D7D1]/60 text-[#6B6A64] border-[#D8D7D1]',
+  LOW:    'bg-[#D8D7D1]/60 text-[#6B6A64] border-[#D8D7D1]',
 };
-
 const PriorityBadge: React.FC<{ priority: string }> = ({ priority }) => (
   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${priorityStyles[priority] || priorityStyles.NORMAL}`}>
     {priority}
@@ -60,9 +54,8 @@ const PriorityBadge: React.FC<{ priority: string }> = ({ priority }) => (
 const directionStyles: Record<string, { bg: string; text: string; label: string; icon: string }> = {
   INCOMING: { bg: 'bg-[#526A55]/10', text: 'text-[#526A55]', label: 'Incoming Letter', icon: '📥' },
   OUTGOING: { bg: 'bg-[#C48D3F]/10', text: 'text-[#8A5D19]', label: 'Outgoing Letter', icon: '📤' },
-  INTERNAL: { bg: 'bg-[#6B5A8E]/10', text: 'text-[#4A3A6B]', label: 'Internal Memo', icon: '🏢' },
+  INTERNAL: { bg: 'bg-[#6B5A8E]/10', text: 'text-[#4A3A6B]', label: 'Internal Memo',   icon: '🏢' },
 };
-
 const DirectionBadge: React.FC<{ direction?: LetterDirection | string }> = ({ direction }) => {
   const d = directionStyles[direction || 'INCOMING'] || directionStyles.INCOMING;
   return (
@@ -105,7 +98,271 @@ const AttachmentTimelineItem: React.FC<{ attachment: AttachmentItem; isLast: boo
   </div>
 );
 
-/* ─── Main Component ────────────────────────────────────────── */
+/* ─── Role-specific Action Panel ─────────────────────────────── */
+
+interface ActionPanelProps {
+  role: string | undefined;
+  letter: LetterItem;
+  onRoute:     () => void;
+  onAssign:    () => void;
+  onApprove:   () => void;
+  onReject:    () => void;
+  onRequestChanges: () => void;
+  onDispatch:  () => void;
+  onComplete:  () => void;
+  onArchive:   () => void;
+  onEdit:      () => void;
+  onUpload:    () => void;
+  onSubmit:    () => void;
+  onRespond:   () => void;
+  onMarkComplete: () => void;
+  onAddNote:   () => void;
+  isSubmitting: boolean;
+}
+
+const RoleActionPanel: React.FC<ActionPanelProps> = ({
+  role, letter,
+  onRoute, onAssign, onApprove, onReject, onRequestChanges, onDispatch, onComplete, onArchive,
+  onEdit, onUpload, onSubmit, onRespond, onMarkComplete, onAddNote,
+  isSubmitting,
+}) => {
+  const perms = useLetterPermissions(letter);
+
+  if (role === 'ADMIN') {
+    return (
+      <Card className="border-l-4 border-l-[#292A27]">
+        <h3 className="text-sm font-bold text-[#292A27] mb-4 flex items-center space-x-2">
+          <span>🏛️</span>
+          <span>Administrative Actions</span>
+        </h3>
+        <div className="space-y-2">
+          {perms.canRouteLetter && (
+            <Button variant="primary" size="sm" className="w-full" onClick={onRoute}>
+              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+              Route to Directorate
+            </Button>
+          )}
+          {perms.canAssignLetter && (
+            <Button variant="primary" size="sm" className="w-full" onClick={onAssign}>
+              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+              Assign Officer
+            </Button>
+          )}
+          {perms.canApproveLetter && (
+            <Button variant="primary" size="sm" className="w-full" onClick={onApprove}>
+              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Approve
+            </Button>
+          )}
+          {perms.canRecordDispatch && (
+            <Button variant="secondary" size="sm" className="w-full" onClick={onDispatch}>
+              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
+              Record Dispatch
+            </Button>
+          )}
+          {perms.canMarkComplete && (
+            <Button variant="secondary" size="sm" className="w-full" onClick={onComplete}>
+              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Mark Completed
+            </Button>
+          )}
+          {perms.canArchiveLetter && (
+            <Button variant="outline" size="sm" className="w-full text-[#8B3232] border-[#8B3232]/30 hover:bg-[#8B3232]/05" onClick={onArchive}>
+              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v1a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+              </svg>
+              Archive Letter
+            </Button>
+          )}
+          {!perms.canRouteLetter && !perms.canAssignLetter && !perms.canApproveLetter && !perms.canRecordDispatch && !perms.canMarkComplete && !perms.canArchiveLetter && (
+            <p className="text-xs text-[#8A8983] text-center py-2">No administrative actions required at this stage.</p>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
+  /* ── REGISTRY OFFICER Action Panel ────────────────────────── */
+  if (role === 'REGISTRY_OFFICER') {
+    return (
+      <Card className="border-l-4 border-l-[#526A55]">
+        <h3 className="text-sm font-bold text-[#292A27] mb-4 flex items-center space-x-2">
+          <span>📋</span>
+          <span>Registry Actions</span>
+        </h3>
+        <div className="space-y-2">
+          {perms.canRegisterLetter && (
+            <Button variant="primary" size="sm" className="w-full" onClick={onRoute}>
+              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Register & Classify
+            </Button>
+          )}
+          {perms.canRouteLetter && (
+            <Button variant="primary" size="sm" className="w-full" onClick={onRoute}>
+              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+              Route to Administrator
+            </Button>
+          )}
+          {perms.canUploadAttachment && (
+            <Button variant="secondary" size="sm" className="w-full" onClick={onUpload}>
+              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              Upload / Replace Scan
+            </Button>
+          )}
+          {perms.canRecordDispatch && (
+            <Button variant="primary" size="sm" className="w-full" onClick={onDispatch}>
+              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
+              Dispatch Letter
+            </Button>
+          )}
+          {!perms.canRegisterLetter && !perms.canRouteLetter && !perms.canRecordDispatch && (
+            <p className="text-xs text-[#8A8983] text-center py-2">No registry actions available at this stage.</p>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
+  /* ── DIRECTORATE MANAGER Action Panel ─────────────────────── */
+  if (role === 'DEPARTMENT_MANAGER') {
+    return (
+      <Card className="border-l-4 border-l-[#C48D3F]">
+        <h3 className="text-sm font-bold text-[#292A27] mb-4 flex items-center space-x-2">
+          <span>🔍</span>
+          <span>Review Actions</span>
+        </h3>
+        <div className="space-y-2">
+          {perms.canApproveLetter && (
+            <Button variant="primary" size="sm" className="w-full" onClick={onApprove}>
+              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Approve Letter
+            </Button>
+          )}
+          {perms.canRequestChanges && (
+            <Button variant="secondary" size="sm" className="w-full" onClick={onRequestChanges}>
+              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Request Changes
+            </Button>
+          )}
+          {perms.canRejectLetter && (
+            <Button variant="outline" size="sm" className="w-full text-[#8B3232] border-[#8B3232]/30" onClick={onReject}>
+              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Reject Letter
+            </Button>
+          )}
+          {perms.canAssignLetter && (
+            <Button variant="secondary" size="sm" className="w-full" onClick={onAssign}>
+              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+              Assign to Officer
+            </Button>
+          )}
+          {perms.canMarkComplete && (
+            <Button variant="outline" size="sm" className="w-full" onClick={onComplete}>
+              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Mark Completed
+            </Button>
+          )}
+          {!perms.canApproveLetter && !perms.canRejectLetter && !perms.canAssignLetter && !perms.canMarkComplete && (
+            <p className="text-xs text-[#8A8983] text-center py-2">No review actions available at this stage.</p>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
+  /* ── EMPLOYEE / OFFICER Action Panel ──────────────────────── */
+  return (
+    <Card className="border-l-4 border-l-[#6B5A8E]">
+      <h3 className="text-sm font-bold text-[#292A27] mb-4 flex items-center space-x-2">
+        <span>✏️</span>
+        <span>Work Actions</span>
+      </h3>
+      <div className="space-y-2">
+        {perms.canEditLetter && (
+          <Button variant="primary" size="sm" className="w-full" onClick={onEdit}>
+            <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Edit Letter
+          </Button>
+        )}
+        {perms.canSubmitLetter && (
+          <Button variant="primary" size="sm" className="w-full" onClick={onSubmit} isLoading={isSubmitting}>
+            <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Submit for Review
+          </Button>
+        )}
+        {perms.canRespondToLetter && (
+          <Button variant="secondary" size="sm" className="w-full" onClick={onRespond}>
+            <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+            </svg>
+            Respond to Letter
+          </Button>
+        )}
+        {perms.canUploadAttachment && (
+          <Button variant="secondary" size="sm" className="w-full" onClick={onUpload}>
+            <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            Upload Attachment
+          </Button>
+        )}
+        {perms.canAddProcessingNote && (
+          <Button variant="outline" size="sm" className="w-full" onClick={onAddNote}>
+            <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Add Processing Note
+          </Button>
+        )}
+        {perms.canMarkComplete && (
+          <Button variant="outline" size="sm" className="w-full" onClick={onMarkComplete}>
+            <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Mark Task Complete
+          </Button>
+        )}
+        {!perms.canEditLetter && !perms.canSubmitLetter && !perms.canRespondToLetter && !perms.canMarkComplete && (
+          <p className="text-xs text-[#8A8983] text-center py-2">No work actions available at this stage.</p>
+        )}
+      </div>
+    </Card>
+  );
+};
+
+/* ─── Main Component ─────────────────────────────────────────── */
 
 export const LetterDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -118,15 +375,20 @@ export const LetterDetails: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Dialog states
+  // Dialog / modal states
   const [isUploadAttachmentOpen, setIsUploadAttachmentOpen] = useState(false);
-  const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
-  const [isArchiving, setIsArchiving] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRoutingOpen, setIsRoutingOpen] = useState(false);
-  const [isAssignmentOpen, setIsAssignmentOpen] = useState(false);
-  const [isDispatchOpen, setIsDispatchOpen] = useState(false);
+  const [isArchiveDialogOpen, setIsArchiveDialogOpen]   = useState(false);
+  const [isArchiving, setIsArchiving]                   = useState(false);
+  const [isSubmitting, setIsSubmitting]                 = useState(false);
+  const [isRoutingOpen, setIsRoutingOpen]               = useState(false);
+  const [isAssignmentOpen, setIsAssignmentOpen]         = useState(false);
+  const [isDispatchOpen, setIsDispatchOpen]             = useState(false);
+  const [isRejectDialogOpen, setIsRejectDialogOpen]     = useState(false);
+  const [isRequestChangesOpen, setIsRequestChangesOpen] = useState(false);
 
+  const role = user?.role;
+
+  /* ─── Data fetching ──────────────────────────────────────── */
   const fetchLetter = useCallback(async () => {
     if (!id) return;
     setIsLoading(true);
@@ -145,9 +407,7 @@ export const LetterDetails: React.FC = () => {
     }
   }, [id]);
 
-  useEffect(() => {
-    fetchLetter();
-  }, [fetchLetter]);
+  useEffect(() => { fetchLetter(); }, [fetchLetter]);
 
   /* ─── Actions ─────────────────────────────────────────────── */
 
@@ -167,7 +427,7 @@ export const LetterDetails: React.FC = () => {
     setIsArchiving(true);
     try {
       await letterService.archiveLetter(letter.id);
-      addToast({ type: 'success', title: 'Letter Archived', message: `"${letter.subject}" has been moved to archives.` });
+      addToast({ type: 'success', title: 'Letter Archived', message: `"${letter.subject}" has been archived.` });
       setIsArchiveDialogOpen(false);
       fetchLetter();
     } catch (err: any) {
@@ -182,12 +442,23 @@ export const LetterDetails: React.FC = () => {
     setIsSubmitting(true);
     try {
       await letterService.submitForApproval(letter.id);
-      addToast({ type: 'success', title: 'Submitted for Approval', message: `"${letter.subject}" has been submitted for review and approval.` });
+      addToast({ type: 'success', title: 'Submitted for Review', message: `"${letter.subject}" has been submitted.` });
       fetchLetter();
     } catch (err: any) {
-      addToast({ type: 'error', title: 'Submission Failed', message: err.message || 'Could not submit letter for approval.' });
+      addToast({ type: 'error', title: 'Submission Failed', message: err.message || 'Could not submit letter.' });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!letter) return;
+    try {
+      await letterService.approveLetter(letter.id);
+      addToast({ type: 'success', title: 'Letter Approved', message: `"${letter.subject}" has been approved.` });
+      fetchLetter();
+    } catch (err: any) {
+      addToast({ type: 'error', title: 'Approval Failed', message: err.message || 'Could not approve letter.' });
     }
   };
 
@@ -195,140 +466,14 @@ export const LetterDetails: React.FC = () => {
     if (!letter) return;
     try {
       await letterService.completeLetter(letter.id);
-      addToast({ type: 'success', title: 'Letter Completed', message: `"${letter.subject}" has been marked as completed.` });
+      addToast({ type: 'success', title: 'Marked Completed', message: `"${letter.subject}" is now completed.` });
       fetchLetter();
     } catch (err: any) {
-      addToast({ type: 'error', title: 'Completion Failed', message: err.message || 'Could not complete letter.' });
+      addToast({ type: 'error', title: 'Failed', message: err.message || 'Could not complete letter.' });
     }
   };
 
-  /* ─── Role-Based Workflow Actions ─────────────────────────── */
-
-  const role = user?.role;
-  const st = letter?.status?.toUpperCase();
-  const dir = letter?.direction?.toUpperCase();
-
-  // Determine workflow action visibility based on role, direction, and status
-  const canRoute = role === 'ADMIN' && (st === 'REGISTERED' || st === 'RECEIVED') && (dir === 'INCOMING' || dir === 'INTERNAL');
-  const canAssign = role === 'DEPARTMENT_MANAGER' && (st === 'RECEIVED' || st === 'IN_PROGRESS') && (dir === 'INCOMING' || dir === 'INTERNAL');
-  const canSubmitForReview = (role === 'EMPLOYEE') && (st === 'DRAFT' || st === 'IN_PROGRESS' || st === 'CHANGES_REQUESTED');
-  const canApproveReject = (role === 'DEPARTMENT_MANAGER' || role === 'ADMIN') && (st === 'PENDING_REVIEW' || st === 'PENDING_APPROVAL');
-  const canDispatch = (role === 'ADMIN' || role === 'REGISTRY_OFFICER') && (st === 'APPROVED' || st === 'READY_FOR_DISPATCH') && (dir === 'OUTGOING' || dir === 'INCOMING');
-  const canComplete = (role === 'ADMIN' || role === 'DEPARTMENT_MANAGER') && (st === 'DISPATCHED' || st === 'DELIVERED' || st === 'IN_PROGRESS');
-  const canArchive = st !== 'ARCHIVED' && (role === 'ADMIN' || role === 'DEPARTMENT_MANAGER');
-  const canUploadAttachment = st !== 'ARCHIVED' && st !== 'COMPLETED';
-
-  // Build workflow action buttons
-  const workflowActions: { label: string; variant: 'primary' | 'secondary' | 'outline'; icon: React.ReactNode; onClick: () => void; loading?: boolean }[] = [];
-
-  if (canRoute) {
-    workflowActions.push({
-      label: 'Route to Department',
-      variant: 'primary',
-      icon: (
-        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-        </svg>
-      ),
-      onClick: () => setIsRoutingOpen(true),
-    });
-  }
-
-  if (canAssign) {
-    workflowActions.push({
-      label: 'Assign Officer',
-      variant: 'primary',
-      icon: (
-        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-        </svg>
-      ),
-      onClick: () => setIsAssignmentOpen(true),
-    });
-  }
-
-  if (canSubmitForReview) {
-    workflowActions.push({
-      label: dir === 'OUTGOING' ? 'Submit for Manager Review' : 'Submit Response for Review',
-      variant: 'primary',
-      icon: (
-        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
-      onClick: handleSubmitForApproval,
-      loading: isSubmitting,
-    });
-  }
-
-  if (canApproveReject) {
-    workflowActions.push({
-      label: 'Approve',
-      variant: 'primary',
-      icon: (
-        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-        </svg>
-      ),
-      onClick: handleSubmitForApproval, // Reuses submit flow for demo
-    });
-  }
-
-  if (canDispatch) {
-    workflowActions.push({
-      label: 'Record Dispatch',
-      variant: 'primary',
-      icon: (
-        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-        </svg>
-      ),
-      onClick: () => setIsDispatchOpen(true),
-    });
-  }
-
-  if (canComplete) {
-    workflowActions.push({
-      label: 'Mark as Completed',
-      variant: 'secondary',
-      icon: (
-        <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
-      onClick: handleComplete,
-    });
-  }
-
-  // More (overflow) actions
-  const moreActions: DropdownItem[] = [];
-  if (canUploadAttachment) {
-    moreActions.push({
-      label: 'Upload Attachment',
-      onClick: () => setIsUploadAttachmentOpen(true),
-      icon: (
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-        </svg>
-      ),
-    });
-  }
-  if (canArchive) {
-    moreActions.push({
-      label: 'Archive Letter',
-      onClick: () => setIsArchiveDialogOpen(true),
-      danger: true,
-      dividerBefore: true,
-      icon: (
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M5 8h14M5 8a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v1a2 2 0 01-2 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-        </svg>
-      ),
-    });
-  }
-
-  /* ─── Loading / Error ─────────────────────────────────────── */
-
+  /* ─── Loading / Error states ─────────────────────────────── */
   if (isLoading) {
     return (
       <div className="py-20 flex justify-center items-center">
@@ -336,11 +481,9 @@ export const LetterDetails: React.FC = () => {
       </div>
     );
   }
-
   if (error) {
     return <ErrorState title="Letter Unavailable" description={error} onRetry={fetchLetter} />;
   }
-
   if (!letter) {
     return (
       <EmptyState
@@ -352,11 +495,21 @@ export const LetterDetails: React.FC = () => {
     );
   }
 
-  /* ─── Render ──────────────────────────────────────────────── */
+  const dir = letter.direction?.toUpperCase();
+  const st  = letter.status?.toUpperCase();
 
+  /* ─── Compute current location label ─────────────────────── */
+  const currentLocationLabel = letter.currentLocation ||
+    (letter.currentDepartment?.toLowerCase().includes('registry') || letter.currentDepartment?.toLowerCase().includes('dispatch')
+      ? 'Central Registry'
+      : letter.currentDepartment?.toLowerCase().includes('admin')
+        ? 'Main Administration'
+        : letter.currentDepartment || 'Main Administration');
+
+  /* ─── Render ─────────────────────────────────────────────── */
   return (
     <div className="space-y-6">
-      {/* Back Navigation */}
+      {/* Back */}
       <button
         type="button"
         onClick={() => navigate('/letters')}
@@ -368,95 +521,72 @@ export const LetterDetails: React.FC = () => {
         <span>Back to Letters</span>
       </button>
 
-      {/* ─── Page Header ────────────────────────────────────────── */}
+      {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
         <div className="space-y-2">
           <div className="flex items-center space-x-3 flex-wrap gap-y-2">
-            <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[#292A27]">
-              {letter.subject}
-            </h1>
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[#292A27]">{letter.subject}</h1>
             <Badge status={letter.status as LetterStatus} dot />
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm text-[#6B6A64] font-mono font-medium">{letter.referenceNumber}</span>
             <DirectionBadge direction={letter.direction} />
             {letter.priority && <PriorityBadge priority={letter.priority} />}
+            {letter.registrationNumber && letter.registrationNumber !== letter.referenceNumber && (
+              <span className="text-xs font-mono px-2 py-0.5 rounded-md bg-[#526A55]/10 text-[#526A55]">
+                {letter.registrationNumber}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center space-x-2 flex-wrap gap-y-2">
-          {/* Primary workflow actions */}
-          {workflowActions.map((action, i) => (
-            <Button key={i} variant={action.variant} size="sm" onClick={action.onClick} isLoading={action.loading}>
-              {action.icon}
-              {action.label}
-            </Button>
-          ))}
-
+        {/* Download always visible */}
+        <div className="flex items-center space-x-2">
           <Button variant="secondary" size="sm" onClick={handleDownload}>
             <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
             Download
           </Button>
-
-          {moreActions.length > 0 && (
-            <Dropdown
-              align="right"
-              items={moreActions}
-              trigger={
-                <button
-                  type="button"
-                  className="px-3 py-2 text-sm font-medium rounded-xl border border-[#292A27]/10 bg-[#ECEAE3] text-[#292A27] hover:bg-[#D8D7D1]/60 transition-colors focus:outline-none"
-                >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                  </svg>
-                </button>
-              }
-            />
+          {role === 'ADMIN' && (
+            <Button variant="outline" size="sm" onClick={() => navigate(`/letters/track?ref=${letter.referenceNumber}`)}>
+              Track
+            </Button>
           )}
         </div>
       </div>
 
-      {/* ─── Main Grid Content ──────────────────────────────────── */}
+      {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left 2/3 */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Letter Lifecycle Timeline */}
+          {/* Timeline */}
           <Card>
             <LetterTimeline
               currentStatus={letter.status}
               direction={letter.direction}
               timestamps={{
-                created_at: letter.created_at,
+                created_at:   letter.created_at,
                 completed_at: letter.updated_at,
               }}
             />
           </Card>
 
-          {/* Letter Information Grid */}
+          {/* Letter Information */}
           <Card>
             <h2 className="text-base font-semibold text-[#292A27] mb-5">Letter Information</h2>
             <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-5">
               <MetaField label="Reference Number">
-                <span className="font-mono text-xs bg-[#ECEAE3] px-2 py-0.5 rounded-lg">
-                  {letter.referenceNumber}
-                </span>
+                <span className="font-mono text-xs bg-[#ECEAE3] px-2 py-0.5 rounded-lg">{letter.referenceNumber}</span>
               </MetaField>
               {letter.registrationNumber && (
                 <MetaField label="Registration Number">
-                  <span className="font-mono text-xs bg-[#ECEAE3] px-2 py-0.5 rounded-lg">
-                    {letter.registrationNumber}
-                  </span>
+                  <span className="font-mono text-xs bg-[#ECEAE3] px-2 py-0.5 rounded-lg">{letter.registrationNumber}</span>
                 </MetaField>
               )}
               {letter.externalReferenceNumber && (
                 <MetaField label="External Reference">
-                  <span className="font-mono text-xs bg-[#ECEAE3] px-2 py-0.5 rounded-lg">
-                    {letter.externalReferenceNumber}
-                  </span>
+                  <span className="font-mono text-xs bg-[#ECEAE3] px-2 py-0.5 rounded-lg">{letter.externalReferenceNumber}</span>
                 </MetaField>
               )}
               <MetaField label="Direction"><DirectionBadge direction={letter.direction} /></MetaField>
@@ -466,20 +596,39 @@ export const LetterDetails: React.FC = () => {
                 </span>
               </MetaField>
               <MetaField label="Category">{letter.category}</MetaField>
-              <MetaField label="Department">{letter.department_name}</MetaField>
-              {letter.originatingDepartment && (
-                <MetaField label="Originating Dept">{letter.originatingDepartment}</MetaField>
+
+              {/* Internal: show From/To Directorate prominently */}
+              {dir === 'INTERNAL' ? (
+                <>
+                  <MetaField label="From Directorate">
+                    <span className="text-[#4A3A6B] font-semibold">
+                      {letter.fromDirectorate || letter.originatingDepartment || '—'}
+                    </span>
+                  </MetaField>
+                  <MetaField label="To Directorate">
+                    <span className="text-[#4A3A6B] font-semibold">
+                      {letter.toDirectorate || letter.targetDepartment || '—'}
+                    </span>
+                  </MetaField>
+                </>
+              ) : (
+                <MetaField label="Directorate">{letter.department_name}</MetaField>
               )}
+
               <MetaField label="Confidentiality"><ConfidentialityBadge level={letter.confidentialityLevel} /></MetaField>
               {letter.priority && <MetaField label="Priority"><PriorityBadge priority={letter.priority} /></MetaField>}
               <MetaField label="Registered By">{letter.created_by}</MetaField>
               <MetaField label="Registered At">{formatDate(letter.created_at)}</MetaField>
               <MetaField label="Last Updated">{formatDate(letter.updated_at)}</MetaField>
-              {letter.dueDate && <MetaField label="Due Date"><span className="text-[#8B3232] font-semibold">{formatDate(letter.dueDate)}</span></MetaField>}
+              {letter.dueDate && (
+                <MetaField label="Due Date">
+                  <span className="text-[#8B3232] font-semibold">{formatDate(letter.dueDate)}</span>
+                </MetaField>
+              )}
             </dl>
           </Card>
 
-          {/* Sender & Recipient */}
+          {/* Correspondence Parties */}
           {(letter.sender || letter.recipient) && (
             <Card>
               <h2 className="text-base font-semibold text-[#292A27] mb-5">Correspondence Parties</h2>
@@ -490,33 +639,25 @@ export const LetterDetails: React.FC = () => {
                       {dir === 'INCOMING' ? 'External Sender' : dir === 'INTERNAL' ? 'Sending Officer' : 'Author'}
                     </dt>
                     <dd className="text-sm font-medium text-[#292A27]">{letter.sender}</dd>
-                    {letter.senderOrganization && (
-                      <dd className="text-xs text-[#6B6A64]">{letter.senderOrganization}</dd>
-                    )}
+                    {letter.senderOrganization && <dd className="text-xs text-[#6B6A64]">{letter.senderOrganization}</dd>}
                   </div>
                 )}
                 {letter.recipient && (
                   <div className="space-y-1">
                     <dt className="text-[11px] font-bold uppercase tracking-wider text-[#8A8983]">
-                      {dir === 'OUTGOING' ? 'External Recipient' : dir === 'INTERNAL' ? 'Receiving Department' : 'Addressed To'}
+                      {dir === 'OUTGOING' ? 'External Recipient' : dir === 'INTERNAL' ? 'Receiving Directorate' : 'Addressed To'}
                     </dt>
                     <dd className="text-sm font-medium text-[#292A27]">{letter.recipient}</dd>
-                    {letter.recipientOrganization && (
-                      <dd className="text-xs text-[#6B6A64]">{letter.recipientOrganization}</dd>
-                    )}
+                    {letter.recipientOrganization && <dd className="text-xs text-[#6B6A64]">{letter.recipientOrganization}</dd>}
                   </div>
                 )}
-                {letter.dateReceived && (
-                  <MetaField label="Date Received">{formatDate(letter.dateReceived)}</MetaField>
-                )}
-                {letter.dateSent && (
-                  <MetaField label="Date Sent">{formatDate(letter.dateSent)}</MetaField>
-                )}
+                {letter.dateReceived && <MetaField label="Date Received">{formatDate(letter.dateReceived)}</MetaField>}
+                {letter.dateSent && <MetaField label="Date Sent">{formatDate(letter.dateSent)}</MetaField>}
               </dl>
             </Card>
           )}
 
-          {/* Assignments */}
+          {/* Officer Assignments */}
           {letter.assignments && letter.assignments.length > 0 && (
             <Card>
               <h2 className="text-base font-semibold text-[#292A27] mb-5">Officer Assignments</h2>
@@ -538,7 +679,7 @@ export const LetterDetails: React.FC = () => {
                       )}
                       <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
                         assignment.taskStatus === 'COMPLETED' ? 'bg-[#4A6B4E]/15 text-[#4A6B4E]' :
-                        assignment.taskStatus === 'OVERDUE' ? 'bg-[#8B3232]/15 text-[#8B3232]' :
+                        assignment.taskStatus === 'OVERDUE'   ? 'bg-[#8B3232]/15 text-[#8B3232]' :
                         'bg-[#C48D3F]/15 text-[#8A5D19]'
                       }`}>
                         {assignment.taskStatus}
@@ -550,7 +691,7 @@ export const LetterDetails: React.FC = () => {
             </Card>
           )}
 
-          {/* Description / Summary */}
+          {/* Summary */}
           {letter.description && (
             <Card>
               <h2 className="text-base font-semibold text-[#292A27] mb-3">Summary</h2>
@@ -566,27 +707,49 @@ export const LetterDetails: React.FC = () => {
 
         {/* Right 1/3 */}
         <div className="space-y-6">
-          {/* Tracking Card */}
+          {/* Tracking Card — current location */}
           <LetterTrackingCard
             referenceNumber={letter.referenceNumber}
             subject={letter.subject}
             status={letter.status}
-            currentDepartment={letter.department_name}
-            responsibleUser={letter.assignedEmployee || letter.created_by}
+            currentLocation={currentLocationLabel}
+            responsibleUser={letter.assignedEmployee || letter.currentResponsibleUser}
             currentTask={
-              st === 'REGISTERED' ? 'Awaiting Admin Routing' :
-              st === 'RECEIVED' ? 'Awaiting Officer Assignment' :
-              st === 'IN_PROGRESS' ? 'Officer Processing' :
-              st === 'PENDING_REVIEW' ? 'Awaiting Manager Review' :
-              st === 'PENDING_APPROVAL' ? 'Awaiting Approval' :
-              st === 'APPROVED' ? 'Ready for Dispatch' :
-              st === 'DISPATCHED' ? 'Awaiting Delivery Confirmation' :
-              st === 'COMPLETED' ? 'Complete' :
-              st === 'DRAFT' ? 'Draft in Progress' :
+              st === 'REGISTERED'        ? 'Awaiting Admin Routing' :
+              st === 'RECEIVED'          ? 'Awaiting Officer Assignment' :
+              st === 'IN_PROGRESS'       ? 'Officer Processing' :
+              st === 'PENDING_REVIEW'    ? 'Awaiting Directorate Manager Review' :
+              st === 'PENDING_APPROVAL'  ? 'Awaiting Approval' :
+              st === 'APPROVED'          ? 'Approved — Ready for Registry Dispatch' :
+              st === 'READY_FOR_DISPATCH'? 'Awaiting Registry Dispatch' :
+              st === 'DISPATCHED'        ? 'Dispatched — Awaiting Delivery Confirmation' :
+              st === 'COMPLETED'         ? 'Complete' :
+              st === 'DRAFT'             ? 'Draft in Progress' :
               'Workflow Processing'
             }
             dueDate={letter.dueDate}
             priority={letter.priority}
+          />
+
+          {/* Role-specific action panel — CORE FEATURE */}
+          <RoleActionPanel
+            role={role}
+            letter={letter}
+            onRoute={() => setIsRoutingOpen(true)}
+            onAssign={() => setIsAssignmentOpen(true)}
+            onApprove={handleApprove}
+            onReject={() => setIsRejectDialogOpen(true)}
+            onRequestChanges={() => setIsRequestChangesOpen(true)}
+            onDispatch={() => setIsDispatchOpen(true)}
+            onComplete={handleComplete}
+            onArchive={() => setIsArchiveDialogOpen(true)}
+            onEdit={() => navigate(`/letters/${letter.id}/edit`)}
+            onUpload={() => setIsUploadAttachmentOpen(true)}
+            onSubmit={handleSubmitForApproval}
+            onRespond={() => navigate(`/letters/${letter.id}/respond`)}
+            onMarkComplete={handleComplete}
+            onAddNote={() => {/* scroll to comment section */}}
+            isSubmitting={isSubmitting}
           />
 
           {/* Related Letters */}
@@ -631,39 +794,18 @@ export const LetterDetails: React.FC = () => {
                 {attachments.length} file{attachments.length !== 1 ? 's' : ''}
               </span>
             </div>
-
             {attachments.length === 0 ? (
               <EmptyState title="No attachments" description="No files attached to this letter." />
             ) : (
               <div>
                 {attachments.map((att, idx) => (
-                  <AttachmentTimelineItem
-                    key={att.id}
-                    attachment={att}
-                    isLast={idx === attachments.length - 1}
-                  />
+                  <AttachmentTimelineItem key={att.id} attachment={att} isLast={idx === attachments.length - 1} />
                 ))}
-              </div>
-            )}
-
-            {canUploadAttachment && (
-              <div className="mt-4 pt-3 border-t border-[#D8D7D1]/50">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => setIsUploadAttachmentOpen(true)}
-                >
-                  <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Upload Attachment
-                </Button>
               </div>
             )}
           </Card>
 
-          {/* Letter Status Card */}
+          {/* Current Status Card */}
           <Card className="bg-[#ECEAE3]">
             <h3 className="text-sm font-semibold text-[#292A27] mb-3">Current Status</h3>
             <div className="space-y-3 text-xs">
@@ -694,23 +836,6 @@ export const LetterDetails: React.FC = () => {
                 </div>
               )}
             </div>
-
-            {canSubmitForReview && (
-              <div className="mt-4 pt-3 border-t border-[#D8D7D1]/50">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  className="w-full"
-                  onClick={handleSubmitForApproval}
-                  isLoading={isSubmitting}
-                >
-                  <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Submit for Approval
-                </Button>
-              </div>
-            )}
           </Card>
 
           {/* Tags */}
@@ -719,10 +844,7 @@ export const LetterDetails: React.FC = () => {
               <h3 className="text-sm font-semibold text-[#292A27] mb-3">Tags</h3>
               <div className="flex flex-wrap gap-1.5">
                 {letter.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-[#ECEAE3] text-[#526A55] border border-[#D8D7D1]/60"
-                  >
+                  <span key={tag} className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-[#ECEAE3] text-[#526A55] border border-[#D8D7D1]/60">
                     {tag}
                   </span>
                 ))}
@@ -732,8 +854,7 @@ export const LetterDetails: React.FC = () => {
         </div>
       </div>
 
-      {/* ─── Modals & Dialogs ───────────────────────────────────── */}
-
+      {/* Modals & Dialogs */}
       <UploadAttachmentModal
         open={isUploadAttachmentOpen}
         letterId={letter.id}
@@ -756,7 +877,7 @@ export const LetterDetails: React.FC = () => {
         letterId={letter.id}
         referenceNumber={letter.referenceNumber}
         subject={letter.subject}
-        departmentName={letter.department_name}
+        departmentName={letter.currentLocation || letter.department_name}
         onClose={() => setIsAssignmentOpen(false)}
         onSuccess={fetchLetter}
       />
@@ -781,6 +902,39 @@ export const LetterDetails: React.FC = () => {
         isLoading={isArchiving}
         onConfirm={handleArchive}
         onCancel={() => setIsArchiveDialogOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={isRejectDialogOpen}
+        title="Reject Letter?"
+        description={`This will return "${letter.subject}" with a CHANGES_REQUESTED status to the originating officer.`}
+        confirmLabel="Reject & Return"
+        danger
+        isLoading={false}
+        onConfirm={async () => {
+          if (!letter) return;
+          await letterService.rejectLetter(letter.id, 'Returned for revision by Directorate Manager.');
+          addToast({ type: 'warning', title: 'Letter Rejected', message: 'Letter returned for changes.' });
+          setIsRejectDialogOpen(false);
+          fetchLetter();
+        }}
+        onCancel={() => setIsRejectDialogOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={isRequestChangesOpen}
+        title="Request Changes?"
+        description={`"${letter.subject}" will be returned to the officer with a request for changes.`}
+        confirmLabel="Request Changes"
+        isLoading={false}
+        onConfirm={async () => {
+          if (!letter) return;
+          await letterService.requestChanges(letter.id, 'Please revise and resubmit.');
+          addToast({ type: 'info', title: 'Changes Requested', message: 'Letter returned for revision.' });
+          setIsRequestChangesOpen(false);
+          fetchLetter();
+        }}
+        onCancel={() => setIsRequestChangesOpen(false)}
       />
     </div>
   );

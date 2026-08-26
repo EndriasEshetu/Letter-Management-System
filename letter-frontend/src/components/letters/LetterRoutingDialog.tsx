@@ -5,6 +5,7 @@ import Select, { SelectOption } from '@/components/common/Select';
 import Textarea from '@/components/common/Textarea';
 import letterService from '@/services/letterService';
 import { useToast } from '@/components/common/Toast';
+import { DEPARTMENT_SELECT_OPTIONS } from '@/constants/departments';
 
 interface LetterRoutingDialogProps {
   open: boolean;
@@ -15,9 +16,7 @@ interface LetterRoutingDialogProps {
   onSuccess: () => void;
 }
 
-import { DEPARTMENT_SELECT_OPTIONS } from '@/constants/departments';
-
-const DEPARTMENT_OPTIONS: SelectOption[] = DEPARTMENT_SELECT_OPTIONS;
+const DIRECTORATE_OPTIONS: SelectOption[] = DEPARTMENT_SELECT_OPTIONS;
 
 export const LetterRoutingDialog: React.FC<LetterRoutingDialogProps> = ({
   open,
@@ -28,19 +27,19 @@ export const LetterRoutingDialog: React.FC<LetterRoutingDialogProps> = ({
   onSuccess,
 }) => {
   const { addToast } = useToast();
-  const [selectedDepartment, setSelectedDepartment] = useState('App Development Directorate');
+  const [selectedDirectorate, setSelectedDirectorate] = useState('App Development Directorate');
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleRoute = async () => {
-    if (!selectedDepartment) return;
+    if (!selectedDirectorate) return;
     setIsLoading(true);
     try {
-      await letterService.routeToDepartment(letterId, selectedDepartment, notes.trim());
+      await letterService.routeToDepartment(letterId, selectedDirectorate, notes.trim());
       addToast({
         type: 'success',
         title: 'Letter Routed',
-        message: `${referenceNumber} routed to ${selectedDepartment} Department.`,
+        message: `${referenceNumber} routed to ${selectedDirectorate}.`,
       });
       onSuccess();
       onClose();
@@ -48,7 +47,7 @@ export const LetterRoutingDialog: React.FC<LetterRoutingDialogProps> = ({
       addToast({
         type: 'error',
         title: 'Routing Failed',
-        message: err.message || 'Could not route letter.',
+        message: err.message || 'Could not route letter to Directorate.',
       });
     } finally {
       setIsLoading(false);
@@ -63,25 +62,30 @@ export const LetterRoutingDialog: React.FC<LetterRoutingDialogProps> = ({
           <p className="truncate text-[#6B6A64] mt-0.5">{subject}</p>
         </div>
 
+        <div className="p-3 rounded-xl bg-[#C48D3F]/08 border border-[#C48D3F]/20 text-xs text-[#6B6A64]">
+          <p className="font-semibold text-[#8A5D19] mb-1">📋 Routing Workflow</p>
+          <p>Main Administration → Destination Directorate → Directorate Manager → Processing Officer</p>
+        </div>
+
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-[#6B6A64] mb-1">
-            Destination Department <span className="text-[#8B3232]">*</span>
+            Destination Directorate <span className="text-[#8B3232]">*</span>
           </label>
           <Select
-            options={DEPARTMENT_OPTIONS}
-            value={selectedDepartment}
-            onChange={setSelectedDepartment}
+            options={DIRECTORATE_OPTIONS}
+            value={selectedDirectorate}
+            onChange={setSelectedDirectorate}
           />
         </div>
 
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-[#6B6A64] mb-1">
-            Routing Instructions / Notes
+            Routing Instructions / Notes for Directorate Manager
           </label>
           <Textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Add specific instructions for the department manager..."
+            placeholder="Add specific instructions for the Directorate Manager..."
             rows={3}
           />
         </div>
@@ -91,7 +95,7 @@ export const LetterRoutingDialog: React.FC<LetterRoutingDialogProps> = ({
             Cancel
           </Button>
           <Button variant="primary" onClick={handleRoute} isLoading={isLoading}>
-            Route to Department
+            Route to Directorate
           </Button>
         </div>
       </div>
