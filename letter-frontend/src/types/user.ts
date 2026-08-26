@@ -16,7 +16,8 @@ export interface User {
   job_title?: string;
   role: UserRole;
   department_id?: number | null;
-  department_name?: string;
+  department_name?: string | null;
+  unit_name?: string | null;
   department?: UserDepartment | null;
   status?: UserStatus;
   is_active?: boolean;

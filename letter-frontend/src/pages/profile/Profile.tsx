@@ -5,56 +5,91 @@ import Card from '@/components/common/Card';
 import PasswordInput from '@/components/common/PasswordInput';
 import Button from '@/components/common/Button';
 import Alert from '@/components/common/Alert';
-import { formatDepartmentName, getDepartmentByCodeOrName } from '@/constants/departments';
+import { formatDepartmentName } from '@/constants/departments';
 
-/* ─── Role Metadata Matrix ──────────────────────────────────── */
+/* ─── Role Governance Definitions ────────────────────────────── */
 
-const ROLE_DETAILS: Record<
-  string,
-  { label: string; badgeColor: string; description: string; permissions: string[] }
-> = {
+interface RoleGovernanceConfig {
+  roleLabel: string;
+  cardTitle: string;
+  accessLevel: string;
+  scopeType: 'SYSTEM' | 'REGISTRY' | 'DIRECTORATE';
+  scopeTitle: string; // "Organizational Scope" / "Assigned Unit" / "Official Directorate"
+  badgeColor: string;
+  responsibilities: string[];
+}
+
+const ROLE_GOVERNANCE: Record<string, RoleGovernanceConfig> = {
   ADMIN: {
-    label: 'Main Administrator',
+    roleLabel: 'Main Administrator',
+    cardTitle: 'Administrator Profile',
+    accessLevel: 'System-Wide Administration',
+    scopeType: 'SYSTEM',
+    scopeTitle: 'Organizational Scope',
     badgeColor: 'bg-[#C48D3F]/15 text-[#8A5D19] border-[#C48D3F]/30',
-    description: 'System-wide governance clearance. Authorized to route incoming/internal letters, verify outgoing correspondence, manage official directorates, and configure user accounts.',
-    permissions: [
-      'Route Incoming & Internal Letters',
-      'Verify & Approve Outgoing Letters',
-      'Manage System Directorates & Personnel',
-      'Access Full System Audit Logs',
-    ],
-  },
-  DEPARTMENT_MANAGER: {
-    label: 'Directorate Manager',
-    badgeColor: 'bg-[#526A55]/15 text-[#526A55] border-[#526A55]/30',
-    description: 'Directorate-level workflow manager. Responsible for assigning received correspondence to officers, setting SLA deadlines, and approving draft response letters.',
-    permissions: [
-      'Assign Officers & Set Deadlines',
-      'Review & Approve Officer Drafts',
-      'Oversee Directorate Inbox & Queue',
-      'Generate Directorate Analytics',
+    responsibilities: [
+      'Manage users and roles',
+      'Manage directorates',
+      'Route incoming/internal letters',
+      'Verify/register approved outgoing letters',
+      'Monitor system activity',
+      'Manage system configuration',
+      'Access audit logs',
     ],
   },
   REGISTRY_OFFICER: {
-    label: 'Central Registry Officer',
+    roleLabel: 'Registry Officer',
+    cardTitle: 'Registry Officer Profile',
+    accessLevel: 'Registry Operations',
+    scopeType: 'REGISTRY',
+    scopeTitle: 'Assigned Unit',
     badgeColor: 'bg-[#6B5A8E]/15 text-[#4A3A6B] border-[#6B5A8E]/30',
-    description: 'Central correspondence registry controller. Responsible for scanning, registering incoming letters with IN/YYYY/NNNNN reference numbers, and recording courier/email dispatches.',
-    permissions: [
-      'Register Incoming Letters (IN/YYYY/NNNNN)',
-      'Assign Outgoing Reference Numbers',
-      'Record Dispatch Details & Courier Proof',
-      'Manage Physical Letter Registry Vault',
+    responsibilities: [
+      'Receive incoming letters',
+      'Verify basic information',
+      'Scan/upload correspondence',
+      'Assign registration numbers',
+      'Record sender and received date',
+      'Classify letters',
+      'Set priority/confidentiality',
+      'Route incoming letters to Main Administrator',
+      'Dispatch approved outgoing letters',
+      'Record dispatch information',
+    ],
+  },
+  DEPARTMENT_MANAGER: {
+    roleLabel: 'Directorate Manager',
+    cardTitle: 'Directorate Manager Profile',
+    accessLevel: 'Directorate Management',
+    scopeType: 'DIRECTORATE',
+    scopeTitle: 'Official Directorate',
+    badgeColor: 'bg-[#526A55]/15 text-[#526A55] border-[#526A55]/30',
+    responsibilities: [
+      'Review correspondence',
+      'Approve outgoing letters',
+      'Request changes',
+      'Assign incoming letters',
+      'Assign internal letters',
+      'Monitor correspondence within the Directorate',
+      'Track pending work',
+      'Review team activity',
     ],
   },
   EMPLOYEE: {
-    label: 'Directorate Officer',
+    roleLabel: 'Employee / Officer',
+    cardTitle: 'Professional Profile',
+    accessLevel: 'Standard User',
+    scopeType: 'DIRECTORATE',
+    scopeTitle: 'Official Directorate',
     badgeColor: 'bg-[#292A27]/10 text-[#292A27] border-[#292A27]/20',
-    description: 'Action officer within assigned directorate. Responsible for processing assigned correspondence, drafting response letters, and submitting items for manager review.',
-    permissions: [
-      'Execute Assigned Letter Tasks',
-      'Draft Response Letters & Internal Memos',
-      'Submit Drafts for Manager Sign-off',
-      'Track Assigned SLA Deadlines',
+    responsibilities: [
+      'Create outgoing/internal letters',
+      'Process assigned incoming letters',
+      'Prepare outgoing correspondence',
+      'Process internal correspondence',
+      'Upload attachments',
+      'Respond to assigned tasks',
+      'Track assigned letters',
     ],
   },
 };
@@ -76,10 +111,26 @@ export const Profile: React.FC = () => {
     confirmPassword?: string;
   }>({});
 
-  const userRole = user?.role || 'EMPLOYEE';
-  const roleMeta = ROLE_DETAILS[userRole] || ROLE_DETAILS.EMPLOYEE;
-  const deptInfo = getDepartmentByCodeOrName(user?.department_name);
-  const deptName = formatDepartmentName(user?.department_name);
+  const roleKey = user?.role || 'EMPLOYEE';
+  const config = ROLE_GOVERNANCE[roleKey] || ROLE_GOVERNANCE.EMPLOYEE;
+
+  // Resolve scope label dynamically based on user role and data
+  const getScopeValue = () => {
+    if (config.scopeType === 'SYSTEM') {
+      return 'System-Wide Administration';
+    }
+    if (config.scopeType === 'REGISTRY') {
+      return user?.unit_name || 'Central Registry';
+    }
+    // DIRECTORATE scope for Managers & Employees
+    if (user?.department_name) {
+      return formatDepartmentName(user.department_name);
+    }
+    return 'App Development Directorate';
+  };
+
+  const scopeValue = getScopeValue();
+  const accountStatus = user?.status || (user?.is_active === false ? 'INACTIVE' : 'ACTIVE');
 
   const validateForm = (): boolean => {
     const errors: { currentPassword?: string; newPassword?: string; confirmPassword?: string } = {};
@@ -87,11 +138,13 @@ export const Profile: React.FC = () => {
     if (!currentPassword) {
       errors.currentPassword = 'Current password is required';
     }
+
     if (!newPassword) {
       errors.newPassword = 'New password is required';
     } else if (newPassword.length < 6) {
       errors.newPassword = 'New password must be at least 6 characters';
     }
+
     if (!confirmPassword) {
       errors.confirmPassword = 'Please confirm your new password';
     } else if (newPassword !== confirmPassword) {
@@ -145,130 +198,135 @@ export const Profile: React.FC = () => {
           User Profile & Role Governance
         </h1>
         <p className="text-xs md:text-sm text-[#6B6A64] mt-1">
-          Review your official directorate assignment, role clearances, and update account security settings.
+          Review your official role clearances, organizational scope, and account security settings.
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* ── Left 1/3: Account Summary & Directorate ── */}
+        {/* ── Left 1/3: Role-Aware Profile Card ── */}
         <div className="space-y-6">
           <Card className="space-y-5">
-            {/* User Avatar & Name */}
             <div className="flex items-center space-x-4">
               <div className="w-16 h-16 bg-[#526A55] text-[#F5F3ED] rounded-2xl flex items-center justify-center text-xl font-bold shadow-sm flex-shrink-0">
                 {user?.full_name?.charAt(0) || 'U'}
               </div>
               <div className="min-w-0">
-                <h2 className="text-base font-bold text-[#292A27] truncate">{user?.full_name || 'Officer'}</h2>
+                <h2 className="text-base font-bold text-[#292A27] truncate">{user?.full_name || 'Personnel'}</h2>
                 <p className="text-xs text-[#6B6A64] truncate mt-0.5">{user?.email}</p>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold border mt-2 ${roleMeta.badgeColor}`}>
-                  {roleMeta.label}
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold border mt-2 ${config.badgeColor}`}>
+                  {config.roleLabel}
                 </span>
               </div>
             </div>
 
-            {/* Directorate & Role Info */}
-            <div className="pt-4 border-t border-[#D8D7D1]/60 space-y-3 text-xs">
+            {/* Structured Profile Fields */}
+            <div className="pt-4 border-t border-[#D8D7D1]/60 space-y-3.5 text-xs">
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#8A8983] block mb-1">
-                  Official Directorate
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#8A8983] block">
+                  Name
                 </span>
-                <span className="font-semibold text-[#292A27] block leading-snug">
-                  {deptName}
+                <span className="font-semibold text-[#292A27] text-sm mt-0.5 block">
+                  {user?.full_name || 'Abebe Bikila'}
                 </span>
-                {deptInfo && (
-                  <span className="text-[10px] font-mono font-bold text-[#526A55] bg-[#526A55]/10 px-2 py-0.5 rounded-md inline-block mt-1">
-                    {deptInfo.shortCode}
-                  </span>
-                )}
               </div>
 
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#8A8983] block mb-1">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#8A8983] block">
+                  Role
+                </span>
+                <span className="font-semibold text-[#526A55] mt-0.5 block">
+                  {config.roleLabel}
+                </span>
+              </div>
+
+              {/* Conditionally display Scope / Directorate / Unit according to role rules */}
+              {config.scopeType !== 'SYSTEM' && (
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#8A8983] block">
+                    {config.scopeTitle}
+                  </span>
+                  <span className="font-semibold text-[#292A27] mt-0.5 block leading-snug">
+                    {scopeValue}
+                  </span>
+                </div>
+              )}
+
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#8A8983] block">
+                  Access Level
+                </span>
+                <span className="font-medium text-[#292A27] mt-0.5 block">
+                  {config.accessLevel}
+                </span>
+              </div>
+
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#8A8983] block">
                   Account Status
                 </span>
-                <span className="inline-flex items-center text-[#4A6B4E] font-bold text-xs bg-[#4A6B4E]/10 px-2.5 py-0.5 rounded-full border border-[#4A6B4E]/20">
+                <span className="inline-flex items-center text-[#4A6B4E] font-bold text-xs bg-[#4A6B4E]/10 px-2.5 py-0.5 rounded-full border border-[#4A6B4E]/20 mt-1">
                   <span className="w-1.5 h-1.5 bg-[#4A6B4E] rounded-full mr-1.5 animate-pulse" />
-                  Active Clearance
+                  {accountStatus === 'ACTIVE' ? 'Active' : 'Inactive'}
                 </span>
               </div>
             </div>
 
-            {/* Quick Action Shortcuts */}
-            <div className="pt-3 border-t border-[#D8D7D1]/60 space-y-2">
-              {userRole === 'REGISTRY_OFFICER' && (
-                <Button variant="primary" size="sm" className="w-full justify-center" onClick={() => navigate('/letters')}>
-                  📥 Central Registry Hub
-                </Button>
-              )}
-              {userRole === 'ADMIN' && (
-                <Button variant="primary" size="sm" className="w-full justify-center" onClick={() => navigate('/departments')}>
-                  🏛️ Directorate Administration
-                </Button>
-              )}
-              {userRole === 'DEPARTMENT_MANAGER' && (
-                <Button variant="primary" size="sm" className="w-full justify-center" onClick={() => navigate('/approvals')}>
-                  ⏱️ Review Approval Queue
-                </Button>
-              )}
-              <Button variant="outline" size="sm" className="w-full justify-center text-[#8B3232] border-[#8B3232]/30 hover:bg-[#8B3232]/10" onClick={handleLogout}>
+            {/* Sign Out Button */}
+            <div className="pt-3 border-t border-[#D8D7D1]/60">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full justify-center text-[#8B3232] border-[#8B3232]/30 hover:bg-[#8B3232]/10"
+                onClick={handleLogout}
+              >
                 Sign Out of System
               </Button>
             </div>
           </Card>
-
-          {/* Directorate Information Box */}
-          {deptInfo && (
-            <Card className="bg-[#ECEAE3]">
-              <h3 className="text-xs font-bold text-[#292A27] uppercase tracking-wider mb-2">
-                Directorate Mission & Scope
-              </h3>
-              <p className="text-xs text-[#6B6A64] leading-relaxed">
-                {deptInfo.description}
-              </p>
-            </Card>
-          )}
         </div>
 
-        {/* ── Right 2/3: Role Permissions & Security Form ── */}
+        {/* ── Right 2/3: Role Responsibilities & Security Form ── */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Role Governance & Permissions Card */}
+          {/* Role-Based Responsibilities & Authorized Operations Card */}
           <Card className="space-y-4">
             <div>
               <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold text-[#292A27]">Role Clearances & System Rights</h3>
-                <span className="text-[11px] font-mono font-bold text-[#6B6A64] bg-[#ECEAE3] px-2.5 py-1 rounded-lg border border-[#D8D7D1]">
-                  {userRole}
+                <h3 className="text-base font-bold text-[#292A27]">{config.cardTitle} — Responsibilities</h3>
+                <span className="text-[10px] font-mono font-bold text-[#526A55] bg-[#526A55]/10 px-2.5 py-1 rounded-lg border border-[#526A55]/20 uppercase">
+                  {config.accessLevel}
                 </span>
               </div>
               <p className="text-xs text-[#6B6A64] mt-1 leading-relaxed">
-                {roleMeta.description}
+                Authorized system operations and workflow duties mapped to your role clearance.
               </p>
             </div>
 
             <div className="pt-3 border-t border-[#D8D7D1]/60">
               <h4 className="text-xs font-bold text-[#292A27] uppercase tracking-wider mb-3">
-                Authorized Operations
+                Responsibilities & Authorized Operations
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {roleMeta.permissions.map((perm, idx) => (
-                  <div key={idx} className="p-2.5 rounded-xl bg-[#F9F8F5] border border-[#D8D7D1] flex items-center space-x-2.5 text-xs text-[#292A27] font-medium">
+                {config.responsibilities.map((resp, idx) => (
+                  <div
+                    key={idx}
+                    className="p-2.5 rounded-xl bg-[#F9F8F5] border border-[#D8D7D1] flex items-center space-x-2.5 text-xs text-[#292A27] font-medium"
+                  >
                     <span className="w-4 h-4 rounded-full bg-[#526A55]/15 text-[#526A55] flex items-center justify-center font-bold text-[10px] flex-shrink-0">
                       ✓
                     </span>
-                    <span className="truncate">{perm}</span>
+                    <span className="truncate">{resp}</span>
                   </div>
                 ))}
               </div>
             </div>
           </Card>
 
-          {/* Password Change Security Card */}
+          {/* Security & Password Settings Card */}
           <Card className="space-y-6">
             <div>
               <h3 className="text-base font-bold text-[#292A27]">Security & Password Settings</h3>
               <p className="text-xs text-[#6B6A64] mt-1">
-                Update your account password regularly to safeguard agency correspondence.
+                Update your account password regularly to protect official agency records and letter data.
               </p>
             </div>
 
@@ -317,7 +375,7 @@ export const Profile: React.FC = () => {
 
               <div className="pt-2 flex justify-end">
                 <Button type="submit" variant="primary" isLoading={isSubmitting}>
-                  Update Password
+                  Change Password
                 </Button>
               </div>
             </form>

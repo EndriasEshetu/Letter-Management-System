@@ -2,12 +2,13 @@ export type Role = 'ADMIN' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE' | 'REGISTRY_OFFIC
 export type UserStatus = 'ACTIVE' | 'INACTIVE';
 
 export interface AuthUser {
-  id: number;
+  id: number | string;
   full_name: string;
   email: string;
   role: Role;
-  department_id: number | null;
-  department_name?: string;
+  department_id?: number | null;
+  department_name?: string | null;
+  unit_name?: string | null;
   phone?: string;
   job_title?: string;
   status?: UserStatus;

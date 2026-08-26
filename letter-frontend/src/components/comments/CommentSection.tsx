@@ -50,7 +50,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
     try {
       const newComment = await commentService.createComment(
         { documentId, message },
-        user ? { full_name: user.full_name, role: user.role, department_name: user.department_name } : undefined
+        user ? { full_name: user.full_name, role: user.role, department_name: user.department_name || undefined } : undefined
       );
       setComments((prev) => [...prev, newComment]);
       addToast({

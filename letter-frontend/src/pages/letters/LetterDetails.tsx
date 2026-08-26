@@ -695,7 +695,7 @@ export const LetterDetails: React.FC = () => {
               )}
             </div>
 
-            {canSubmitForApproval && (
+            {canSubmitForReview && (
               <div className="mt-4 pt-3 border-t border-[#D8D7D1]/50">
                 <Button
                   variant="primary"

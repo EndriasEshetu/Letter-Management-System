@@ -7,27 +7,44 @@ import { AuthResponse, AuthUser, ChangePasswordPayload, LoginCredentials } from 
 const MOCK_USERS: Record<string, AuthUser> = {
   'admin@sita.gov.et': {
     id: 1,
-    full_name: 'Abebe Bikila (Admin)',
+    full_name: 'Abebe Bikila',
     email: 'admin@sita.gov.et',
     role: 'ADMIN',
-    department_id: 1,
-    department_name: 'ICT & Innovation Governance',
+    department_id: null,
+    department_name: null,
+    job_title: 'Main Administrator',
+    status: 'ACTIVE',
+  },
+  'registry@sita.gov.et': {
+    id: 2,
+    full_name: 'Abebe Demissie',
+    email: 'registry@sita.gov.et',
+    role: 'REGISTRY_OFFICER',
+    department_id: null,
+    department_name: null,
+    unit_name: 'Central Registry',
+    job_title: 'Senior Registry Officer',
+    status: 'ACTIVE',
   },
   'manager@sita.gov.et': {
-    id: 2,
-    full_name: 'Tariku Eshetu (Manager)',
+    id: 3,
+    full_name: 'Tariku Eshetu',
     email: 'manager@sita.gov.et',
     role: 'DEPARTMENT_MANAGER',
-    department_id: 2,
-    department_name: 'Document Management & Archives',
+    department_id: 1,
+    department_name: 'App Development Directorate',
+    job_title: 'Directorate Manager',
+    status: 'ACTIVE',
   },
   'employee@sita.gov.et': {
-    id: 3,
-    full_name: 'Endrias Eshetu (Employee)',
+    id: 4,
+    full_name: 'Endrias Eshetu',
     email: 'employee@sita.gov.et',
     role: 'EMPLOYEE',
     department_id: 2,
-    department_name: 'Document Management & Archives',
+    department_name: 'ICT Infrastructure Development Directorate',
+    job_title: 'Systems Specialist',
+    status: 'ACTIVE',
   },
 };
 
@@ -44,13 +61,24 @@ export const authService = {
       if (error.code === 'ERR_NETWORK' || !error.response) {
         console.warn('[authService] Backend offline/unreachable. Attempting mock fallback authentication for dev preview.');
         const normalizedEmail = credentials.email.toLowerCase().trim();
-        const matchedUser = MOCK_USERS[normalizedEmail] || {
+        const computedRole = normalizedEmail.includes('admin')
+          ? 'ADMIN'
+          : normalizedEmail.includes('registry')
+          ? 'REGISTRY_OFFICER'
+          : normalizedEmail.includes('manager')
+          ? 'DEPARTMENT_MANAGER'
+          : 'EMPLOYEE';
+
+        const matchedUser: AuthUser = MOCK_USERS[normalizedEmail] || {
           id: 99,
           full_name: 'Demo SITA Officer',
           email: credentials.email,
-          role: normalizedEmail.includes('admin') ? 'ADMIN' : normalizedEmail.includes('manager') ? 'DEPARTMENT_MANAGER' : 'EMPLOYEE',
-          department_id: 1,
-          department_name: 'Technology Agency',
+          role: computedRole,
+          department_id: (computedRole === 'ADMIN' || computedRole === 'REGISTRY_OFFICER') ? null : 1,
+          department_name: computedRole === 'ADMIN' || computedRole === 'REGISTRY_OFFICER' ? null : 'App Development Directorate',
+          unit_name: computedRole === 'REGISTRY_OFFICER' ? 'Central Registry' : null,
+          job_title: computedRole === 'ADMIN' ? 'Main Administrator' : computedRole === 'REGISTRY_OFFICER' ? 'Registry Officer' : computedRole === 'DEPARTMENT_MANAGER' ? 'Directorate Manager' : 'Officer',
+          status: 'ACTIVE',
         };
 
         if (credentials.password.length < 4) {
