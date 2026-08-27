@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
-import Card from '@/components/common/Card';
-import PasswordInput from '@/components/common/PasswordInput';
-import Button from '@/components/common/Button';
-import Alert from '@/components/common/Alert';
-import { formatDepartmentName } from '@/constants/departments';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import Card from "@/components/common/Card";
+import PasswordInput from "@/components/common/PasswordInput";
+import Button from "@/components/common/Button";
+import Alert from "@/components/common/Alert";
+import { formatDepartmentName } from "@/constants/departments";
 
 /* ─── Role Governance Definitions ────────────────────────────── */
 
@@ -13,7 +13,7 @@ interface RoleGovernanceConfig {
   roleLabel: string;
   cardTitle: string;
   accessLevel: string;
-  scopeType: 'SYSTEM' | 'REGISTRY' | 'DIRECTORATE';
+  scopeType: "SYSTEM" | "REGISTRY" | "DIRECTORATE";
   scopeTitle: string; // "Organizational Scope" / "Assigned Unit" / "Official Directorate"
   badgeColor: string;
   responsibilities: string[];
@@ -21,75 +21,75 @@ interface RoleGovernanceConfig {
 
 const ROLE_GOVERNANCE: Record<string, RoleGovernanceConfig> = {
   ADMIN: {
-    roleLabel: 'Main Administrator',
-    cardTitle: 'Administrator Profile',
-    accessLevel: 'System-Wide Administration',
-    scopeType: 'SYSTEM',
-    scopeTitle: 'Organizational Scope',
-    badgeColor: 'bg-[#C48D3F]/15 text-[#8A5D19] border-[#C48D3F]/30',
+    roleLabel: "Main Administrator",
+    cardTitle: "Administrator Profile",
+    accessLevel: "System-Wide Administration",
+    scopeType: "SYSTEM",
+    scopeTitle: "Organizational Scope",
+    badgeColor: "bg-[#C48D3F]/15 text-[#8A5D19] border-[#C48D3F]/30",
     responsibilities: [
-      'Manage users and roles',
-      'Manage directorates',
-      'Route incoming/internal letters',
-      'Verify/register approved outgoing letters',
-      'Monitor system activity',
-      'Manage system configuration',
-      'Access audit logs',
+      "Manage users and roles",
+      "Manage directorates",
+      "Route incoming/internal letters",
+      "Verify/register approved outgoing letters",
+      "Monitor system activity",
+      "Manage system configuration",
+      "Access audit logs",
     ],
   },
   REGISTRY_OFFICER: {
-    roleLabel: 'Registry Officer',
-    cardTitle: 'Registry Officer Profile',
-    accessLevel: 'Registry Operations',
-    scopeType: 'REGISTRY',
-    scopeTitle: 'Assigned Unit',
-    badgeColor: 'bg-[#6B5A8E]/15 text-[#4A3A6B] border-[#6B5A8E]/30',
+    roleLabel: "Registry Officer",
+    cardTitle: "Registry Officer Profile",
+    accessLevel: "Registry Operations",
+    scopeType: "REGISTRY",
+    scopeTitle: "Assigned Unit",
+    badgeColor: "bg-[#6B5A8E]/15 text-[#4A3A6B] border-[#6B5A8E]/30",
     responsibilities: [
-      'Receive incoming letters',
-      'Verify basic information',
-      'Scan/upload correspondence',
-      'Assign registration numbers',
-      'Record sender and received date',
-      'Classify letters',
-      'Set priority/confidentiality',
-      'Route incoming letters to Main Administrator',
-      'Dispatch approved outgoing letters',
-      'Record dispatch information',
+      "Receive incoming letters",
+      "Verify basic information",
+      "Scan/upload correspondence",
+      "Assign registration numbers",
+      "Record sender and received date",
+      "Classify letters",
+      "Set priority/confidentiality",
+      "Route incoming letters to Main Administrator",
+      "Dispatch approved outgoing letters",
+      "Record dispatch information",
     ],
   },
   DEPARTMENT_MANAGER: {
-    roleLabel: 'Directorate Manager',
-    cardTitle: 'Directorate Manager Profile',
-    accessLevel: 'Directorate Management',
-    scopeType: 'DIRECTORATE',
-    scopeTitle: 'Department',
-    badgeColor: 'bg-[#526A55]/15 text-[#526A55] border-[#526A55]/30',
+    roleLabel: "Directorate Manager",
+    cardTitle: "Directorate Manager Profile",
+    accessLevel: "Directorate Management",
+    scopeType: "DIRECTORATE",
+    scopeTitle: "Department",
+    badgeColor: "bg-[#526A55]/15 text-[#526A55] border-[#526A55]/30",
     responsibilities: [
-      'Review correspondence',
-      'Approve outgoing letters',
-      'Request changes',
-      'Assign incoming letters',
-      'Assign internal letters',
-      'Monitor correspondence within the Directorate',
-      'Track pending work',
-      'Review team activity',
+      "Review correspondence",
+      "Approve outgoing letters",
+      "Request changes",
+      "Assign incoming letters",
+      "Assign internal letters",
+      "Monitor correspondence within the Directorate",
+      "Track pending work",
+      "Review team activity",
     ],
   },
   EMPLOYEE: {
-    roleLabel: 'Employee / Officer',
-    cardTitle: 'Professional Profile',
-    accessLevel: 'Standard User',
-    scopeType: 'DIRECTORATE',
-    scopeTitle: 'Department',
-    badgeColor: 'bg-[#292A27]/10 text-[#292A27] border-[#292A27]/20',
+    roleLabel: "Employee / Officer",
+    cardTitle: "Professional Profile",
+    accessLevel: "Standard User",
+    scopeType: "DIRECTORATE",
+    scopeTitle: "Department",
+    badgeColor: "bg-[#292A27]/10 text-[#292A27] border-[#292A27]/20",
     responsibilities: [
-      'Create outgoing/internal letters',
-      'Process assigned incoming letters',
-      'Prepare outgoing correspondence',
-      'Process internal correspondence',
-      'Upload attachments',
-      'Respond to assigned tasks',
-      'Track assigned letters',
+      "Create outgoing/internal letters",
+      "Process assigned incoming letters",
+      "Prepare outgoing correspondence",
+      "Process internal correspondence",
+      "Upload attachments",
+      "Respond to assigned tasks",
+      "Track assigned letters",
     ],
   },
 };
@@ -97,10 +97,14 @@ const ROLE_GOVERNANCE: Record<string, RoleGovernanceConfig> = {
 export const Profile: React.FC = () => {
   const { user, changePassword, logout } = useAuth();
   const navigate = useNavigate();
+  const displayName = (user?.full_name || "Personnel").replace(
+    /\s+\((?:ADMIN(?:ISTRATOR)?|DEPARTMENT\s*MANAGER|MANAGER|EMPLOYEE)\)\s*$/i,
+    "",
+  );
 
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -111,44 +115,49 @@ export const Profile: React.FC = () => {
     confirmPassword?: string;
   }>({});
 
-  const roleKey = user?.role || 'EMPLOYEE';
+  const roleKey = user?.role || "EMPLOYEE";
   const config = ROLE_GOVERNANCE[roleKey] || ROLE_GOVERNANCE.EMPLOYEE;
 
   // Resolve scope label dynamically based on user role and data
   const getScopeValue = () => {
-    if (config.scopeType === 'SYSTEM') {
-      return 'System-Wide Administration';
+    if (config.scopeType === "SYSTEM") {
+      return "System-Wide Administration";
     }
-    if (config.scopeType === 'REGISTRY') {
-      return user?.unit_name || 'Central Registry';
+    if (config.scopeType === "REGISTRY") {
+      return user?.unit_name || "Central Registry";
     }
     // DIRECTORATE scope for Managers & Employees
     if (user?.department_name) {
       return formatDepartmentName(user.department_name);
     }
-    return 'App Development Directorate';
+    return "App Development Directorate";
   };
 
   const scopeValue = getScopeValue();
-  const accountStatus = user?.status || (user?.is_active === false ? 'INACTIVE' : 'ACTIVE');
+  const accountStatus =
+    user?.status || (user?.is_active === false ? "INACTIVE" : "ACTIVE");
 
   const validateForm = (): boolean => {
-    const errors: { currentPassword?: string; newPassword?: string; confirmPassword?: string } = {};
+    const errors: {
+      currentPassword?: string;
+      newPassword?: string;
+      confirmPassword?: string;
+    } = {};
 
     if (!currentPassword) {
-      errors.currentPassword = 'Current password is required';
+      errors.currentPassword = "Current password is required";
     }
 
     if (!newPassword) {
-      errors.newPassword = 'New password is required';
+      errors.newPassword = "New password is required";
     } else if (newPassword.length < 6) {
-      errors.newPassword = 'New password must be at least 6 characters';
+      errors.newPassword = "New password must be at least 6 characters";
     }
 
     if (!confirmPassword) {
-      errors.confirmPassword = 'Please confirm your new password';
+      errors.confirmPassword = "Please confirm your new password";
     } else if (newPassword !== confirmPassword) {
-      errors.confirmPassword = 'New password and confirmation do not match';
+      errors.confirmPassword = "New password and confirmation do not match";
     }
 
     setFieldErrors(errors);
@@ -170,13 +179,16 @@ export const Profile: React.FC = () => {
         confirm_password: confirmPassword,
       });
 
-      setSuccess('Your password has been changed successfully.');
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
+      setSuccess("Your password has been changed successfully.");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
       setFieldErrors({});
     } catch (err: any) {
-      setError(err.message || 'Failed to change password. Please check your current password.');
+      setError(
+        err.message ||
+          "Failed to change password. Please check your current password.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -184,7 +196,7 @@ export const Profile: React.FC = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login', { replace: true });
+    navigate("/login", { replace: true });
   };
 
   return (
@@ -198,7 +210,8 @@ export const Profile: React.FC = () => {
           User Profile & Role Governance
         </h1>
         <p className="text-xs md:text-sm text-[#6B6A64] mt-1">
-          Review your official role clearances, organizational scope, and account security settings.
+          Review your official role clearances, organizational scope, and
+          account security settings.
         </p>
       </div>
 
@@ -208,12 +221,18 @@ export const Profile: React.FC = () => {
           <Card className="space-y-5">
             <div className="flex items-center space-x-4">
               <div className="w-16 h-16 bg-[#526A55] text-[#F5F3ED] rounded-2xl flex items-center justify-center text-xl font-bold shadow-sm flex-shrink-0">
-                {user?.full_name?.charAt(0) || 'U'}
+                {user?.full_name?.charAt(0) || "U"}
               </div>
               <div className="min-w-0">
-                <h2 className="text-base font-bold text-[#292A27] truncate">{user?.full_name || 'Personnel'}</h2>
-                <p className="text-xs text-[#6B6A64] truncate mt-0.5">{user?.email}</p>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold border mt-2 ${config.badgeColor}`}>
+                <h2 className="text-base font-bold text-[#292A27] truncate">
+                  {displayName}
+                </h2>
+                <p className="text-xs text-[#6B6A64] truncate mt-0.5">
+                  {user?.email}
+                </p>
+                <span
+                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold border mt-2 ${config.badgeColor}`}
+                >
                   {config.roleLabel}
                 </span>
               </div>
@@ -226,7 +245,7 @@ export const Profile: React.FC = () => {
                   Name
                 </span>
                 <span className="font-semibold text-[#292A27] text-sm mt-0.5 block">
-                  {user?.full_name || 'Abebe Bikila'}
+                  {displayName}
                 </span>
               </div>
 
@@ -240,7 +259,7 @@ export const Profile: React.FC = () => {
               </div>
 
               {/* Conditionally display Scope / Directorate / Unit according to role rules */}
-              {config.scopeType !== 'SYSTEM' && (
+              {config.scopeType !== "SYSTEM" && (
                 <div>
                   <span className="text-[11px] font-bold uppercase tracking-wider text-[#8A8983] block">
                     {config.scopeTitle}
@@ -266,7 +285,7 @@ export const Profile: React.FC = () => {
                 </span>
                 <span className="inline-flex items-center text-[#4A6B4E] font-bold text-xs bg-[#4A6B4E]/10 px-2.5 py-0.5 rounded-full border border-[#4A6B4E]/20 mt-1">
                   <span className="w-1.5 h-1.5 bg-[#4A6B4E] rounded-full mr-1.5 animate-pulse" />
-                  {accountStatus === 'ACTIVE' ? 'Active' : 'Inactive'}
+                  {accountStatus === "ACTIVE" ? "Active" : "Inactive"}
                 </span>
               </div>
             </div>
@@ -291,13 +310,13 @@ export const Profile: React.FC = () => {
           <Card className="space-y-4">
             <div>
               <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold text-[#292A27]">{config.cardTitle} — Responsibilities</h3>
-                <span className="text-[10px] font-mono font-bold text-[#526A55] bg-[#526A55]/10 px-2.5 py-1 rounded-lg border border-[#526A55]/20 uppercase">
-                  {config.accessLevel}
-                </span>
+                <h3 className="text-base font-bold text-[#292A27]">
+                  {config.cardTitle} — Responsibilities
+                </h3>
               </div>
               <p className="text-xs text-[#6B6A64] mt-1 leading-relaxed">
-                Authorized system operations and workflow duties mapped to your role clearance.
+                Authorized system operations and workflow duties mapped to your
+                role clearance.
               </p>
             </div>
 
@@ -324,16 +343,31 @@ export const Profile: React.FC = () => {
           {/* Security & Password Settings Card */}
           <Card className="space-y-6">
             <div>
-              <h3 className="text-base font-bold text-[#292A27]">Security & Password Settings</h3>
+              <h3 className="text-base font-bold text-[#292A27]">
+                Security & Password Settings
+              </h3>
               <p className="text-xs text-[#6B6A64] mt-1">
-                Update your account password regularly to protect official agency records and letter data.
+                Update your account password regularly to protect official
+                agency records and letter data.
               </p>
             </div>
 
-            {error && <Alert type="error" onClose={() => setError(null)}>{error}</Alert>}
-            {success && <Alert type="success" onClose={() => setSuccess(null)}>{success}</Alert>}
+            {error && (
+              <Alert type="error" onClose={() => setError(null)}>
+                {error}
+              </Alert>
+            )}
+            {success && (
+              <Alert type="success" onClose={() => setSuccess(null)}>
+                {success}
+              </Alert>
+            )}
 
-            <form onSubmit={handlePasswordChange} className="space-y-4" noValidate>
+            <form
+              onSubmit={handlePasswordChange}
+              className="space-y-4"
+              noValidate
+            >
               <PasswordInput
                 label="Current Password"
                 placeholder="Enter your current password"
@@ -341,7 +375,10 @@ export const Profile: React.FC = () => {
                 onChange={(e) => {
                   setCurrentPassword(e.target.value);
                   if (fieldErrors.currentPassword)
-                    setFieldErrors((prev) => ({ ...prev, currentPassword: undefined }));
+                    setFieldErrors((prev) => ({
+                      ...prev,
+                      currentPassword: undefined,
+                    }));
                 }}
                 error={fieldErrors.currentPassword}
                 disabled={isSubmitting}
@@ -354,7 +391,10 @@ export const Profile: React.FC = () => {
                 onChange={(e) => {
                   setNewPassword(e.target.value);
                   if (fieldErrors.newPassword)
-                    setFieldErrors((prev) => ({ ...prev, newPassword: undefined }));
+                    setFieldErrors((prev) => ({
+                      ...prev,
+                      newPassword: undefined,
+                    }));
                 }}
                 error={fieldErrors.newPassword}
                 disabled={isSubmitting}
@@ -367,14 +407,21 @@ export const Profile: React.FC = () => {
                 onChange={(e) => {
                   setConfirmPassword(e.target.value);
                   if (fieldErrors.confirmPassword)
-                    setFieldErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+                    setFieldErrors((prev) => ({
+                      ...prev,
+                      confirmPassword: undefined,
+                    }));
                 }}
                 error={fieldErrors.confirmPassword}
                 disabled={isSubmitting}
               />
 
               <div className="pt-2 flex justify-end">
-                <Button type="submit" variant="primary" isLoading={isSubmitting}>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  isLoading={isSubmitting}
+                >
                   Change Password
                 </Button>
               </div>
