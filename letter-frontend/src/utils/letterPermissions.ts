@@ -188,16 +188,11 @@ export function getLetterPermissions(
       canRestoreLetter: !!(letter && st === "ARCHIVED"),
       canViewArchive: true,
 
-      canCreateIncoming: true,
+      canCreateIncoming: false,
       canCreateOutgoing: true,
       canCreateInternal: true,
 
       newLetterActions: [
-        {
-          label: "Register Incoming Letter",
-          direction: "INCOMING",
-          icon: "📥",
-        },
         { label: "Create Outgoing Letter", direction: "OUTGOING", icon: "📤" },
         { label: "Create Internal Memo", direction: "INTERNAL", icon: "🏢" },
       ],
