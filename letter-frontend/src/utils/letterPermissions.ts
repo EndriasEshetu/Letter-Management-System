@@ -1,14 +1,14 @@
-import { Role } from '@/types/auth';
-import { LetterItem, LetterDirection } from '@/types/letter';
+import { Role } from "@/types/auth";
+import { LetterItem, LetterDirection } from "@/types/letter";
 
 /* ─── Permission Interface ─────────────────────────────────────── */
 
 export interface LetterPermissions {
   // Visibility
-  canViewAllLetters: boolean;         // ADMIN: system-wide
+  canViewAllLetters: boolean; // ADMIN: system-wide
   canViewDirectorateLetters: boolean; // DIRECTORATE_MANAGER: own directorate
-  canViewOwnLetters: boolean;         // EMPLOYEE: own / assigned only
-  canViewRegistryLetters: boolean;    // REGISTRY_OFFICER: registry/dispatch focused
+  canViewOwnLetters: boolean; // EMPLOYEE: own / assigned only
+  canViewRegistryLetters: boolean; // REGISTRY_OFFICER: registry/dispatch focused
 
   // Letter-level actions
   canViewLetter: boolean;
@@ -73,207 +73,285 @@ export interface ColumnConfig {
 /* ─── Role-Specific Column Definitions ─────────────────────────── */
 
 const ADMIN_COLUMNS: ColumnConfig[] = [
-  { id: 'directionSubject', header: 'Direction & Subject' },
-  { id: 'typeDirectorate',  header: 'Type & Directorate'  },
-  { id: 'fromTo',           header: 'From / To'           },
-  { id: 'currentLocation',  header: 'Current Location'    },
-  { id: 'assignedTo',       header: 'Assigned To'         },
-  { id: 'date',             header: 'Date'                },
-  { id: 'status',           header: 'Status'              },
-  { id: 'actions',          header: 'Actions'             },
+  { id: "directionSubject", header: "Direction & Subject" },
+  { id: "typeDirectorate", header: "Type & Directorate" },
+  { id: "fromTo", header: "From / To" },
+  { id: "currentLocation", header: "Current Location" },
+  { id: "assignedTo", header: "Assigned To" },
+  { id: "date", header: "Date" },
+  { id: "status", header: "Status" },
+  { id: "actions", header: "Actions" },
 ];
 
 const REGISTRY_COLUMNS: ColumnConfig[] = [
-  { id: 'registrationSubject', header: 'Registration / Subject'  },
-  { id: 'letterType',          header: 'Letter Type'             },
-  { id: 'senderRecipient',     header: 'Sender / Recipient'      },
-  { id: 'receivedSentDate',    header: 'Received / Sent Date'    },
-  { id: 'registrationNumber',  header: 'Registration No.'        },
-  { id: 'status',              header: 'Status'                  },
-  { id: 'actions',             header: 'Actions'                 },
+  { id: "registrationSubject", header: "Registration / Subject" },
+  { id: "letterType", header: "Letter Type" },
+  { id: "senderRecipient", header: "Sender / Recipient" },
+  { id: "receivedSentDate", header: "Received / Sent Date" },
+  { id: "registrationNumber", header: "Registration No." },
+  { id: "status", header: "Status" },
+  { id: "actions", header: "Actions" },
 ];
 
 const MANAGER_COLUMNS: ColumnConfig[] = [
-  { id: 'directionSubject', header: 'Direction & Subject' },
-  { id: 'letterType',       header: 'Letter Type'         },
-  { id: 'fromTo',           header: 'From / To'           },
-  { id: 'assignedOfficer',  header: 'Assigned Officer'    },
-  { id: 'priority',         header: 'Priority'            },
-  { id: 'date',             header: 'Date'                },
-  { id: 'status',           header: 'Status'              },
-  { id: 'actions',          header: 'Actions'             },
+  { id: "directionSubject", header: "Direction & Subject" },
+  { id: "letterType", header: "Letter Type" },
+  { id: "fromTo", header: "From / To" },
+  { id: "assignedOfficer", header: "Assigned Officer" },
+  { id: "priority", header: "Priority" },
+  { id: "date", header: "Date" },
+  { id: "status", header: "Status" },
+  { id: "actions", header: "Actions" },
 ];
 
 const EMPLOYEE_COLUMNS: ColumnConfig[] = [
-  { id: 'directionSubject', header: 'Direction & Subject' },
-  { id: 'letterType',       header: 'Letter Type'         },
-  { id: 'fromTo',           header: 'From / To'           },
-  { id: 'dueDate',          header: 'Due Date'            },
-  { id: 'priority',         header: 'Priority'            },
-  { id: 'status',           header: 'Status'              },
-  { id: 'actions',          header: 'Actions'             },
+  { id: "directionSubject", header: "Direction & Subject" },
+  { id: "letterType", header: "Letter Type" },
+  { id: "fromTo", header: "From / To" },
+  { id: "dueDate", header: "Due Date" },
+  { id: "priority", header: "Priority" },
+  { id: "status", header: "Status" },
+  { id: "actions", header: "Actions" },
 ];
 
 /* ─── getLetterPermissions ──────────────────────────────────────── */
 
 export function getLetterPermissions(
   role: Role | undefined | null,
-  letter?: LetterItem | null
+  letter?: LetterItem | null,
 ): LetterPermissions {
-  const st  = letter?.status?.toUpperCase()  ?? '';
-  const dir = letter?.direction?.toUpperCase() ?? '';
+  const st = letter?.status?.toUpperCase() ?? "";
+  const dir = letter?.direction?.toUpperCase() ?? "";
 
   /* ── ADMINISTRATOR ─────────────────────────────────────────── */
-  if (role === 'ADMIN') {
+  if (role === "ADMIN") {
     return {
       canViewAllLetters: true,
       canViewDirectorateLetters: true,
       canViewOwnLetters: true,
       canViewRegistryLetters: true,
 
-      canViewLetter:   true,
+      canViewLetter: true,
       canViewTracking: true,
-      canViewAudit:    true,
+      canViewAudit: true,
 
-      canRegisterLetter:          true,
+      canRegisterLetter: true,
       canEditRegistrationMetadata: true,
-      canUploadScan:              true,
-      canClassifyLetter:          true,
+      canUploadScan: true,
+      canClassifyLetter: true,
 
-      canRouteLetter:   !!(letter && (st === 'REGISTERED' || st === 'RECEIVED') && (dir === 'INCOMING' || dir === 'INTERNAL')),
-      canAssignLetter:  !!(letter && (st === 'RECEIVED' || st === 'IN_PROGRESS')),
-      canApproveLetter: !!(letter && (st === 'PENDING_REVIEW' || st === 'PENDING_APPROVAL')),
-      canRejectLetter:  !!(letter && (st === 'PENDING_REVIEW' || st === 'PENDING_APPROVAL')),
-      canRequestChanges: !!(letter && (st === 'PENDING_REVIEW' || st === 'PENDING_APPROVAL')),
-      canDispatchLetter: !!(letter && (st === 'APPROVED' || st === 'READY_FOR_DISPATCH') && dir === 'OUTGOING'),
-      canRecordDispatch: !!(letter && (st === 'APPROVED' || st === 'READY_FOR_DISPATCH')),
+      canRouteLetter: !!(
+        letter &&
+        (st === "REGISTERED" || st === "RECEIVED") &&
+        (dir === "INCOMING" || dir === "INTERNAL")
+      ),
+      canAssignLetter: false,
+      canApproveLetter: !!(
+        letter &&
+        (st === "PENDING_REVIEW" || st === "PENDING_APPROVAL") &&
+        (dir === "OUTGOING" || dir === "INTERNAL")
+      ),
+      canRejectLetter: !!(
+        letter &&
+        (st === "PENDING_REVIEW" || st === "PENDING_APPROVAL") &&
+        (dir === "OUTGOING" || dir === "INTERNAL")
+      ),
+      canRequestChanges: !!(
+        letter &&
+        (st === "PENDING_REVIEW" || st === "PENDING_APPROVAL") &&
+        (dir === "OUTGOING" || dir === "INTERNAL")
+      ),
+      canDispatchLetter: !!(
+        letter &&
+        (st === "APPROVED" || st === "READY_FOR_DISPATCH") &&
+        dir === "OUTGOING"
+      ),
+      canRecordDispatch: !!(
+        letter &&
+        (st === "APPROVED" || st === "READY_FOR_DISPATCH")
+      ),
 
-      canEditLetter:        !!(letter && (st === 'DRAFT' || st === 'CHANGES_REQUESTED')),
-      canUploadAttachment:  !!(letter && st !== 'ARCHIVED'),
+      canEditLetter: !!(
+        letter &&
+        (st === "DRAFT" || st === "CHANGES_REQUESTED")
+      ),
+      canUploadAttachment: !!(letter && st !== "ARCHIVED"),
       canAddProcessingNote: true,
-      canSubmitLetter:      false,
-      canRespondToLetter:   false,
-      canMarkComplete:      !!(letter && (st === 'DISPATCHED' || st === 'DELIVERED' || st === 'IN_PROGRESS')),
+      canSubmitLetter: false,
+      canRespondToLetter: false,
+      canMarkComplete: !!(
+        letter &&
+        (st === "DISPATCHED" || st === "DELIVERED" || st === "IN_PROGRESS")
+      ),
 
-      canArchiveLetter: !!(letter && st !== 'ARCHIVED'),
-      canRestoreLetter: !!(letter && st === 'ARCHIVED'),
-      canViewArchive:   true,
+      canArchiveLetter: !!(letter && st !== "ARCHIVED"),
+      canRestoreLetter: !!(letter && st === "ARCHIVED"),
+      canViewArchive: true,
 
       canCreateIncoming: true,
       canCreateOutgoing: true,
       canCreateInternal: true,
 
       newLetterActions: [
-        { label: 'Register Incoming Letter', direction: 'INCOMING', icon: '📥' },
-        { label: 'Create Outgoing Letter',   direction: 'OUTGOING', icon: '📤' },
-        { label: 'Create Internal Memo',     direction: 'INTERNAL', icon: '🏢' },
+        {
+          label: "Register Incoming Letter",
+          direction: "INCOMING",
+          icon: "📥",
+        },
+        { label: "Create Outgoing Letter", direction: "OUTGOING", icon: "📤" },
+        { label: "Create Internal Memo", direction: "INTERNAL", icon: "🏢" },
       ],
 
       tableColumns: ADMIN_COLUMNS,
-      roleLabel: 'Administrator',
-      roleScope: 'All system letters',
+      roleLabel: "Administrator",
+      roleScope: "All system letters",
     };
   }
 
   /* ── REGISTRY OFFICER ──────────────────────────────────────── */
-  if (role === 'REGISTRY_OFFICER') {
+  if (role === "REGISTRY_OFFICER") {
     return {
       canViewAllLetters: false,
       canViewDirectorateLetters: false,
       canViewOwnLetters: false,
       canViewRegistryLetters: true,
 
-      canViewLetter:   true,
+      canViewLetter: true,
       canViewTracking: true,
-      canViewAudit:    false,
+      canViewAudit: false,
 
-      canRegisterLetter:           !!(letter && (st === 'RECEIVED' || st === 'REGISTERED') && dir === 'INCOMING'),
-      canEditRegistrationMetadata: !!(letter && (st === 'REGISTERED' || st === 'RECEIVED') && dir === 'INCOMING'),
-      canUploadScan:               !!(letter && dir === 'INCOMING'),
-      canClassifyLetter:           !!(letter && dir === 'INCOMING'),
+      canRegisterLetter: false,
+      canEditRegistrationMetadata: !!(
+        letter &&
+        (st === "REGISTERED" || st === "RECEIVED") &&
+        dir === "INCOMING"
+      ),
+      canUploadScan: !!(letter && dir === "INCOMING"),
+      canClassifyLetter: !!(letter && dir === "INCOMING"),
 
-      canRouteLetter:    !!(letter && (st === 'REGISTERED') && dir === 'INCOMING'),
-      canAssignLetter:   false,
-      canApproveLetter:  false,
-      canRejectLetter:   false,
+      canRouteLetter: false,
+      canAssignLetter: false,
+      canApproveLetter: false,
+      canRejectLetter: false,
       canRequestChanges: false,
-      canDispatchLetter: !!(letter && (st === 'APPROVED' || st === 'READY_FOR_DISPATCH') && dir === 'OUTGOING'),
-      canRecordDispatch: !!(letter && (st === 'APPROVED' || st === 'READY_FOR_DISPATCH') && dir === 'OUTGOING'),
+      canDispatchLetter: !!(
+        letter &&
+        (st === "APPROVED" || st === "READY_FOR_DISPATCH") &&
+        dir === "OUTGOING"
+      ),
+      canRecordDispatch: !!(
+        letter &&
+        (st === "APPROVED" || st === "READY_FOR_DISPATCH") &&
+        dir === "OUTGOING"
+      ),
 
-      canEditLetter:        false,
-      canUploadAttachment:  !!(letter && dir === 'INCOMING' && st !== 'ARCHIVED'),
+      canEditLetter: false,
+      canUploadAttachment: !!(
+        letter &&
+        dir === "INCOMING" &&
+        st !== "ARCHIVED"
+      ),
       canAddProcessingNote: false,
-      canSubmitLetter:      false,
-      canRespondToLetter:   false,
-      canMarkComplete:      false,
+      canSubmitLetter: false,
+      canRespondToLetter: false,
+      canMarkComplete: false,
 
       canArchiveLetter: false,
       canRestoreLetter: false,
-      canViewArchive:   true, // read-only relevant records
+      canViewArchive: true, // read-only relevant records
 
       canCreateIncoming: true,
       canCreateOutgoing: false, // cannot create outgoing — only dispatch approved ones
       canCreateInternal: false,
 
       newLetterActions: [
-        { label: 'Register Incoming Letter',       direction: 'INCOMING', icon: '📥' },
-        { label: 'Dispatch Approved Outgoing Letter', direction: 'OUTGOING', icon: '📤' },
+        {
+          label: "Register Incoming Letter",
+          direction: "INCOMING",
+          icon: "📥",
+        },
+        {
+          label: "Dispatch Approved Outgoing Letter",
+          direction: "OUTGOING",
+          icon: "📤",
+        },
       ],
 
       tableColumns: REGISTRY_COLUMNS,
-      roleLabel: 'Registry Officer',
-      roleScope: 'Registry and dispatch correspondence',
+      roleLabel: "Registry Officer",
+      roleScope: "Registry and dispatch correspondence",
     };
   }
 
   /* ── DIRECTORATE MANAGER ───────────────────────────────────── */
-  if (role === 'DEPARTMENT_MANAGER') {
+  if (role === "DEPARTMENT_MANAGER") {
     return {
       canViewAllLetters: false,
       canViewDirectorateLetters: true,
       canViewOwnLetters: false,
       canViewRegistryLetters: false,
 
-      canViewLetter:   true,
+      canViewLetter: true,
       canViewTracking: true,
-      canViewAudit:    false,
+      canViewAudit: false,
 
-      canRegisterLetter:           false,
+      canRegisterLetter: false,
       canEditRegistrationMetadata: false,
-      canUploadScan:               false,
-      canClassifyLetter:           false,
+      canUploadScan: false,
+      canClassifyLetter: false,
 
-      canRouteLetter:    false,
-      canAssignLetter:   !!(letter && (st === 'RECEIVED' || st === 'IN_PROGRESS' || st === 'REGISTERED') && (dir === 'INCOMING' || dir === 'INTERNAL')),
-      canApproveLetter:  !!(letter && (st === 'PENDING_REVIEW' || st === 'PENDING_APPROVAL') && (dir === 'OUTGOING' || dir === 'INTERNAL')),
-      canRejectLetter:   !!(letter && (st === 'PENDING_REVIEW' || st === 'PENDING_APPROVAL')),
-      canRequestChanges: !!(letter && (st === 'PENDING_REVIEW' || st === 'PENDING_APPROVAL')),
+      canRouteLetter: false,
+      canAssignLetter: !!(
+        letter &&
+        (st === "RECEIVED" || st === "ASSIGNED") &&
+        (dir === "INCOMING" || dir === "INTERNAL")
+      ),
+      canApproveLetter: !!(
+        letter &&
+        (st === "PENDING_REVIEW" || st === "PENDING_APPROVAL") &&
+        (dir === "OUTGOING" || dir === "INTERNAL")
+      ),
+      canRejectLetter: !!(
+        letter &&
+        (st === "PENDING_REVIEW" || st === "PENDING_APPROVAL")
+      ),
+      canRequestChanges: !!(
+        letter &&
+        (st === "PENDING_REVIEW" || st === "PENDING_APPROVAL")
+      ),
       canDispatchLetter: false,
       canRecordDispatch: false,
 
-      canEditLetter:        false,
-      canUploadAttachment:  !!(letter && st !== 'ARCHIVED' && st !== 'COMPLETED'),
+      canEditLetter: false,
+      canUploadAttachment: !!(
+        letter &&
+        st !== "ARCHIVED" &&
+        st !== "COMPLETED"
+      ),
       canAddProcessingNote: true,
-      canSubmitLetter:      false,
-      canRespondToLetter:   false,
-      canMarkComplete:      !!(letter && (st === 'IN_PROGRESS' || st === 'DISPATCHED' || st === 'DELIVERED')),
+      canSubmitLetter: false,
+      canRespondToLetter: false,
+      canMarkComplete: !!(
+        letter &&
+        (st === "IN_PROGRESS" || st === "DISPATCHED" || st === "DELIVERED")
+      ),
 
       canArchiveLetter: false,
       canRestoreLetter: false,
-      canViewArchive:   true, // own directorate only
+      canViewArchive: true, // own directorate only
 
       canCreateIncoming: false,
       canCreateOutgoing: true,
       canCreateInternal: true,
 
       newLetterActions: [
-        { label: 'Create Outgoing Letter', direction: 'OUTGOING', icon: '📤' },
-        { label: 'Create Internal Memo',   direction: 'INTERNAL', icon: '🏢' },
+        { label: "Create Outgoing Letter", direction: "OUTGOING", icon: "📤" },
+        { label: "Create Internal Memo", direction: "INTERNAL", icon: "🏢" },
       ],
 
       tableColumns: MANAGER_COLUMNS,
-      roleLabel: 'Directorate Manager',
-      roleScope: 'Directorate correspondence',
+      roleLabel: "Directorate Manager",
+      roleScope: "Directorate correspondence",
     };
   }
 
@@ -284,45 +362,52 @@ export function getLetterPermissions(
     canViewOwnLetters: true,
     canViewRegistryLetters: false,
 
-    canViewLetter:   true,
+    canViewLetter: true,
     canViewTracking: true,
-    canViewAudit:    false,
+    canViewAudit: false,
 
-    canRegisterLetter:           false,
+    canRegisterLetter: false,
     canEditRegistrationMetadata: false,
-    canUploadScan:               false,
-    canClassifyLetter:           false,
+    canUploadScan: false,
+    canClassifyLetter: false,
 
-    canRouteLetter:    false,
-    canAssignLetter:   false,
-    canApproveLetter:  false,
-    canRejectLetter:   false,
+    canRouteLetter: false,
+    canAssignLetter: false,
+    canApproveLetter: false,
+    canRejectLetter: false,
     canRequestChanges: false,
     canDispatchLetter: false,
     canRecordDispatch: false,
 
-    canEditLetter:        !!(letter && (st === 'DRAFT' || st === 'CHANGES_REQUESTED')),
-    canUploadAttachment:  !!(letter && st !== 'ARCHIVED' && st !== 'COMPLETED'),
-    canAddProcessingNote: !!(letter && st !== 'ARCHIVED'),
-    canSubmitLetter:      !!(letter && (st === 'DRAFT' || st === 'IN_PROGRESS' || st === 'CHANGES_REQUESTED')),
-    canRespondToLetter:   !!(letter && dir === 'INCOMING' && st === 'IN_PROGRESS'),
-    canMarkComplete:      !!(letter && st === 'IN_PROGRESS'),
+    canEditLetter: !!(letter && (st === "DRAFT" || st === "CHANGES_REQUESTED")),
+    canUploadAttachment: !!(letter && st !== "ARCHIVED" && st !== "COMPLETED"),
+    canAddProcessingNote: !!(letter && st !== "ARCHIVED"),
+    canSubmitLetter: !!(
+      letter &&
+      (st === "DRAFT" || st === "IN_PROGRESS" || st === "CHANGES_REQUESTED")
+    ),
+    canRespondToLetter: !!(
+      letter &&
+      dir === "INCOMING" &&
+      st === "IN_PROGRESS"
+    ),
+    canMarkComplete: !!(letter && st === "IN_PROGRESS"),
 
     canArchiveLetter: false,
     canRestoreLetter: false,
-    canViewArchive:   false,
+    canViewArchive: false,
 
     canCreateIncoming: false,
     canCreateOutgoing: true,
     canCreateInternal: true,
 
     newLetterActions: [
-      { label: 'Create Outgoing Letter',     direction: 'OUTGOING', icon: '📤' },
-      { label: 'Create Internal Memo',       direction: 'INTERNAL', icon: '🏢' },
+      { label: "Create Outgoing Letter", direction: "OUTGOING", icon: "📤" },
+      { label: "Create Internal Memo", direction: "INTERNAL", icon: "🏢" },
     ],
 
     tableColumns: EMPLOYEE_COLUMNS,
-    roleLabel: 'Officer',
-    roleScope: 'Your assigned and submitted correspondence',
+    roleLabel: "Officer",
+    roleScope: "Your assigned and submitted correspondence",
   };
 }
