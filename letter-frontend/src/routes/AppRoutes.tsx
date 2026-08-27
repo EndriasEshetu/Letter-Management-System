@@ -24,6 +24,7 @@ import Users from "@/pages/users/Users";
 import Departments from "@/pages/departments/Departments";
 import AuditLogs from "@/pages/audit/AuditLogs";
 import ReportsPage from "@/pages/reports/ReportsPage";
+import Notifications from "@/pages/notifications/Notifications";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import RoleRoute from "@/routes/RoleRoute";
 import AppShell from "@/components/layout/AppShell";
@@ -65,6 +66,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="/letters/:id/preview" element={<LetterPreview />} />
           <Route path="/archives" element={<Archives />} />
           <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/notifications" element={<Notifications />} />
 
           {/* Role Protected Route: DEPARTMENT_MANAGER & ADMIN */}
           <Route

@@ -33,8 +33,14 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
       onMarkAsRead(notification.id);
     }
     onClose();
-    if (notification.documentId) {
-      navigate(`/documents/${notification.documentId}/preview`);
+    if (notification.taskId) {
+      navigate(`/tasks/${notification.taskId}`);
+    } else if (notification.entityType === 'APPROVAL' || notification.type === 'DOCUMENT_SUBMITTED') {
+      navigate('/approvals');
+    } else if (notification.entityType === 'LETTER' && notification.entityId) {
+      navigate(`/letters/${notification.entityId}`);
+    } else if (notification.letterId || notification.documentId) {
+      navigate(`/letters/${notification.letterId || notification.documentId}`);
     }
   };
 
@@ -102,6 +108,9 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
           ))
         )}
       </div>
+      <button type="button" onClick={() => { onClose(); navigate('/notifications'); }} className="border-t border-[#D8D7D1] px-4 py-3 text-xs font-bold text-[#526A55] hover:bg-[#F5F3ED] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#526A55]">
+        View all notifications
+      </button>
     </div>
   );
 };

@@ -16,6 +16,7 @@ function serializeNotification(row: {
   document_id: number | null;
   document_title: string | null;
   created_at: Date;
+  reference_number?: string | null;
 }) {
   return {
     id: String(row.id),
@@ -25,6 +26,10 @@ function serializeNotification(row: {
     createdAt: toIso(row.created_at),
     documentId: row.document_id != null ? String(row.document_id) : undefined,
     documentTitle: row.document_title ?? undefined,
+    letterId: row.document_id != null ? String(row.document_id) : undefined,
+    referenceNumber: row.reference_number ?? undefined,
+    entityType: row.document_id != null ? 'LETTER' : undefined,
+    entityId: row.document_id != null ? String(row.document_id) : undefined,
   };
 }
 
@@ -33,11 +38,42 @@ router.get(
   '/',
   requireAuth,
   asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+    const offset = (page - 1) * limit;
+    const readFilter = req.query.read as string | undefined;
+    const whereRead = readFilter === 'unread' ? ' AND n.is_read = false' : readFilter === 'read' ? ' AND n.is_read = true' : '';
+    const [{ rows }, { rows: countRows }] = await Promise.all([
+      query(
+        `SELECT n.*, d.document_number AS reference_number
+           FROM notifications n
+           LEFT JOIN documents d ON d.id = n.document_id
+          WHERE n.user_id = $1${whereRead}
+          ORDER BY n.created_at DESC LIMIT $2 OFFSET $3`,
+        [req.user!.id, limit, offset]
+      ),
+      query(`SELECT COUNT(*)::int AS total FROM notifications n WHERE n.user_id = $1${whereRead}`, [req.user!.id]),
+    ]);
+    res.json({
+      data: rows.map((r) => serializeNotification(r)),
+      total: countRows[0].total,
+      page,
+      limit,
+      totalPages: Math.max(1, Math.ceil(countRows[0].total / limit)),
+    });
+  })
+);
+
+/** GET /notifications/unread-count — current user's unread total. */
+router.get(
+  '/unread-count',
+  requireAuth,
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
     const { rows } = await query(
-      `SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50`,
+      `SELECT COUNT(*)::int AS count FROM notifications WHERE user_id = $1 AND is_read = false`,
       [req.user!.id]
     );
-    res.json(rows.map((r) => serializeNotification(r)));
+    res.json({ count: rows[0].count });
   })
 );
 

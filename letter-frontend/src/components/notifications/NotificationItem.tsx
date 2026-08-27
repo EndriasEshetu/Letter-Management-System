@@ -6,7 +6,7 @@ interface NotificationItemProps {
   onItemClick: (notification: NotificationItemType) => void;
 }
 
-const typeIcons: Record<NotificationType, { icon: React.ReactNode; color: string }> = {
+const typeIcons: Partial<Record<NotificationType, { icon: React.ReactNode; color: string }>> = {
   LETTER_REGISTERED: {
     color: 'bg-[#526A55]/12 text-[#526A55]',
     icon: (
@@ -158,7 +158,10 @@ const formatTimeAgo = (isoString: string): string => {
 };
 
 export const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onItemClick }) => {
-  const meta = typeIcons[notification.type] || typeIcons.LETTER_REGISTERED;
+  const meta = typeIcons[notification.type] ?? typeIcons.LETTER_REGISTERED ?? {
+    color: 'bg-[#D8D7D1]/60 text-[#6B6A64]',
+    icon: null,
+  };
 
   return (
     <div

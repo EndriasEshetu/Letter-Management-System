@@ -1,4 +1,9 @@
 export type NotificationType =
+  | 'DOCUMENT_SUBMITTED'
+  | 'DOCUMENT_APPROVED'
+  | 'DOCUMENT_REJECTED'
+  | 'CHANGES_REQUESTED'
+  | 'DOCUMENT_RESTORED'
   | 'LETTER_REGISTERED'
   | 'LETTER_AWAITING_ROUTING'
   | 'LETTER_ROUTED'
@@ -28,5 +33,16 @@ export interface NotificationItem {
   documentId?: string; // legacy alias
   documentTitle?: string; // legacy alias
   metadata?: Record<string, any>;
+  entityType?: string;
+  entityId?: string;
+  taskId?: string;
+}
+
+export interface PaginatedNotificationsResponse {
+  data: NotificationItem[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
