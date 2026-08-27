@@ -213,7 +213,7 @@ async function seed() {
   });
   await upsertUser({
     full_name: 'Abebe Demissie', email: 'registry@sita.gov.et', role: 'REGISTRY_OFFICER',
-    departmentId: deptIct, jobTitle: 'Senior Registry Officer',
+    departmentId: deptInf, jobTitle: 'Senior Registry Officer',
   });
 
   // Sample Documents covering the 3 workflows
