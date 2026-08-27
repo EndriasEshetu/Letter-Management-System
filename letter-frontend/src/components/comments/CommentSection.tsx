@@ -1,12 +1,11 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/components/common/Toast';
-import commentService from '@/services/commentService';
-import { CommentItem as CommentItemType } from '@/types/comment';
-import CommentItem from './CommentItem';
-import CommentComposer from './CommentComposer';
-import LoadingSpinner from '@/components/common/LoadingSpinner';
-import ErrorState from '@/components/common/ErrorState';
+import React, { useEffect, useState, useCallback } from "react";
+import { useToast } from "@/components/common/Toast";
+import commentService from "@/services/commentService";
+import { CommentItem as CommentItemType } from "@/types/comment";
+import CommentItem from "./CommentItem";
+import CommentComposer from "./CommentComposer";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
+import ErrorState from "@/components/common/ErrorState";
 
 interface CommentSectionProps {
   documentId: string;
@@ -17,7 +16,6 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
   documentId,
   compact = false,
 }) => {
-  const { user } = useAuth();
   const { addToast } = useToast();
 
   const [comments, setComments] = useState<CommentItemType[]>([]);
@@ -33,8 +31,8 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
       const data = await commentService.getComments(documentId);
       setComments(data);
     } catch (err: any) {
-      console.error('[CommentSection] Error fetching comments:', err);
-      setError('Unable to load discussion comments.');
+      console.error("[CommentSection] Error fetching comments:", err);
+      setError("Unable to load discussion comments.");
     } finally {
       setIsLoading(false);
     }
@@ -48,21 +46,21 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
   const handlePostComment = async (message: string) => {
     setIsSubmitting(true);
     try {
-      const newComment = await commentService.createComment(
-        { documentId, message },
-        user ? { full_name: user.full_name, role: user.role, department_name: user.department_name || undefined } : undefined
-      );
+      const newComment = await commentService.createComment({
+        documentId,
+        message,
+      });
       setComments((prev) => [...prev, newComment]);
       addToast({
-        type: 'success',
-        title: 'Comment posted',
-        message: 'Your comment has been added to the discussion.',
+        type: "success",
+        title: "Comment posted",
+        message: "Your comment has been added to the discussion.",
       });
     } catch (err: any) {
       addToast({
-        type: 'error',
-        title: 'Failed to post comment',
-        message: 'Could not submit your comment. Please try again.',
+        type: "error",
+        title: "Failed to post comment",
+        message: "Could not submit your comment. Please try again.",
       });
     } finally {
       setIsSubmitting(false);
@@ -84,7 +82,11 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
       )}
 
       {/* Comment Composer */}
-      <CommentComposer onSubmit={handlePostComment} isLoading={isSubmitting} compact={compact} />
+      <CommentComposer
+        onSubmit={handlePostComment}
+        isLoading={isSubmitting}
+        compact={compact}
+      />
 
       {/* Divider */}
       <div className="border-t border-[#D8D7D1]/60 my-3" />
@@ -104,12 +106,26 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
       ) : comments.length === 0 ? (
         <div className="text-center py-8 bg-[#F9F8F5] border border-[#D8D7D1]/50 rounded-xl px-4">
           <div className="w-10 h-10 bg-[#ECEAE3] rounded-full flex items-center justify-center mx-auto mb-2 text-[#8A8983]">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+              />
             </svg>
           </div>
-          <p className="text-xs font-semibold text-[#292A27]">No comments yet</p>
-          <p className="text-[11px] text-[#6B6A64] mt-0.5">Start the discussion by adding a comment above.</p>
+          <p className="text-xs font-semibold text-[#292A27]">
+            No comments yet
+          </p>
+          <p className="text-[11px] text-[#6B6A64] mt-0.5">
+            Start the discussion by adding a comment above.
+          </p>
         </div>
       ) : (
         <div className="space-y-3">

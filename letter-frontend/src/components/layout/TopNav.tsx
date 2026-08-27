@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
-import Avatar from '@/components/common/Avatar';
-import Dropdown, { DropdownItem } from '@/components/common/Dropdown';
-import NotificationBell from '@/components/notifications/NotificationBell';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import Avatar from "@/components/common/Avatar";
+import Dropdown, { DropdownItem } from "@/components/common/Dropdown";
+import NotificationBell from "@/components/notifications/NotificationBell";
 
 interface TopNavProps {
   onOpenMobileSidebar: () => void;
@@ -11,45 +11,59 @@ interface TopNavProps {
 
 const getRoleDisplayLabel = (role?: string): string => {
   switch (role) {
-    case 'ADMIN':
-      return 'ADMINISTRATOR';
-    case 'DEPARTMENT_MANAGER':
-      return 'DEPARTMENT MANAGER';
-    case 'EMPLOYEE':
-      return 'EMPLOYEE';
+    case "ADMIN":
+      return "ADMINISTRATOR";
+    case "DEPARTMENT_MANAGER":
+      return "DEPARTMENT MANAGER";
+    case "EMPLOYEE":
+      return "EMPLOYEE";
     default:
-      return 'OFFICER';
+      return "OFFICER";
   }
 };
 
 export const TopNav: React.FC<TopNavProps> = ({ onOpenMobileSidebar }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
+  const displayName = (user?.full_name || "Officer").replace(
+    /\s+\((?:ADMIN(?:ISTRATOR)?|DEPARTMENT\s*MANAGER|MANAGER|EMPLOYEE)\)\s*$/i,
+    "",
+  );
 
   const handleLogout = () => {
     logout();
-    navigate('/login', { replace: true });
+    navigate("/login", { replace: true });
   };
 
   const dropdownItems: DropdownItem[] = [
     {
-      label: 'My Profile',
-      onClick: () => navigate('/profile'),
+      label: "My Profile",
+      onClick: () => navigate("/profile"),
       icon: (
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.75}
+            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+          />
         </svg>
       ),
     },
     {
-      label: 'Sign Out',
+      label: "Sign Out",
       onClick: handleLogout,
       danger: true,
       dividerBefore: true,
       icon: (
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.75}
+            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+          />
         </svg>
       ),
     },
@@ -66,16 +80,36 @@ export const TopNav: React.FC<TopNavProps> = ({ onOpenMobileSidebar }) => {
           className="md:hidden p-2 rounded-xl text-[#292A27] hover:bg-[#ECEAE3] transition-colors focus:outline-none focus:ring-2 focus:ring-[#526A55]"
           aria-label="Open navigation"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 6h16M4 12h16M4 18h16"
+            />
           </svg>
         </button>
 
         {/* Global Search Input Field (UI Only) */}
         <div className="relative w-full">
           <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none text-[#6B6A64]">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
             </svg>
           </div>
           <input
@@ -105,16 +139,13 @@ export const TopNav: React.FC<TopNavProps> = ({ onOpenMobileSidebar }) => {
             <div className="flex items-center space-x-3 cursor-pointer py-1 px-1.5 rounded-xl hover:bg-[#ECEAE3]/60 transition-colors">
               <div className="text-right hidden sm:block">
                 <span className="block text-xs font-semibold text-[#292A27] leading-tight">
-                  {user?.full_name || 'Officer'}
+                  {displayName}
                 </span>
                 <span className="block text-[9px] font-bold text-[#6B6A64] tracking-wider uppercase leading-tight">
                   {getRoleDisplayLabel(user?.role)}
                 </span>
               </div>
-              <Avatar
-                name={user?.full_name || 'Officer'}
-                size="md"
-              />
+              <Avatar name={displayName} size="md" />
             </div>
           }
         />
