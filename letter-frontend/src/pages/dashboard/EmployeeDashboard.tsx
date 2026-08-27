@@ -70,7 +70,7 @@ export const EmployeeDashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recently Handled Letters */}
         <RecentDocumentsTable
-          documents={data.recentLetters}
+          documents={data.recentLetters || []}
           title="My Recent Letters"
           subtitle="Recently authored, assigned, or updated letters"
           emptyTitle="No Letters Found"
@@ -79,7 +79,7 @@ export const EmployeeDashboard: React.FC = () => {
 
         {/* Pending Actions */}
         <RecentDocumentsTable
-          documents={data.pendingLetters}
+          documents={data.pendingLetters || []}
           title="Pending Actions"
           subtitle="Letters currently requiring review or response"
           emptyTitle="No Pending Actions"

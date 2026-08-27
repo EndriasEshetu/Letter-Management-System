@@ -5,6 +5,7 @@ import { asyncHandler } from '../lib/errors';
 import { requireAuth, requireRole, AuthenticatedRequest } from '../middleware/auth';
 import { serializeDocument, toIso, DocumentRow } from '../lib/utils';
 import { createNotification } from '../lib/notifications';
+import { logAudit } from '../lib/audit';
 
 const router = Router();
 
@@ -86,7 +87,7 @@ function serializeApprovalRequest(row: ApprovalJoinRow) {
 
   return {
     id: String(row.id),
-    document: serializeDocument(doc as unknown as DocumentRow),
+    letter: serializeDocument(doc as unknown as DocumentRow),
     submitter_name: row.submitter_name,
     submitter_role: row.submitter_role ?? undefined,
     submitter_department: row.submitter_department ?? undefined,
@@ -181,8 +182,8 @@ router.get(
       rows.map((r) => ({
         id: String(r.id),
         action: r.action,
-        document_title: r.document_title,
-        document_id: r.document_id != null ? String(r.document_id) : undefined,
+        letter_subject: r.document_title,
+        letter_id: r.document_id != null ? String(r.document_id) : undefined,
         user_name: r.user_name,
         timestamp: toIso(r.timestamp),
       }))
@@ -221,6 +222,15 @@ async function reviewDocument(
      VALUES ($1, $2, $3, $4, now())`,
     [action, documentId, doc.title, reviewerName]
   );
+
+  await logAudit({
+    userName: reviewerName,
+    action: `APPROVAL_${action}`,
+    entityId: documentId,
+    previousStatus: 'PENDING_APPROVAL',
+    newStatus: action,
+    details: { comment: comment || null },
+  });
 
   if (doc.author_id) {
     const typeMap = {

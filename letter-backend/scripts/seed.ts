@@ -1,9 +1,11 @@
 /**
- * Seed script — provisions demo data so the frontend works end-to-end.
+ * Seed script — provisions official SITA directorates, demo users, workflow letters,
+ * attachments, approvals, notifications, comments, and audit logs.
  *
- *  - Creates 3 users directly in the `users` table (admin / manager / employee, password: Sita@2026)
- *  - Seeds departments, sample documents (with placeholder PDFs written to disk),
- *    one pending approval, comments, notifications and activity.
+ * Demo accounts (password: Sita@2026):
+ *  - admin@sita.gov.et    (ADMIN)
+ *  - manager@sita.gov.et  (DEPARTMENT_MANAGER)
+ *  - employee@sita.gov.et (EMPLOYEE)
  *
  * Idempotent: safe to run multiple times.
  *
@@ -173,6 +175,14 @@ async function seedDocument(args: {
      VALUES ($1,'v1.0',$2,$3,$4,$5,$6,true)`,
     [docId, args.createdBy, args.authorId, file.size, args.title + '.pdf', file.path]
   );
+
+  // Audit log entry
+  await pool.query(
+    `INSERT INTO audit_logs (user_id, user_name, action, entity_type, entity_id, new_status, timestamp)
+     VALUES ($1, $2, 'CREATE_LETTER', 'LETTER', $3, $4, NOW())`,
+    [args.authorId, args.createdBy, docId, args.status]
+  );
+
   console.log(`[seed] created document ${args.documentNumber}`);
   return docId;
 }
@@ -180,151 +190,152 @@ async function seedDocument(args: {
 /* ─── Main ──────────────────────────────────────────────── */
 
 async function seed() {
-  // Ensure uploads directory exists
   fs.mkdirSync(path.join(uploadsDir, 'documents'), { recursive: true });
 
-  // Departments
-  const deptFinance = await upsertDepartment('Finance & Planning', 'DEP-FIN', 'Budgeting, financial forecasting, and expenditure control');
-  const deptIct = await upsertDepartment('ICT Governance', 'DEP-ICT', 'Infrastructure, systems security, and hardware management');
-  await upsertDepartment('Human Resources', 'DEP-HR', 'Personnel recruitment, training, and staff welfare');
-  await upsertDepartment('Legal Services', 'DEP-LGL', 'Regulatory compliance, contract review, and policy archives');
-  await upsertDepartment('Public Works', 'DEP-PWK', 'Facilities management and campus infrastructure projects');
+  // 4 Official SITA Directorates
+  const deptApp = await upsertDepartment('App Development Directorate', 'DIR-APP', 'Web & mobile application software engineering, portal development, and digital services.');
+  const deptInf = await upsertDepartment('ICT Infrastructure Development Directorate', 'DIR-INF', 'Network infrastructure, data center operations, cybersecurity, and hardware systems.');
+  const deptSct = await upsertDepartment('Science and Technology Directorate', 'DIR-SCT', 'Scientific research innovation, technology transfer, emerging tech policies, and standards.');
+  const deptInc = await upsertDepartment('Incubation Development Directorate', 'DIR-INC', 'Tech startup incubation, innovation hub mentoring, entrepreneurship support, and grants.');
 
-  // Users with hashed passwords (no Supabase Auth)
+  // Demo users with hashed passwords
   const adminId = await upsertUser({
-    full_name: 'Abebe Bikila', email: 'admin@sita.gov.et', role: 'ADMIN',
-    departmentId: deptIct, jobTitle: 'System Administrator',
+    full_name: 'Abebe Bikila (Admin)', email: 'admin@sita.gov.et', role: 'ADMIN',
+    departmentId: deptInf, jobTitle: 'System Administrator & Main Admin',
   });
   const managerId = await upsertUser({
-    full_name: 'Tariku Eshetu', email: 'manager@sita.gov.et', role: 'DEPARTMENT_MANAGER',
-    departmentId: deptFinance, jobTitle: 'Department Manager',
+    full_name: 'Tariku Eshetu (Manager)', email: 'manager@sita.gov.et', role: 'DEPARTMENT_MANAGER',
+    departmentId: deptApp, jobTitle: 'App Development Directorate Manager',
   });
   const employeeId = await upsertUser({
-    full_name: 'Endrias Eshetu', email: 'employee@sita.gov.et', role: 'EMPLOYEE',
-    departmentId: deptFinance, jobTitle: 'Senior Finance Officer',
+    full_name: 'Endrias Eshetu (Employee)', email: 'employee@sita.gov.et', role: 'EMPLOYEE',
+    departmentId: deptApp, jobTitle: 'Software Systems Lead',
   });
   await upsertUser({
     full_name: 'Abebe Demissie', email: 'registry@sita.gov.et', role: 'REGISTRY_OFFICER',
     departmentId: deptIct, jobTitle: 'Senior Registry Officer',
   });
 
-  // Sample documents
-  const pendingDoc = await seedDocument({
-    documentNumber: 'LMS/INC/2026/001',
-    title: 'Q1_Financial_Report_DRAFT.pdf',
-    description: 'Quarterly financial overview and budget projections for SITA departments.',
-    category: 'Finance / Reports',
-    departmentId: deptFinance,
-    departmentName: 'Finance & Planning',
-    createdBy: 'Endrias Eshetu',
-    authorId: employeeId,
-    status: 'PENDING_APPROVAL',
-    storageKey: 'documents/seed-q1-financial-report.pdf',
+  // Sample Documents covering the 3 workflows
+  const incomingDoc = await seedDocument({
+    documentNumber: 'IN/2026/00452',
+    title: 'MOF_Digital_Transformation_Report_Request.pdf',
+    description: 'Official correspondence from the Ministry of Finance requesting SITA digital transformation milestones and budget realignment.',
+    category: 'Finance / Budget',
+    departmentId: deptInf,
+    departmentName: 'ICT Infrastructure Development Directorate',
+    createdBy: 'Registry Officer',
+    authorId: adminId,
+    status: 'IN_PROGRESS',
+    storageKey: 'documents/seed-mof-report-request.pdf',
 
     letterType: 'INCOMING',
     sender: 'Ato Kebede Tadesse',
-    senderOrganization: 'Ministry of Finance, Ethiopia',
-    recipient: 'Director General',
+    senderOrganization: 'Ministry of Finance, Federal Democratic Republic of Ethiopia',
+    recipient: 'Director General / Main Admin',
     recipientOrganization: 'SITA',
     priority: 'HIGH',
-    dateReceived: new Date('2026-08-25T09:42:00'),
-    dueDate: new Date('2026-11-01T00:00:00'),
+    dateReceived: new Date('2026-08-20T09:30:00'),
+    dueDate: new Date('2026-09-05T00:00:00'),
+    assignedEmployee: 'Endrias Eshetu',
     responseRequired: true,
   });
 
-  const approvedDoc = await seedDocument({
-    documentNumber: 'LMS/OUT/2026/089',
-    title: 'Employee_Handbook_2026.pdf',
-    description: 'Updated HR code of conduct, leave policies, and organizational structure.',
-    category: 'HR / Policies',
-    departmentId: deptFinance,
-    departmentName: 'Finance & Planning',
-    createdBy: 'Endrias Eshetu',
+  const outgoingDoc = await seedDocument({
+    documentNumber: 'OUT/2026/00891',
+    title: 'SITA_Response_MOF_Q4_Report.pdf',
+    description: 'Formal response letter drafted for the Ministry of Finance detailing SITA digital infrastructure metrics and budget deployment.',
+    category: 'Finance / Budget',
+    departmentId: deptApp,
+    departmentName: 'App Development Directorate',
+    createdBy: 'Endrias Eshetu (Employee)',
     authorId: employeeId,
     status: 'APPROVED',
-    storageKey: 'documents/seed-employee-handbook.pdf',
+    storageKey: 'documents/seed-sita-mof-response.pdf',
 
     letterType: 'OUTGOING',
     sender: 'Director General, SITA',
     senderOrganization: 'Sidama Innovation and Technology Agency',
-    recipient: 'Regional Director',
-    recipientOrganization: 'Huawei Technologies East Africa',
-    priority: 'NORMAL',
-    dateSent: new Date('2026-08-24T16:30:00'),
+    recipient: 'Ato Kebede Tadesse (State Minister)',
+    recipientOrganization: 'Ministry of Finance, Ethiopia',
+    priority: 'HIGH',
+    dateSent: new Date('2026-08-25T09:15:00'),
   });
 
   await seedDocument({
-    documentNumber: 'LMS/INT/2026/045',
-    title: 'ICT_Infrastructure_Audit_Report.pdf',
-    description: 'Hardware audit, server rack capacity, and fiber network routing assessment.',
-    category: 'ICT / Audit',
-    departmentId: deptIct,
-    departmentName: 'ICT Governance',
-    createdBy: 'Endrias Eshetu',
+    documentNumber: 'INT/2026/00317',
+    title: 'IT_Server_Procurement_Internal_Memo.pdf',
+    description: 'Internal communication from App Development Directorate to ICT Infrastructure Development Directorate for cloud server deployment.',
+    category: 'Procurement / Supplies',
+    departmentId: deptInf,
+    departmentName: 'ICT Infrastructure Development Directorate',
+    createdBy: 'Endrias Eshetu (Employee)',
     authorId: employeeId,
-    status: 'DRAFT',
-    storageKey: 'documents/seed-ict-audit-report.pdf',
+    status: 'RECEIVED',
+    storageKey: 'documents/seed-internal-server-memo.pdf',
 
-    letterType: 'MEMORANDUM',
-    sender: 'HR Director',
-    senderOrganization: 'SITA – Human Resources Directorate',
-    recipient: 'All Department Heads',
-    recipientOrganization: 'SITA',
-    priority: 'NORMAL',
-    dateSent: new Date('2026-08-23T10:00:00'),
+    letterType: 'INTERNAL',
+    sender: 'App Development Lead',
+    senderOrganization: 'SITA – App Development Directorate',
+    recipient: 'ICT Infrastructure Directorate Head',
+    recipientOrganization: 'SITA Internal',
+    priority: 'HIGH',
+    dateSent: new Date('2026-08-24T10:00:00'),
+    dueDate: new Date('2026-09-10T00:00:00'),
   });
 
-  // Pending approval for the manager's queue
-  const approvalExists = await pool.query('SELECT id FROM approvals WHERE document_id = $1', [pendingDoc]);
+  // Approvals & activities
+  const approvalExists = await pool.query('SELECT id FROM approvals WHERE document_id = $1', [outgoingDoc]);
   if (approvalExists.rows.length === 0) {
     await pool.query(
-      `INSERT INTO approvals (document_id, submitter_id, submitter_name, submitter_role, submitter_department, priority, status)
-       VALUES ($1,$2,'Endrias Eshetu','Senior Finance Officer','Finance & Planning','NORMAL','PENDING')`,
-      [pendingDoc, employeeId]
+      `INSERT INTO approvals (document_id, submitter_id, submitter_name, submitter_role, submitter_department, priority, status, reviewed_at, reviewer_name, comment)
+       VALUES ($1, $2, 'Endrias Eshetu (Employee)', 'Software Systems Lead', 'App Development Directorate', 'HIGH', 'APPROVED', NOW(), 'Tariku Eshetu (Manager)', 'Approved for official dispatch to Ministry of Finance.')`,
+      [outgoingDoc, employeeId]
     );
+
     await pool.query(
       `INSERT INTO approval_activities (action, document_id, document_title, user_name)
-       VALUES ('SUBMITTED', $1, 'Q1_Financial_Report_DRAFT.pdf', 'Endrias Eshetu')`,
-      [pendingDoc]
+       VALUES ('APPROVED', $1, 'SITA_Response_MOF_Q4_Report.pdf', 'Tariku Eshetu (Manager)')`,
+      [outgoingDoc]
     );
-    await pool.query(
-      `INSERT INTO approval_activities (action, document_id, document_title, user_name)
-       VALUES ('APPROVED', $1, 'Employee_Handbook_2026.pdf', 'Tariku Eshetu')`,
-      [approvedDoc]
-    );
+
     await pool.query(
       `INSERT INTO notifications (user_id, type, message, document_id, document_title)
-       VALUES ($1, 'DOCUMENT_SUBMITTED', 'Endrias Eshetu submitted "Q1_Financial_Report_DRAFT.pdf" for approval.', $2, 'Q1_Financial_Report_DRAFT.pdf')`,
-      [managerId, pendingDoc]
+       VALUES ($1, 'DOCUMENT_APPROVED', 'Your response letter OUT/2026/00891 was approved.', $2, 'SITA_Response_MOF_Q4_Report.pdf')`,
+      [employeeId, outgoingDoc]
     );
+
     await pool.query(
-      `INSERT INTO notifications (user_id, type, message, document_id, document_title)
-       VALUES ($1, 'DOCUMENT_APPROVED', 'Your document "Employee_Handbook_2026.pdf" was approved.', $2, 'Employee_Handbook_2026.pdf')`,
-      [employeeId, approvedDoc]
+      `INSERT INTO audit_logs (user_id, user_name, action, entity_type, entity_id, previous_status, new_status, details)
+       VALUES ($1, 'Tariku Eshetu (Manager)', 'APPROVAL_APPROVED', 'LETTER', $2, 'PENDING_APPROVAL', 'APPROVED', '{"comment":"Approved for official dispatch"}')`,
+      [managerId, outgoingDoc]
     );
-    console.log('[seed] created approval + activity + notifications');
+
+    console.log('[seed] created approval + activity + notification + audit log');
   }
 
-  // A comment on the pending document
-  const commentExists = await pool.query('SELECT id FROM comments WHERE document_id = $1', [pendingDoc]);
+  // Comments
+  const commentExists = await pool.query('SELECT id FROM comments WHERE document_id = $1', [incomingDoc]);
   if (commentExists.rows.length === 0) {
     await pool.query(
       `INSERT INTO comments (document_id, author_id, author_name, author_role, author_department, message)
-       VALUES ($1,$2,'Tariku Eshetu','Department Manager','Finance & Planning','Please update section 4.2 financial projections before final approval.')`,
-      [pendingDoc, managerId]
+       VALUES ($1, $2, 'Tariku Eshetu (Manager)', 'Department Manager', 'App Development Directorate', 'Please detail Q4 server capacity and cloud migration timeline in section 2.')`,
+      [incomingDoc, managerId]
     );
     console.log('[seed] created comment');
   }
 
   // Assign department managers
-  await pool.query('UPDATE departments SET manager_id = $1 WHERE id = $2', [managerId, deptFinance]);
-  await pool.query('UPDATE departments SET manager_id = $1 WHERE id = $2', [adminId, deptIct]);
+  await pool.query('UPDATE departments SET manager_id = $1 WHERE id = $2', [managerId, deptApp]);
+  await pool.query('UPDATE departments SET manager_id = $1 WHERE id = $2', [adminId, deptInf]);
+  await pool.query('UPDATE departments SET manager_id = $1 WHERE id = $2', [managerId, deptSct]);
+  await pool.query('UPDATE departments SET manager_id = $1 WHERE id = $2', [adminId, deptInc]);
 
   console.log('\n[seed] Done! Demo logins (password: Sita@2026):');
   console.log('  admin@sita.gov.et    (ADMIN)');
   console.log('  manager@sita.gov.et  (DEPARTMENT_MANAGER)');
   console.log('  employee@sita.gov.et (EMPLOYEE)');
-  console.log(`\nSeeded sample data; run "npm run dev" to start the API on port 5000.`);
+  console.log(`\nSeeded SITA directorates, users, workflow letters, and audit logs.`);
 
   await pool.end();
 }

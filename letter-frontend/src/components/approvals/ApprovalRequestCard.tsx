@@ -44,9 +44,12 @@ export const ApprovalRequestCard: React.FC<ApprovalRequestCardProps> = ({
   isProcessing = false,
 }) => {
   const navigate = useNavigate();
-  const { letter, submitter_name, submitter_role, submitter_department, priority, submitted_at, page_count } = request;
+  const letter = request.letter || {};
+  const { submitter_name, submitter_role, submitter_department, priority, submitted_at, page_count } = request;
 
   const isHighPriority = priority === 'HIGH';
+  const subject = letter.subject || 'Untitled Letter';
+  const referenceNumber = letter.referenceNumber || 'N/A';
 
   return (
     <div className="bg-[#ECEAE3] border border-[#D8D7D1] rounded-2xl p-5 sm:p-6 space-y-4 hover:border-[#526A55]/40 transition-all duration-200">
@@ -57,7 +60,7 @@ export const ApprovalRequestCard: React.FC<ApprovalRequestCardProps> = ({
           <div className="min-w-0">
             <h4 className="text-sm font-semibold text-[#292A27] truncate">{submitter_name}</h4>
             <p className="text-xs text-[#6B6A64] truncate">
-              {submitter_role || 'Officer'} · <span className="font-medium">{submitter_department || letter.department_name}</span>
+              {submitter_role || 'Officer'} · <span className="font-medium">{submitter_department || letter.department_name || 'General Administration'}</span>
             </p>
           </div>
         </div>
@@ -83,7 +86,7 @@ export const ApprovalRequestCard: React.FC<ApprovalRequestCardProps> = ({
         <div className="flex items-start justify-between gap-3">
           <button
             type="button"
-            onClick={() => navigate(`/letters/${letter.id}/preview`)}
+            onClick={() => letter.id && navigate(`/letters/${letter.id}/preview`)}
             className="flex items-center gap-2.5 text-left group min-w-0 focus:outline-none focus:ring-2 focus:ring-[#526A55] rounded-lg"
           >
             <div className="p-2 bg-[#526A55]/10 text-[#526A55] rounded-lg flex-shrink-0 group-hover:bg-[#526A55] group-hover:text-[#F5F3ED] transition-colors">
@@ -93,20 +96,22 @@ export const ApprovalRequestCard: React.FC<ApprovalRequestCardProps> = ({
             </div>
             <div className="min-w-0">
               <h5 className="text-sm font-semibold text-[#292A27] group-hover:text-[#526A55] transition-colors truncate">
-                {letter.subject}
+                {subject}
               </h5>
-              <p className="text-xs text-[#8A8983] font-mono">{letter.referenceNumber}</p>
+              <p className="text-xs text-[#8A8983] font-mono">{referenceNumber}</p>
             </div>
           </button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate(`/letters/${letter.id}/preview`)}
-            className="flex-shrink-0 text-xs"
-          >
-            View Letter
-          </Button>
+          {letter.id && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/letters/${letter.id}/preview`)}
+              className="flex-shrink-0 text-xs"
+            >
+              View Letter
+            </Button>
+          )}
         </div>
 
         {letter.description && (
@@ -115,17 +120,17 @@ export const ApprovalRequestCard: React.FC<ApprovalRequestCardProps> = ({
 
         {/* Metadata Footer */}
         <div className="flex items-center gap-4 text-[11px] text-[#8A8983] pt-1 pl-1 flex-wrap">
-          <span>Type: {letter.letterType}</span>
-          <span>· Size: {formatFileSize(letter.file_size)}</span>
+          <span>Type: {letter.letterType || letter.category || 'INCOMING'}</span>
+          {letter.file_size && <span>· Size: {formatFileSize(letter.file_size)}</span>}
           {typeof page_count === 'number' && <span>· Pages: {page_count}</span>}
-          <span>· Submitted: {formatDate(submitted_at)}</span>
+          {submitted_at && <span>· Submitted: {formatDate(submitted_at)}</span>}
         </div>
 
         {/* Letter Progression Timeline */}
         <div className="pt-2 border-t border-[#D8D7D1]/50">
           <LetterTimeline
             currentStatus={request.status === 'PENDING' ? 'PENDING_APPROVAL' : request.status}
-            direction={letter.direction || 'INCOMING'}
+            direction={letter.direction || letter.letterType || 'INCOMING'}
             rejectionReason={request.comment}
             timestamps={{ registered_at: formatDate(submitted_at), reviewed_at: request.reviewed_at ? formatDate(request.reviewed_at) : undefined }}
           />

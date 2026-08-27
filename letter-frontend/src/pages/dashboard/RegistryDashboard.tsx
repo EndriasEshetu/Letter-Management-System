@@ -99,7 +99,7 @@ export const RegistryDashboard: React.FC = () => {
         {/* Left 2 Cols: Activity Stream */}
         <div className="lg:col-span-2 space-y-6">
           <RecentActivityList
-            activities={data.recentActivities}
+            activities={data.recentActivities || []}
             title="Registry Operations & Letter Log"
           />
         </div>

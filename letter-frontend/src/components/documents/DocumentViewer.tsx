@@ -1,30 +1,29 @@
-import React, { useMemo, useState } from 'react';
-import { Viewer, Worker } from '@react-pdf-viewer/core';
+import React from 'react';
+import { Worker, Viewer } from '@react-pdf-viewer/core';
 import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
 import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/default-layout/lib/styles/index.css';
-import LoadingSpinner from '@/components/common/LoadingSpinner';
-import ErrorState from '@/components/common/ErrorState';
+
 import Button from '@/components/common/Button';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
 
-/* ─── Constants ──────────────────────────────────────────── */
+const PDF_WORKER_URL = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-// Must match installed pdfjs-dist version in package.json
-const PDF_WORKER_URL =
-  'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+/* ─── Sub-component: Non-PDF Placeholder ──────────────── */
 
-const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+interface NotPdfPlaceholderProps {
+  fileName: string;
+  onDownload: () => void;
+}
 
-/* ─── Non-PDF Placeholder ───────────────────────────────── */
-
-const NotPdfPlaceholder: React.FC<{ fileName: string; onDownload: () => void }> = ({
+const NotPdfPlaceholder: React.FC<NotPdfPlaceholderProps> = ({
   fileName,
   onDownload,
 }) => (
-  <div className="flex flex-col items-center justify-center h-full min-h-[400px] bg-[#F9F8F5] p-12 text-center">
-    <div className="w-16 h-16 bg-[#D8D7D1]/60 rounded-2xl flex items-center justify-center mb-5">
-      <svg className="w-8 h-8 text-[#6B6A64]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <div className="flex flex-col items-center justify-center h-full min-h-[400px] p-8 text-center bg-[#ECEAE3]/40 border-2 border-dashed border-[#D8D7D1] rounded-2xl">
+    <div className="p-4 bg-[#526A55]/10 text-[#526A55] rounded-2xl mb-4">
+      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -33,38 +32,67 @@ const NotPdfPlaceholder: React.FC<{ fileName: string; onDownload: () => void }> 
         />
       </svg>
     </div>
-    <h3 className="text-base font-semibold text-[#292A27] mb-1.5">Preview Unavailable</h3>
-    <p className="text-sm text-[#6B6A64] max-w-xs mb-1">
-      In-browser preview is available for PDF documents only.
+    <h4 className="text-base font-semibold text-[#292A27] mb-1">
+      Inline Preview Not Available
+    </h4>
+    <p className="text-xs text-[#6B6A64] max-w-sm mb-6">
+      <span className="font-medium text-[#292A27]">{fileName}</span> cannot be previewed directly in the browser viewer. Please download the file to inspect its full contents.
     </p>
-    <p className="text-xs text-[#8A8983] mb-6 max-w-xs break-all">{fileName}</p>
-    <Button variant="primary" size="sm" onClick={onDownload} aria-label="Download document">
+    <Button variant="primary" size="sm" onClick={onDownload}>
+      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+        />
+      </svg>
       Download File
     </Button>
   </div>
 );
 
-/* ─── PDF Viewer Error Renderer ─────────────────────────── */
+/* ─── Sub-component: PDF Load Error Renderer ────────────── */
 
-const PdfErrorRenderer: React.FC<{ onDownload: () => void }> = ({ onDownload }) => (
-  <div className="flex flex-col items-center justify-center h-full min-h-[400px] bg-[#F9F8F5] p-8 text-center">
-    <ErrorState
-      title="Unable to preview this document"
-      description="The PDF could not be loaded. It may be unavailable or still processing. You can download it instead."
-      retryLabel="Try Again"
-      onRetry={() => window.location.reload()}
-    />
-    <div className="mt-4">
-      <Button variant="secondary" size="sm" onClick={onDownload}>
-        Download Document
-      </Button>
+interface PdfErrorRendererProps {
+  onDownload: () => void;
+}
+
+const PdfErrorRenderer: React.FC<PdfErrorRendererProps> = ({ onDownload }) => (
+  <div className="flex flex-col items-center justify-center h-full min-h-[400px] p-8 text-center bg-[#8B3232]/5 border border-[#8B3232]/20 rounded-2xl">
+    <div className="p-4 bg-[#8B3232]/10 text-[#8B3232] rounded-2xl mb-4">
+      <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.5}
+          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+        />
+      </svg>
     </div>
+    <h4 className="text-base font-semibold text-[#292A27] mb-1">
+      Unable to Render PDF Preview
+    </h4>
+    <p className="text-xs text-[#6B6A64] max-w-sm mb-6">
+      The document file could not be loaded into the inline viewer. Download the file to view it locally.
+    </p>
+    <Button variant="outline" size="sm" onClick={onDownload}>
+      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+        />
+      </svg>
+      Download Document
+    </Button>
   </div>
 );
 
-/* ─── PDF Viewer Props ───────────────────────────────────── */
+/* ─── Main Props ────────────────────────────────────────── */
 
-interface DocumentViewerProps {
+export interface DocumentViewerProps {
   documentId: string;
   fileName: string;
   fileType: string;
@@ -83,10 +111,8 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     fileType === 'application/pdf' ||
     fileName.toLowerCase().endsWith('.pdf');
 
-  // Stable plugin instance — must not be recreated on re-render
-  const defaultLayoutPluginInstance = useMemo(() => defaultLayoutPlugin(), []);
-
-  const [loadError, setLoadError] = useState(false);
+  // Custom plugin hook call at top level
+  const defaultLayoutPluginInstance = defaultLayoutPlugin();
 
   // Construct authenticated file URL for the PDF viewer
   const fileUrl = `${BASE_URL}/documents/${documentId}/download`;
@@ -95,22 +121,12 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
     ? { Authorization: `Bearer ${token}` }
     : {};
 
-  /* ── Non-PDF guard ── */
   if (!isPdf) {
     return <NotPdfPlaceholder fileName={fileName} onDownload={onDownload} />;
   }
 
-  /* ── Error state (set by renderError callback) ── */
-  if (loadError) {
-    return <PdfErrorRenderer onDownload={onDownload} />;
-  }
-
   return (
     <Worker workerUrl={PDF_WORKER_URL}>
-      {/*
-        Height must be explicitly set for the PDF viewer to display correctly.
-        The outer div is flex-1 and we ensure min-height for smaller viewports.
-      */}
       <div
         className="h-full min-h-[500px] overflow-hidden"
         style={{ height: '100%' }}
@@ -128,11 +144,9 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
               />
             </div>
           )}
-          renderError={() => {
-            // Schedule state update outside of render
-            Promise.resolve().then(() => setLoadError(true));
-            return <div className="h-64" />;
-          }}
+          renderError={() => (
+            <PdfErrorRenderer onDownload={onDownload} />
+          )}
         />
       </div>
     </Worker>

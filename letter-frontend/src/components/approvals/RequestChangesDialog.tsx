@@ -42,12 +42,15 @@ export const RequestChangesDialog: React.FC<RequestChangesDialogProps> = ({
 
   if (!request) return null;
 
+  const doc = request?.letter || {};
+  const subject = doc.subject || 'Selected Letter';
+
   return (
     <Modal
       open={open}
       onClose={handleClose}
       title="Request Changes"
-      description={`Requesting changes for "${request.letter.subject}". Describe the revisions needed.`}
+      description={`Requesting changes for "${subject}". Describe the revisions needed.`}
       size="md"
       closeOnOverlay={!isLoading}
       footer={

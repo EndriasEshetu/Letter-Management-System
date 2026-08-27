@@ -42,12 +42,15 @@ export const RejectDialog: React.FC<RejectDialogProps> = ({
 
   if (!request) return null;
 
+  const doc = request?.letter || {};
+  const subject = doc.subject || 'Selected Letter';
+
   return (
     <Modal
       open={open}
       onClose={handleClose}
       title="Reject Letter"
-      description={`Rejecting "${request.letter.subject}". Please specify the reason.`}
+      description={`Rejecting "${subject}". Please specify the reason.`}
       size="md"
       closeOnOverlay={!isLoading}
       footer={

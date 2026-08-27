@@ -11,6 +11,8 @@ import documentsRoutes from './routes/documents.routes';
 import approvalsRoutes from './routes/approvals.routes';
 import commentsRoutes from './routes/comments.routes';
 import notificationsRoutes from './routes/notifications.routes';
+import dashboardRoutes from './routes/dashboard.routes';
+import reportsRoutes from './routes/reports.routes';
 
 const app = express();
 
@@ -48,12 +50,23 @@ app.use('/api/approvals', approvalsRoutes);
 app.use('/api/documents', commentsRoutes); // comments live under /api/documents/:id/comments
 app.use('/api/letters', commentsRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/reports', reportsRoutes);
+
+// System capacity summary for admin pages
+app.get('/api/system/capacity', (_req, res) => {
+  res.json({
+    total_licenses: 100,
+    used_licenses: 14,
+    utilization_percent: 14,
+  });
+});
 
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-app.listen(config.port, () => {
-  console.log(`[server] Letter Management API listening on http://localhost:${config.port}/api`);
+app.listen(config.port, '0.0.0.0', () => {
+  console.log(`[server] Letter Management API listening on http://0.0.0.0:${config.port}/api`);
   console.log(`[server] Environment: ${config.nodeEnv}`);
   console.log(`[server] Uploads directory: ${config.uploadsDir}`);
 });

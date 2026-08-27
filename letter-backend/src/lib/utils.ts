@@ -72,6 +72,12 @@ export interface DocumentRow {
   tags: string[] | null;
   version: string | null;
   is_new: boolean;
+  response_to_id?: number | null;
+  dispatch_method?: string | null;
+  tracking_number?: string | null;
+  dispatch_date?: Date | null;
+  delivered_at?: Date | null;
+  assignment_instructions?: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -163,6 +169,8 @@ export function serializeDocument(row: DocumentRow & { letter_type?: string; sen
     version: row.version ?? undefined,
     
     // Letter shape properties (frontend)
+    // direction is the same semantic value as letterType (INCOMING/OUTGOING/INTERNAL)
+    direction: letterType as 'INCOMING' | 'OUTGOING' | 'INTERNAL',
     referenceNumber: row.document_number,
     registrationNumber: (row as any).registration_number ?? undefined,
     subject: row.title,
@@ -179,6 +187,12 @@ export function serializeDocument(row: DocumentRow & { letter_type?: string; sen
     dateSent: formatDisplayDate((row as any).date_sent),
     dueDate: formatDisplayDate((row as any).due_date),
     responseRequired: (row as any).response_required ?? false,
+    responseToId: row.response_to_id ? String(row.response_to_id) : undefined,
+    dispatchMethod: row.dispatch_method ?? undefined,
+    trackingNumber: row.tracking_number ?? undefined,
+    dispatchDate: formatDisplayDate(row.dispatch_date),
+    deliveredAt: formatDisplayDate(row.delivered_at),
+    assignmentInstructions: row.assignment_instructions ?? undefined,
 
     // Shared properties
     description: row.description ?? undefined,

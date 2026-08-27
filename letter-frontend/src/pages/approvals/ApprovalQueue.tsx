@@ -78,13 +78,16 @@ export const ApprovalQueue: React.FC = () => {
   /* 1. Approve Letter */
   const handleConfirmApprove = async () => {
     if (!approveRequest) return;
+    const doc = approveRequest.letter || {};
+    const id = doc.id;
+    const subject = doc.subject || 'Selected Letter';
     setIsProcessingAction(true);
     try {
-      await approvalService.approveLetter({ letter_id: approveRequest.letter.id });
+      await approvalService.approveLetter({ letter_id: id });
       addToast({
         type: 'success',
         title: 'Letter Approved',
-        message: `Successfully approved "${approveRequest.letter.subject}".`,
+        message: `Successfully approved "${subject}".`,
       });
       setApproveRequest(null);
       await loadData(activeTab, true);
@@ -92,7 +95,7 @@ export const ApprovalQueue: React.FC = () => {
       addToast({
         type: 'error',
         title: 'Approval Failed',
-        message: 'Could not complete letter approval. Please try again.',
+        message: err.message || 'Could not complete letter approval. Please try again.',
       });
     } finally {
       setIsProcessingAction(false);
@@ -102,16 +105,19 @@ export const ApprovalQueue: React.FC = () => {
   /* 2. Reject Letter */
   const handleConfirmReject = async (reason: string) => {
     if (!rejectRequest) return;
+    const doc = rejectRequest.letter || {};
+    const id = doc.id;
+    const subject = doc.subject || 'Selected Letter';
     setIsProcessingAction(true);
     try {
       await approvalService.rejectLetter({
-        letter_id: rejectRequest.letter.id,
+        letter_id: id,
         reason,
       });
       addToast({
         type: 'warning',
         title: 'Letter Rejected',
-        message: `Letter "${rejectRequest.letter.subject}" has been rejected.`,
+        message: `Letter "${subject}" has been rejected.`,
       });
       setRejectRequest(null);
       await loadData(activeTab, true);
@@ -119,7 +125,7 @@ export const ApprovalQueue: React.FC = () => {
       addToast({
         type: 'error',
         title: 'Rejection Failed',
-        message: 'Could not process letter rejection. Please try again.',
+        message: err.message || 'Could not process letter rejection. Please try again.',
       });
     } finally {
       setIsProcessingAction(false);
@@ -129,16 +135,19 @@ export const ApprovalQueue: React.FC = () => {
   /* 3. Request Changes */
   const handleConfirmRequestChanges = async (reason: string) => {
     if (!requestChangesReq) return;
+    const doc = requestChangesReq.letter || {};
+    const id = doc.id;
+    const subject = doc.subject || 'Selected Letter';
     setIsProcessingAction(true);
     try {
       await approvalService.requestChanges({
-        letter_id: requestChangesReq.letter.id,
+        letter_id: id,
         reason,
       });
       addToast({
         type: 'info',
         title: 'Changes Requested',
-        message: `Revision request sent for "${requestChangesReq.letter.subject}".`,
+        message: `Revision request sent for "${subject}".`,
       });
       setRequestChangesReq(null);
       await loadData(activeTab, true);
@@ -146,7 +155,7 @@ export const ApprovalQueue: React.FC = () => {
       addToast({
         type: 'error',
         title: 'Request Failed',
-        message: 'Could not send change request. Please try again.',
+        message: err.message || 'Could not send change request. Please try again.',
       });
     } finally {
       setIsProcessingAction(false);
@@ -268,7 +277,7 @@ export const ApprovalQueue: React.FC = () => {
       <ConfirmDialog
         open={Boolean(approveRequest)}
         title="Approve Letter?"
-        description={`Are you sure you want to approve "${approveRequest?.letter.subject}"? This will change the letter status to Approved.`}
+        description={`Are you sure you want to approve "${approveRequest?.letter?.subject || 'this letter'}"? This will change the letter status to Approved.`}
         confirmLabel="Approve Letter"
         cancelLabel="Cancel"
         onConfirm={handleConfirmApprove}

@@ -16,7 +16,7 @@ create table if not exists departments (
 
 create table if not exists users (
   id            bigserial primary key,
-  auth_uid      uuid unique references auth.users (id) on delete cascade,
+  auth_uid      uuid unique,        -- nullable, no FK (Supabase auth removed; see 0002_postgres_auth.sql)
   full_name     text not null,
   email         text not null unique,
   phone         text,
