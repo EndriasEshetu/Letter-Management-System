@@ -6,6 +6,7 @@
  *  - admin@sita.gov.et    (ADMIN)
  *  - manager@sita.gov.et  (DEPARTMENT_MANAGER)
  *  - employee@sita.gov.et (EMPLOYEE)
+ *  - registry@sita.gov.et (REGISTRY_OFFICER)
  *
  * Idempotent: safe to run multiple times.
  *
@@ -335,6 +336,7 @@ async function seed() {
   console.log('  admin@sita.gov.et    (ADMIN)');
   console.log('  manager@sita.gov.et  (DEPARTMENT_MANAGER)');
   console.log('  employee@sita.gov.et (EMPLOYEE)');
+  console.log('  registry@sita.gov.et (REGISTRY_OFFICER)');
   console.log(`\nSeeded SITA directorates, users, workflow letters, and audit logs.`);
 
   await pool.end();
