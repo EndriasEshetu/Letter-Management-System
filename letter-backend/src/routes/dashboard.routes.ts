@@ -1,10 +1,63 @@
 import { Router } from 'express';
 import { query } from '../lib/db';
 import { asyncHandler } from '../lib/errors';
-import { requireAuth, AuthenticatedRequest } from '../middleware/auth';
+import { requireAuth, requireRole, AuthenticatedRequest } from '../middleware/auth';
 import { serializeAuditLog, AuditLogRow } from '../lib/audit';
 
 const router = Router();
+
+/** GET /dashboard/admin/tasks — Actionable workflow tasks for Main Administrator */
+router.get(
+  '/admin/tasks',
+  requireAuth,
+  requireRole('ADMIN'),
+  asyncHandler(async (_req, res) => {
+    const { rows } = await query(`
+   SELECT d.id::text AS letter_id,
+     ('admin-' || d.id::text || '-' || d.status) AS id,
+     CASE WHEN d.letter_type = 'INCOMING' THEN 'ROUTE_INCOMING'
+       WHEN d.letter_type = 'OUTGOING' THEN 'REGISTER_OUTGOING'
+       ELSE 'ROUTE_INTERNAL' END AS type,
+     CASE WHEN d.letter_type = 'INCOMING' THEN 'Route Incoming Letter'
+       WHEN d.letter_type = 'OUTGOING' THEN 'Register Outgoing Letter'
+       ELSE 'Route Internal Letter' END AS action_required,
+     CASE WHEN d.letter_type = 'INCOMING' THEN 'Select the destination department for this registered incoming letter.'
+       WHEN d.letter_type = 'OUTGOING' THEN 'Verify the approved letter and assign its official outgoing reference number.'
+       ELSE 'Register and route this approved internal letter to its receiving department.' END AS reason,
+     d.letter_type, d.document_number AS letter_reference, d.title AS subject,
+     d.sender, d.recipient, d.department_name AS source_department,
+     d.created_by AS requested_by,
+     CASE WHEN d.letter_type = 'INCOMING' THEN 'REGISTRY_OFFICER' ELSE 'DEPARTMENT_MANAGER' END AS requested_by_role,
+     d.status AS letter_status, d.priority, d.security_level AS confidentiality,
+     d.created_at, d.due_date,
+     CASE WHEN d.letter_type = 'INCOMING' THEN 'Main Administrator - Routing'
+       WHEN d.letter_type = 'OUTGOING' THEN 'Main Administrator - Registration'
+       ELSE 'Main Administrator - Registration & Routing' END AS workflow_stage,
+     CASE WHEN d.letter_type = 'INCOMING' THEN 'Registry Officer - Registration'
+       ELSE 'Department Manager - Approval' END AS previous_actor,
+     CASE WHEN d.letter_type = 'INCOMING' THEN 'Department Manager'
+       WHEN d.letter_type = 'OUTGOING' THEN 'Dispatch Officer'
+       ELSE 'Receiving Department' END AS next_actor,
+     (d.due_date IS NOT NULL AND d.due_date < NOW()) AS is_overdue
+   FROM documents d
+   WHERE (d.letter_type = 'INCOMING' AND d.status IN ('RECEIVED', 'REGISTERED'))
+      OR (d.letter_type = 'OUTGOING' AND d.status = 'APPROVED')
+      OR (d.letter_type = 'INTERNAL' AND d.status = 'APPROVED')
+   ORDER BY is_overdue DESC,
+     CASE d.priority WHEN 'URGENT' THEN 1 WHEN 'HIGH' THEN 2 WHEN 'NORMAL' THEN 3 ELSE 4 END,
+     d.due_date NULLS LAST, d.created_at ASC
+    `);
+    res.json({
+      data: rows,
+      summary: {
+        total: rows.length,
+        requiresAction: rows.length,
+        dueToday: rows.filter((task: any) => task.due_date && new Date(task.due_date).toDateString() === new Date().toDateString()).length,
+        overdue: rows.filter((task: any) => task.is_overdue).length,
+      },
+    });
+  })
+);
 
 /** GET /dashboard/admin — Real-time live stats for Main Administrator */
 router.get(

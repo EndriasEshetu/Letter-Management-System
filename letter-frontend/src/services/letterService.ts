@@ -11,6 +11,7 @@ import {
   LetterPriority,
   LetterDispatch,
 } from "@/types/letter";
+import { AdminTaskResponse } from "@/types/adminTask";
 
 /**
  * Mock Initial Letters Dataset for Dev Offline Mode with 3 Workflows
@@ -416,6 +417,10 @@ const MOCK_LETTERS: LetterItem[] = [
 let inMemoryLetters = [...MOCK_LETTERS];
 
 export const letterService = {
+  async getAdminTasks(): Promise<AdminTaskResponse> {
+    const response = await api.get<AdminTaskResponse>("/dashboard/admin/tasks");
+    return response.data;
+  },
   /**
    * Get paginated & filtered list of letters with 3 workflow filters
    */
