@@ -1,4 +1,7 @@
-export type AdminTaskType = 'ROUTE_INCOMING' | 'REGISTER_OUTGOING' | 'ROUTE_INTERNAL';
+export type AdminTaskType =
+  | "ROUTE_INCOMING"
+  | "REGISTER_OUTGOING"
+  | "ROUTE_INTERNAL";
 
 export interface AdminTask {
   id: string;
@@ -6,7 +9,7 @@ export interface AdminTask {
   type: AdminTaskType;
   action_required: string;
   reason: string;
-  letter_type: 'INCOMING' | 'OUTGOING' | 'INTERNAL';
+  letter_type: "INCOMING" | "OUTGOING" | "INTERNAL";
   letter_reference: string;
   subject: string;
   sender?: string;
