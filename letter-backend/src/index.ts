@@ -16,7 +16,15 @@ import reportsRoutes from './routes/reports.routes';
 
 const app = express();
 
-app.use(cors({ origin: config.corsOrigin.includes('*') ? true : config.corsOrigin }));
+app.use(
+  cors({
+    origin: config.corsOrigin.includes('*') ? true : config.corsOrigin,
+    credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  })
+);
+app.options('*', cors());
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 

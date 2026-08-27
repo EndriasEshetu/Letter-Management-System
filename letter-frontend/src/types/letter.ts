@@ -128,6 +128,14 @@ export interface LetterItem {
   department_name: string;
   originatingDepartment?: string;
   targetDepartment?: string;
+  /** For INTERNAL letters: the sending Directorate */
+  fromDirectorate?: string;
+  /** For INTERNAL letters: the receiving Directorate */
+  toDirectorate?: string;
+  /** Current physical / logical location: 'Central Registry' | 'Main Administration' | Directorate name */
+  currentLocation?: string;
+  /** The person currently responsible for the letter */
+  currentResponsiblePerson?: string;
   sender?: string;
   senderOrganization?: string;
   recipient?: string;
@@ -194,6 +202,10 @@ export interface LetterFilterParams {
   recipient?: string;
   page?: number;
   limit?: number;
+  /** Employee scope: return only letters assigned to or created by the current user */
+  my_letters?: boolean;
+  /** Filter to letters currently assigned to the current user */
+  assignedToMe?: boolean;
 }
 
 /* ─── Paginated Response ────────────────────────────────────── */

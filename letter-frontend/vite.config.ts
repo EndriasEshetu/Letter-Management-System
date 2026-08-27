@@ -11,4 +11,13 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'https://letter-management-system-production-3035.up.railway.app',
+        changeOrigin: true,
+        secure: true,
+      },
+    },
+  },
 });

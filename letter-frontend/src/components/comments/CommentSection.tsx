@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/components/common/Toast';
 import commentService from '@/services/commentService';
 import { CommentItem as CommentItemType } from '@/types/comment';
@@ -16,6 +17,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
   documentId,
   compact = false,
 }) => {
+  const { user } = useAuth();
   const { addToast } = useToast();
 
   const [comments, setComments] = useState<CommentItemType[]>([]);
@@ -46,7 +48,10 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
   const handlePostComment = async (message: string) => {
     setIsSubmitting(true);
     try {
-      const newComment = await commentService.createComment({ documentId, message });
+      const newComment = await commentService.createComment(
+        { documentId, message },
+        user ? { full_name: user.full_name, role: user.role, department_name: user.department_name || undefined } : undefined
+      );
       setComments((prev) => [...prev, newComment]);
       addToast({
         type: 'success',

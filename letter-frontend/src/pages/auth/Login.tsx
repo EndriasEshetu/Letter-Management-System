@@ -159,6 +159,16 @@ export const Login: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
+                  setEmail('registry@sita.gov.et');
+                  setPassword('Sita@2026');
+                }}
+                className="px-2.5 py-1 bg-[#F9F8F6] text-[#292A27] border border-[#D8D7D1] rounded-lg hover:bg-[#AEBDA5]/20 transition-colors"
+              >
+                Registry
+              </button>
+              <button
+                type="button"
+                onClick={() => {
                   setEmail('manager@sita.gov.et');
                   setPassword('Sita@2026');
                 }}

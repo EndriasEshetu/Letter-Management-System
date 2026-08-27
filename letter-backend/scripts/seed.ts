@@ -211,6 +211,10 @@ async function seed() {
     full_name: 'Endrias Eshetu (Employee)', email: 'employee@sita.gov.et', role: 'EMPLOYEE',
     departmentId: deptApp, jobTitle: 'Software Systems Lead',
   });
+  await upsertUser({
+    full_name: 'Abebe Demissie', email: 'registry@sita.gov.et', role: 'REGISTRY_OFFICER',
+    departmentId: deptIct, jobTitle: 'Senior Registry Officer',
+  });
 
   // Sample Documents covering the 3 workflows
   const incomingDoc = await seedDocument({
