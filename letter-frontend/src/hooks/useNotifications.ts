@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import notificationService from '@/services/notificationService';
-import { NotificationItem } from '@/types/notification';
+import { useState, useEffect, useCallback } from "react";
+import notificationService from "@/services/notificationService";
+import { NotificationItem } from "@/types/notification";
 
 export const useNotifications = () => {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -12,11 +12,13 @@ export const useNotifications = () => {
     if (!silent) setIsLoading(true);
     setError(null);
     try {
-      const response = await notificationService.getNotifications({ limit: 20 });
+      const response = await notificationService.getNotifications({
+        limit: 20,
+      });
       setNotifications(response.data);
     } catch (err: any) {
-      console.error('[useNotifications] Failed to load notifications:', err);
-      setError('Unable to load notifications.');
+      console.error("[useNotifications] Failed to load notifications:", err);
+      setError("Unable to load notifications.");
     } finally {
       setIsLoading(false);
     }
@@ -26,7 +28,7 @@ export const useNotifications = () => {
     try {
       setUnreadCount(await notificationService.getUnreadCount());
     } catch (err) {
-      console.error('[useNotifications] Failed to load unread count:', err);
+      console.error("[useNotifications] Failed to load unread count:", err);
     }
   }, []);
 
@@ -47,13 +49,18 @@ export const useNotifications = () => {
     const previous = notifications;
     // Optimistic update
     setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
     );
     try {
       await notificationService.markAsRead(id);
-      setUnreadCount((count) => Math.max(0, count - (previous.some((n) => n.id === id && !n.isRead) ? 1 : 0)));
+      setUnreadCount((count) =>
+        Math.max(
+          0,
+          count - (previous.some((n) => n.id === id && !n.isRead) ? 1 : 0),
+        ),
+      );
     } catch (err) {
-      console.error('[useNotifications] Failed to mark as read:', err);
+      console.error("[useNotifications] Failed to mark as read:", err);
       setNotifications(previous);
       await refreshUnreadCount();
     }
@@ -67,7 +74,7 @@ export const useNotifications = () => {
       await notificationService.markAllAsRead();
       setUnreadCount(0);
     } catch (err) {
-      console.error('[useNotifications] Failed to mark all as read:', err);
+      console.error("[useNotifications] Failed to mark all as read:", err);
       setNotifications(previous);
       await refreshUnreadCount();
     }
