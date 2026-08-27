@@ -281,12 +281,12 @@ router.get(
 
     const [activeTasks, dueWeek, drafts] = await Promise.all([
       query(
-        `SELECT COUNT(*)::int AS count FROM documents WHERE (author_id = $1 OR LOWER(assigned_employee) LIKE LOWER($2)) AND status IN ('ASSIGNED', 'IN_PROGRESS', 'DRAFT')`,
-        [user.id, `%${user.full_name}%`],
+        `SELECT COUNT(*)::int AS count FROM documents WHERE (author_id = $1 OR assigned_employee_id = $1 OR LOWER(TRIM(assigned_employee)) = LOWER(TRIM($2))) AND status IN ('ASSIGNED', 'IN_PROGRESS', 'DRAFT')`,
+        [user.id, user.full_name],
       ),
       query(
-        `SELECT COUNT(*)::int AS count FROM documents WHERE (author_id = $1 OR LOWER(assigned_employee) LIKE LOWER($2)) AND due_date BETWEEN NOW() AND NOW() + INTERVAL '7 days'`,
-        [user.id, `%${user.full_name}%`],
+        `SELECT COUNT(*)::int AS count FROM documents WHERE (author_id = $1 OR assigned_employee_id = $1 OR LOWER(TRIM(assigned_employee)) = LOWER(TRIM($2))) AND due_date BETWEEN NOW() AND NOW() + INTERVAL '7 days'`,
+        [user.id, user.full_name],
       ),
       query(
         `SELECT COUNT(*)::int AS count FROM documents WHERE author_id = $1 AND status = 'DRAFT'`,

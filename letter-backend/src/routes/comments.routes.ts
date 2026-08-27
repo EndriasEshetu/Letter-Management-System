@@ -1,10 +1,10 @@
-import { Router } from 'express';
-import { query } from '../lib/db';
-import { ApiError } from '../lib/errors';
-import { asyncHandler } from '../lib/errors';
-import { requireAuth, AuthenticatedRequest } from '../middleware/auth';
-import { toIso, DocumentRow } from '../lib/utils';
-import { createNotification } from '../lib/notifications';
+import { Router } from "express";
+import { query } from "../lib/db";
+import { ApiError } from "../lib/errors";
+import { asyncHandler } from "../lib/errors";
+import { requireAuth, AuthenticatedRequest } from "../middleware/auth";
+import { toIso, DocumentRow } from "../lib/utils";
+import { createNotification } from "../lib/notifications";
 
 const router = Router();
 
@@ -34,31 +34,55 @@ function serializeComment(row: {
 
 /** GET /documents/:documentId/comments */
 router.get(
-  '/:documentId/comments',
+  "/:documentId/comments",
   requireAuth,
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
     const documentId = Number(req.params.documentId);
-    if (!Number.isFinite(documentId)) throw ApiError.badRequest('Invalid document id.');
+    if (!Number.isFinite(documentId))
+      throw ApiError.badRequest("Invalid document id.");
+
+    if (req.user?.role === "EMPLOYEE") {
+      const access = await query(
+        `SELECT id FROM documents
+          WHERE id = $1
+            AND (author_id = $2 OR assigned_employee_id = $2 OR LOWER(TRIM(assigned_employee)) = LOWER(TRIM($3::text)))`,
+        [documentId, req.user.id, req.user.full_name],
+      );
+      if (access.rows.length === 0)
+        throw ApiError.notFound("Document not found.");
+    }
 
     const { rows } = await query(
       `SELECT * FROM comments WHERE document_id = $1 ORDER BY created_at ASC`,
-      [documentId]
+      [documentId],
     );
     res.json(rows.map((r) => serializeComment(r)));
-  })
+  }),
 );
 
 /** POST /documents/:documentId/comments */
 router.post(
-  '/:documentId/comments',
+  "/:documentId/comments",
   requireAuth,
   asyncHandler(async (req: AuthenticatedRequest, res) => {
     const documentId = Number(req.params.documentId);
-    if (!Number.isFinite(documentId)) throw ApiError.badRequest('Invalid document id.');
+    if (!Number.isFinite(documentId))
+      throw ApiError.badRequest("Invalid document id.");
+
+    if (req.user?.role === "EMPLOYEE") {
+      const access = await query(
+        `SELECT id FROM documents
+          WHERE id = $1
+            AND (author_id = $2 OR assigned_employee_id = $2 OR LOWER(TRIM(assigned_employee)) = LOWER(TRIM($3::text)))`,
+        [documentId, req.user.id, req.user.full_name],
+      );
+      if (access.rows.length === 0)
+        throw ApiError.notFound("Document not found.");
+    }
 
     const message = req.body?.message;
-    if (typeof message !== 'string' || !message.trim()) {
-      throw ApiError.badRequest('Comment message is required.');
+    if (typeof message !== "string" || !message.trim()) {
+      throw ApiError.badRequest("Comment message is required.");
     }
 
     const user = req.user!;
@@ -66,16 +90,25 @@ router.post(
       `INSERT INTO comments (document_id, author_id, author_name, author_role, author_department, message)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [documentId, user.id, user.full_name, user.job_title || null, user.department_name || null, message.trim()]
+      [
+        documentId,
+        user.id,
+        user.full_name,
+        user.job_title || null,
+        user.department_name || null,
+        message.trim(),
+      ],
     );
 
     // Notify the document author (unless commenting on your own document).
-    const docRes = await query(`SELECT * FROM documents WHERE id = $1`, [documentId]);
+    const docRes = await query(`SELECT * FROM documents WHERE id = $1`, [
+      documentId,
+    ]);
     const doc = docRes.rows[0] as DocumentRow | undefined;
     if (doc && doc.author_id && doc.author_id !== user.id) {
       await createNotification({
         userId: doc.author_id,
-        type: 'COMMENT_ADDED',
+        type: "COMMENT_ADDED",
         message: `${user.full_name} commented on "${doc.title}".`,
         documentId: doc.id,
         documentTitle: doc.title,
@@ -83,7 +116,7 @@ router.post(
     }
 
     res.status(201).json(serializeComment(inserted.rows[0]));
-  })
+  }),
 );
 
 export default router;
