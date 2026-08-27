@@ -46,7 +46,7 @@ export interface UserRow {
   email: string;
   phone: string | null;
   job_title: string | null;
-  role: 'ADMIN' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE';
+  role: 'ADMIN' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE' | 'REGISTRY_OFFICER';
   department_id: number | null;
   department_name: string | null;
   status: 'ACTIVE' | 'INACTIVE';

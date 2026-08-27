@@ -9,7 +9,7 @@ export interface AuthenticatedRequest extends Request {
   authUid?: string;
 }
 
-export type Role = 'ADMIN' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE';
+export type Role = 'ADMIN' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE' | 'REGISTRY_OFFICER';
 
 /**
  * Extract the Bearer token, verify it (JWT), load the corresponding
