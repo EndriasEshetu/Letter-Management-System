@@ -1,6 +1,6 @@
 import { query, transaction } from './db';
 import { logAudit } from './audit';
-import { createNotification } from './notifications';
+import { notifyTaskCreated, notifyTaskOverdue } from './notifications';
 
 /* ─── Types ──────────────────────────────────────────────── */
 
@@ -321,12 +321,16 @@ export async function createTask(input: CreateTaskInput): Promise<TaskRow | null
 
     // Notification (Section 39) - notify the admin user
     if (assignedUserId) {
-      await createNotification({
-        userId: assignedUserId,
-        type: 'DOCUMENT_SUBMITTED',
-        message: `${input.title}: ${input.description || input.actionRequired}`,
-        documentId: input.letterId,
-      });
+      await notifyTaskCreated(
+        task.id,
+        input.letterId,
+        '', // letterRef will be populated by the caller if needed
+        input.taskType,
+        input.title,
+        assignedUserId,
+        input.sourceUserId || 0,
+        input.sourceRole || 'SYSTEM',
+      );
     }
 
     return task;
@@ -999,12 +1003,13 @@ export async function checkOverdueTasks(): Promise<number> {
 
       // Create escalation notification for admin (Section 43)
       const adminId = await findAdminUserId();
-      await createNotification({
-        userId: adminId,
-        type: 'DOCUMENT_SUBMITTED',
-        message: `OVERDUE: Task "${(task as any).title}" has expired and requires immediate attention.`,
-        documentId: (task as any).letter_id,
-      });
+      await notifyTaskOverdue(
+        (task as any).id,
+        (task as any).letter_id,
+        '', // letterRef
+        (task as any).title,
+        adminId,
+      );
     }
 
     return rows.length;

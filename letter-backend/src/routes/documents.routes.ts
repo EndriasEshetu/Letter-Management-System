@@ -18,8 +18,10 @@ import {
   VersionRow,
 } from "../lib/utils";
 import {
-  createNotification,
+  createNotificationLegacy,
   notifyDepartmentManagers,
+  notifyLetterCompleted,
+  notifyLetterArchived,
 } from "../lib/notifications";
 import { logAudit, serializeAuditLog, AuditLogRow } from "../lib/audit";
 import { cancelTask, validateRouteIncoming, validateRegisterOutgoing } from "../lib/tasks";
@@ -883,15 +885,8 @@ router.post(
       await cancelTask((task as any).id, 'Letter workflow completed');
     }
 
-    if (oldDoc.author_id) {
-      await createNotification({
-        userId: oldDoc.author_id,
-        type: "DOCUMENT_APPROVED",
-        message: `Your letter "${oldDoc.title}" has been marked as completed.`,
-        documentId: oldDoc.id,
-        documentTitle: oldDoc.title,
-      });
-    }
+    // Notify author of completion (Section 9)
+    await notifyLetterCompleted(id, oldDoc.document_number, oldDoc.title, oldDoc.author_id, user.id);
 
     const { rows: full } = await query(`${DOC_SELECT} WHERE d.id = $1`, [id]);
     res.json({
@@ -1098,15 +1093,8 @@ router.post(
       await cancelTask((task as any).id, 'Letter archived');
     }
 
-    if (doc.author_id) {
-      await createNotification({
-        userId: doc.author_id,
-        type: "DOCUMENT_ARCHIVED",
-        message: `Your document "${doc.title}" was archived.`,
-        documentId: doc.id,
-        documentTitle: doc.title,
-      });
-    }
+    // Notify author of archival (Section 17)
+    await notifyLetterArchived(id, doc.document_number, doc.title, doc.author_id, user.id);
 
     const { rows: full } = await query(`${DOC_SELECT} WHERE d.id = $1`, [id]);
     res.json({
@@ -1167,6 +1155,7 @@ router.post(
       newStatus: "PENDING_APPROVAL",
     });
 
+    // Notify department manager of submission (Section 11)
     await notifyDepartmentManagers(
       doc.department_id,
       "DOCUMENT_SUBMITTED",
@@ -1324,7 +1313,7 @@ router.post(
     });
 
     if (doc.author_id) {
-      await createNotification({
+      await createNotificationLegacy({
         userId: doc.author_id,
         type: "DOCUMENT_RESTORED",
         message: `Your document "${doc.title}" has been restored from archives.`,
