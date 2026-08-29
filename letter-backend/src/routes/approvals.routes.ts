@@ -6,6 +6,7 @@ import { requireAuth, requireRole, AuthenticatedRequest } from '../middleware/au
 import { serializeDocument, toIso, DocumentRow } from '../lib/utils';
 import { createNotification } from '../lib/notifications';
 import { logAudit } from '../lib/audit';
+import { generateTasksForWorkflow } from '../lib/tasks';
 
 const router = Router();
 
@@ -196,6 +197,9 @@ router.get(
 async function reviewDocument(
   documentId: number,
   reviewerName: string,
+  reviewerId: number,
+  reviewerRole: string,
+  reviewerDepartmentId: number | null,
   action: 'APPROVED' | 'REJECTED' | 'CHANGES_REQUESTED',
   comment: string | undefined
 ) {
@@ -232,6 +236,20 @@ async function reviewDocument(
     details: { comment: comment || null },
   });
 
+  // Generate admin task if approved and letter requires admin action
+  if (action === 'APPROVED') {
+    await generateTasksForWorkflow(
+      documentId,
+      'PENDING_APPROVAL',
+      'APPROVED',
+      {
+        userId: reviewerId,
+        role: reviewerRole,
+        departmentId: reviewerDepartmentId ?? undefined,
+      }
+    );
+  }
+
   if (doc.author_id) {
     const typeMap = {
       APPROVED: 'DOCUMENT_APPROVED',
@@ -257,7 +275,8 @@ router.post(
   asyncHandler(async (req: AuthenticatedRequest, res) => {
     const documentId = Number(req.params.document_id);
     if (!Number.isFinite(documentId)) throw ApiError.badRequest('Invalid document id.');
-    res.json(await reviewDocument(documentId, req.user!.full_name, 'APPROVED', req.body?.comment));
+    const user = req.user!;
+    res.json(await reviewDocument(documentId, user.full_name, user.id, user.role, user.department_id, 'APPROVED', req.body?.comment));
   })
 );
 
@@ -270,7 +289,8 @@ router.post(
     if (!Number.isFinite(documentId)) throw ApiError.badRequest('Invalid document id.');
     const reason = req.body?.reason;
     if (!reason) throw ApiError.badRequest('A rejection reason is required.');
-    res.json(await reviewDocument(documentId, req.user!.full_name, 'REJECTED', reason));
+    const user = req.user!;
+    res.json(await reviewDocument(documentId, user.full_name, user.id, user.role, user.department_id, 'REJECTED', reason));
   })
 );
 
@@ -283,7 +303,8 @@ router.post(
     if (!Number.isFinite(documentId)) throw ApiError.badRequest('Invalid document id.');
     const reason = req.body?.reason;
     if (!reason) throw ApiError.badRequest('A change request note is required.');
-    res.json(await reviewDocument(documentId, req.user!.full_name, 'CHANGES_REQUESTED', reason));
+    const user = req.user!;
+    res.json(await reviewDocument(documentId, user.full_name, user.id, user.role, user.department_id, 'CHANGES_REQUESTED', reason));
   })
 );
 

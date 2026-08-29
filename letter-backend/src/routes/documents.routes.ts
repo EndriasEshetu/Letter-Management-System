@@ -22,6 +22,7 @@ import {
   notifyDepartmentManagers,
 } from "../lib/notifications";
 import { logAudit, serializeAuditLog, AuditLogRow } from "../lib/audit";
+import { completeTask, cancelTask } from "../lib/tasks";
 
 const router = Router();
 
@@ -504,7 +505,7 @@ router.post(
     if (!Number.isFinite(id)) throw ApiError.badRequest("Invalid document id.");
     await assertEmployeeDocumentAccess(id, req.user);
 
-    const { department, notes } = req.body || {};
+    const { department, notes, taskId } = req.body || {};
     if (!department || typeof department !== "string") {
       throw ApiError.badRequest("A destination department is required.");
     }
@@ -551,6 +552,29 @@ router.post(
       newStatus,
       details: { department: deptName, notes: notes || null },
     });
+
+    // Complete the associated admin task if provided
+    if (taskId) {
+      await completeTask(Number(taskId), user.id, 'ROUTE_LETTER', {
+        department: deptName,
+        notes: notes || null,
+      });
+    } else {
+      // Find and complete any active ROUTE_INCOMING or ROUTE_INTERNAL task for this letter
+      const { rows: activeTasks } = await query(
+        `SELECT id FROM admin_tasks 
+         WHERE letter_id = $1 
+           AND task_type IN ('ROUTE_INCOMING', 'ROUTE_INTERNAL') 
+           AND status IN ('PENDING', 'IN_PROGRESS', 'CLAIMED')`,
+        [id]
+      );
+      for (const task of activeTasks) {
+        await completeTask((task as any).id, user.id, 'ROUTE_LETTER', {
+          department: deptName,
+          notes: notes || null,
+        });
+      }
+    }
 
     const { rows: full } = await query(`${DOC_SELECT} WHERE d.id = $1`, [id]);
     res.json({
@@ -714,6 +738,7 @@ router.post(
     await assertEmployeeDocumentAccess(id, req.user);
 
     const user = req.user!;
+    const { taskId } = req.body || {};
 
     const { rows: existing } = await query(
       `SELECT * FROM documents WHERE id = $1`,
@@ -721,6 +746,15 @@ router.post(
     );
     if (existing.length === 0) throw ApiError.notFound("Document not found.");
     const oldDoc = existing[0] as DocumentRow;
+
+    // Validate: only APPROVED outgoing letters can be registered
+    const docType = (oldDoc as any).letter_type;
+    if (docType !== 'OUTGOING') {
+      throw ApiError.badRequest('This endpoint is only for outgoing letters.');
+    }
+    if (oldDoc.status !== 'APPROVED') {
+      throw ApiError.badRequest('Only approved outgoing letters can be registered.');
+    }
 
     // Generate an outgoing registration number: OUT-YYYY-NNN
     const year = new Date().getFullYear();
@@ -749,6 +783,27 @@ router.post(
       newStatus: "REGISTERED",
       details: { registrationNumber },
     });
+
+    // Complete the associated admin task if provided
+    if (taskId) {
+      await completeTask(Number(taskId), user.id, 'REGISTER_OUTGOING', {
+        registrationNumber,
+      });
+    } else {
+      // Find and complete any active REGISTER_OUTGOING task for this letter
+      const { rows: activeTasks } = await query(
+        `SELECT id FROM admin_tasks 
+         WHERE letter_id = $1 
+           AND task_type = 'REGISTER_OUTGOING' 
+           AND status IN ('PENDING', 'IN_PROGRESS', 'CLAIMED')`,
+        [id]
+      );
+      for (const task of activeTasks) {
+        await completeTask((task as any).id, user.id, 'REGISTER_OUTGOING', {
+          registrationNumber,
+        });
+      }
+    }
 
     const { rows: full } = await query(`${DOC_SELECT} WHERE d.id = $1`, [id]);
     res.json({
@@ -792,6 +847,17 @@ router.post(
       newStatus: "COMPLETED",
       details: { comment: comment || null },
     });
+
+    // Cancel any remaining open tasks for this letter
+    const { rows: remainingTasks } = await query(
+      `SELECT id FROM admin_tasks 
+       WHERE letter_id = $1 
+         AND status IN ('PENDING', 'IN_PROGRESS', 'CLAIMED')`,
+      [id]
+    );
+    for (const task of remainingTasks) {
+      await cancelTask((task as any).id, 'Letter workflow completed');
+    }
 
     if (oldDoc.author_id) {
       await createNotification({
@@ -996,6 +1062,17 @@ router.post(
       previousStatus: doc.status,
       newStatus: "ARCHIVED",
     });
+
+    // Cancel any remaining open tasks for this letter
+    const { rows: remainingTasks } = await query(
+      `SELECT id FROM admin_tasks 
+       WHERE letter_id = $1 
+         AND status IN ('PENDING', 'IN_PROGRESS', 'CLAIMED')`,
+      [id]
+    );
+    for (const task of remainingTasks) {
+      await cancelTask((task as any).id, 'Letter archived');
+    }
 
     if (doc.author_id) {
       await createNotification({
