@@ -4,7 +4,7 @@ import { ApiError } from "../lib/errors";
 import { asyncHandler } from "../lib/errors";
 import { requireAuth, AuthenticatedRequest } from "../middleware/auth";
 import { toIso, DocumentRow } from "../lib/utils";
-import { createNotification } from "../lib/notifications";
+import { createNotificationLegacy } from "../lib/notifications";
 
 const router = Router();
 
@@ -106,7 +106,7 @@ router.post(
     ]);
     const doc = docRes.rows[0] as DocumentRow | undefined;
     if (doc && doc.author_id && doc.author_id !== user.id) {
-      await createNotification({
+      await createNotificationLegacy({
         userId: doc.author_id,
         type: "COMMENT_ADDED",
         message: `${user.full_name} commented on "${doc.title}".`,

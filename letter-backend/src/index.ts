@@ -13,6 +13,7 @@ import commentsRoutes from './routes/comments.routes';
 import notificationsRoutes from './routes/notifications.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import reportsRoutes from './routes/reports.routes';
+import tasksRoutes from './routes/tasks.routes';
 
 const app = express();
 
@@ -52,6 +53,7 @@ app.use('/api/letters', commentsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportsRoutes);
+app.use('/api/tasks', tasksRoutes);
 
 // System capacity summary for admin pages
 app.get('/api/system/capacity', (_req, res) => {

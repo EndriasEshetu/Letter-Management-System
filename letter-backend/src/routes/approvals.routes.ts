@@ -4,8 +4,9 @@ import { ApiError } from '../lib/errors';
 import { asyncHandler } from '../lib/errors';
 import { requireAuth, requireRole, AuthenticatedRequest } from '../middleware/auth';
 import { serializeDocument, toIso, DocumentRow } from '../lib/utils';
-import { createNotification } from '../lib/notifications';
+import { createNotificationLegacy, notifyAdminOutgoingApproved, notifyApprovalChangesRequested } from '../lib/notifications';
 import { logAudit } from '../lib/audit';
+import { generateTasksForWorkflow } from '../lib/tasks';
 
 const router = Router();
 
@@ -196,6 +197,9 @@ router.get(
 async function reviewDocument(
   documentId: number,
   reviewerName: string,
+  reviewerId: number,
+  reviewerRole: string,
+  reviewerDepartmentId: number | null,
   action: 'APPROVED' | 'REJECTED' | 'CHANGES_REQUESTED',
   comment: string | undefined
 ) {
@@ -232,19 +236,57 @@ async function reviewDocument(
     details: { comment: comment || null },
   });
 
+  // Generate admin task if approved and letter requires admin action
+  if (action === 'APPROVED') {
+    await generateTasksForWorkflow(
+      documentId,
+      'PENDING_APPROVAL',
+      'APPROVED',
+      {
+        userId: reviewerId,
+        role: reviewerRole,
+        departmentId: reviewerDepartmentId ?? undefined,
+      }
+    );
+
+    // Notify admin for outgoing approval (Section 12)
+    const letterType = (doc as any).letter_type;
+    if (letterType === 'OUTGOING' || letterType === 'INTERNAL') {
+      await notifyAdminOutgoingApproved(
+        documentId,
+        doc.document_number,
+        doc.title,
+        reviewerId,
+        reviewerName,
+      );
+    }
+  }
+
+  // Notify submitter of review result (Sections 11-13)
   if (doc.author_id) {
-    const typeMap = {
-      APPROVED: 'DOCUMENT_APPROVED',
-      REJECTED: 'DOCUMENT_REJECTED',
-      CHANGES_REQUESTED: 'CHANGES_REQUESTED',
-    } as const;
-    await createNotification({
-      userId: doc.author_id,
-      type: typeMap[action],
-      message: `Your document "${doc.title}" was ${action === 'APPROVED' ? 'approved' : action === 'REJECTED' ? 'rejected' : 'sent back with change requests'}.`,
-      documentId: doc.id,
-      documentTitle: doc.title,
-    });
+    if (action === 'CHANGES_REQUESTED') {
+      await notifyApprovalChangesRequested(
+        documentId,
+        doc.document_number,
+        doc.title,
+        doc.author_id,
+        reviewerId,
+        reviewerName,
+        comment,
+      );
+    } else {
+      const typeMap = {
+        APPROVED: 'DOCUMENT_APPROVED',
+        REJECTED: 'DOCUMENT_REJECTED',
+      } as const;
+      await createNotificationLegacy({
+        userId: doc.author_id,
+        type: typeMap[action],
+        message: `Your document "${doc.title}" was ${action === 'APPROVED' ? 'approved' : 'rejected'}.`,
+        documentId: doc.id,
+        documentTitle: doc.title,
+      });
+    }
   }
 
   return { message: `Document ${action === 'APPROVED' ? 'approved' : action === 'REJECTED' ? 'rejected' : 'updated with change requests'} successfully.` };
@@ -257,7 +299,8 @@ router.post(
   asyncHandler(async (req: AuthenticatedRequest, res) => {
     const documentId = Number(req.params.document_id);
     if (!Number.isFinite(documentId)) throw ApiError.badRequest('Invalid document id.');
-    res.json(await reviewDocument(documentId, req.user!.full_name, 'APPROVED', req.body?.comment));
+    const user = req.user!;
+    res.json(await reviewDocument(documentId, user.full_name, user.id, user.role, user.department_id, 'APPROVED', req.body?.comment));
   })
 );
 
@@ -270,7 +313,8 @@ router.post(
     if (!Number.isFinite(documentId)) throw ApiError.badRequest('Invalid document id.');
     const reason = req.body?.reason;
     if (!reason) throw ApiError.badRequest('A rejection reason is required.');
-    res.json(await reviewDocument(documentId, req.user!.full_name, 'REJECTED', reason));
+    const user = req.user!;
+    res.json(await reviewDocument(documentId, user.full_name, user.id, user.role, user.department_id, 'REJECTED', reason));
   })
 );
 
@@ -283,7 +327,8 @@ router.post(
     if (!Number.isFinite(documentId)) throw ApiError.badRequest('Invalid document id.');
     const reason = req.body?.reason;
     if (!reason) throw ApiError.badRequest('A change request note is required.');
-    res.json(await reviewDocument(documentId, req.user!.full_name, 'CHANGES_REQUESTED', reason));
+    const user = req.user!;
+    res.json(await reviewDocument(documentId, user.full_name, user.id, user.role, user.department_id, 'CHANGES_REQUESTED', reason));
   })
 );
 

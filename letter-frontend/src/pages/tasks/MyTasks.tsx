@@ -80,6 +80,8 @@ const AdminActionCenter: React.FC = () => {
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   const fetchTasks = useCallback(async () => {
     setIsLoading(true);
@@ -87,7 +89,18 @@ const AdminActionCenter: React.FC = () => {
     try {
       const response = await letterService.getAdminTasks();
       setTasks(response.data);
-      setSummary(response.summary);
+      setTotalPages(response.pagination?.totalPages || 1);
+      // Calculate summary from tasks
+      const allTasks = response.data;
+      setSummary({
+        total: allTasks.length,
+        requiresAction: allTasks.filter((t: AdminTask) => t.status === 'PENDING' || t.status === 'IN_PROGRESS').length,
+        dueToday: allTasks.filter((t: AdminTask) => {
+          if (!t.dueDate) return false;
+          return new Date(t.dueDate).toDateString() === new Date().toDateString();
+        }).length,
+        overdue: allTasks.filter((t: AdminTask) => t.isOverdue).length,
+      });
     } catch (err: any) {
       setError(err.message || "Unable to load administrative tasks.");
     } finally {
@@ -101,14 +114,18 @@ const AdminActionCenter: React.FC = () => {
 
   const visibleTasks = tasks
     .filter((task) => taskMatchesFilter(task, filter))
-    .filter((task) =>
-      `${task.letter_reference} ${task.subject} ${task.sender || ""} ${task.requested_by} ${task.source_department || ""}`
-        .toLowerCase()
-        .includes(search.toLowerCase()),
-    )
+    .filter((task) => {
+      if (!search) return true;
+      const searchLower = search.toLowerCase();
+      return (
+        `${task.letter?.referenceNumber || ''} ${task.letter?.subject || ''} ${task.letter?.sender || ''} ${task.requestedBy?.name || ''} ${task.sourceDepartment?.name || ''} ${task.title || ''}`
+          .toLowerCase()
+          .includes(searchLower)
+      );
+    })
     .sort(
       (a, b) =>
-        Number(b.is_overdue) - Number(a.is_overdue) ||
+        Number(b.isOverdue) - Number(a.isOverdue) ||
         (priorityRank[a.priority || "NORMAL"] || 3) -
           (priorityRank[b.priority || "NORMAL"] || 3),
     );
@@ -116,16 +133,18 @@ const AdminActionCenter: React.FC = () => {
   const runPrimaryAction = async (task: AdminTask) => {
     try {
       if (task.type === "REGISTER_OUTGOING") {
-        await letterService.registerOutgoingNumber(task.letter_id);
+        const letterId = task.letter?.id || task.letter_id;
+        await letterService.registerOutgoingNumber(letterId);
         addToast({
           type: "success",
           title: "Letter Registered",
-          message: `${task.letter_reference} was registered successfully.`,
+          message: `${task.letter?.referenceNumber || task.letter_reference} was registered successfully.`,
         });
         await fetchTasks();
         return;
       }
-      navigate(`/letters/${task.letter_id}`);
+      const letterId = task.letter?.id || task.letter_id;
+      navigate(`/letters/${letterId}`);
     } catch (err: any) {
       addToast({
         type: "error",
@@ -220,54 +239,54 @@ const AdminActionCenter: React.FC = () => {
                     <span className="text-[10px] font-bold uppercase tracking-wider text-[#8B3232]">
                       Action Required
                     </span>
-                    <Badge status={task.letter_status as LetterStatus} dot />
+                    <Badge status={(task.letter?.status || task.letter_status || '') as LetterStatus} dot />
                     <span className="text-[10px] font-bold uppercase text-[#6B6A64]">
                       {task.priority || "NORMAL"} priority
                     </span>
                   </div>
                   <h2 className="text-base font-bold text-[#292A27]">
-                    {task.action_required}
+                    {task.title || task.actionRequired || task.action_required}
                   </h2>
                   <p className="font-mono text-xs text-[#526A55]">
-                    {task.letter_reference}{" "}
-                    <span className="text-[#8A8983]">· {task.letter_type}</span>
+                    {task.letter?.referenceNumber || task.letter_reference}{" "}
+                    <span className="text-[#8A8983]">· {task.letter?.type || task.letter_type}</span>
                   </p>
                   <p className="text-sm font-semibold text-[#292A27]">
-                    {task.subject}
+                    {task.letter?.subject || task.subject}
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1 text-xs text-[#6B6A64]">
                     <span>
-                      <strong>From:</strong> {task.sender || task.requested_by}
+                      <strong>From:</strong> {task.letter?.sender || task.sender || task.requestedBy?.name || task.requested_by}
                     </span>
                     <span>
-                      <strong>Requested by:</strong> {task.requested_by} (
-                      {task.requested_by_role.replace("_", " ")})
+                      <strong>Requested by:</strong> {task.requestedBy?.name || task.requested_by} (
+                      {(task.requestedBy?.role || task.requested_by_role || '').replace("_", " ")})
                     </span>
                     <span>
                       <strong>Department:</strong>{" "}
-                      {task.source_department || "Not specified"}
+                      {task.sourceDepartment?.name || task.source_department || "Not specified"}
                     </span>
                     <span>
-                      <strong>Workflow:</strong> {task.previous_actor} →{" "}
-                      {task.workflow_stage} → {task.next_actor}
+                      <strong>Workflow:</strong> {task.workflow?.previousStep || task.previous_actor} →{" "}
+                      {task.workflow?.currentStep || task.workflow_stage} → {task.workflow?.nextStep || task.next_actor}
                     </span>
                   </div>
                   <div className="rounded-xl bg-[#ECEAE3] px-3 py-2 text-xs text-[#292A27]">
-                    <strong>What you need to do:</strong> {task.reason}
+                    <strong>What you need to do:</strong> {task.description || task.actionRequired || task.action_required || task.reason}
                   </div>
                   <p
-                    className={`text-xs font-bold ${task.is_overdue ? "text-[#8B3232]" : "text-[#6B6A64]"}`}
+                    className={`text-xs font-bold ${task.isOverdue || task.is_overdue ? "text-[#8B3232]" : "text-[#6B6A64]"}`}
                   >
                     {taskDueLabel(task)}
-                    {task.due_date
-                      ? ` · Due ${new Date(task.due_date).toLocaleDateString()}`
+                    {task.dueDate || task.due_date
+                      ? ` · Due ${new Date(task.dueDate || task.due_date!).toLocaleDateString()}`
                       : ""}
                   </p>
                 </div>
                 <div className="flex lg:flex-col gap-2 shrink-0">
                   <button
                     type="button"
-                    onClick={() => navigate(`/letters/${task.letter_id}`)}
+                    onClick={() => navigate(`/letters/${task.letter?.id || task.letter_id}`)}
                     className="px-3 py-2 rounded-xl text-xs font-bold border border-[#D8D7D1] text-[#292A27]"
                   >
                     View Letter

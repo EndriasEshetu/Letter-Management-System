@@ -18,10 +18,14 @@ import {
   VersionRow,
 } from "../lib/utils";
 import {
-  createNotification,
+  createNotificationLegacy,
   notifyDepartmentManagers,
+  notifyLetterCompleted,
+  notifyLetterArchived,
 } from "../lib/notifications";
 import { logAudit, serializeAuditLog, AuditLogRow } from "../lib/audit";
+import { cancelTask, validateRouteIncoming, validateRegisterOutgoing } from "../lib/tasks";
+import { transaction } from "../lib/db";
 
 const router = Router();
 
@@ -502,59 +506,97 @@ router.post(
   asyncHandler(async (req: AuthenticatedRequest, res) => {
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) throw ApiError.badRequest("Invalid document id.");
-    await assertEmployeeDocumentAccess(id, req.user);
 
-    const { department, notes } = req.body || {};
+    const { department, notes, taskId } = req.body || {};
     if (!department || typeof department !== "string") {
       throw ApiError.badRequest("A destination department is required.");
     }
 
     const user = req.user!;
 
-    const { rows: existing } = await query(
-      `SELECT * FROM documents WHERE id = $1`,
-      [id],
-    );
-    if (existing.length === 0) throw ApiError.notFound("Document not found.");
-    const oldDoc = existing[0] as DocumentRow;
-
-    // Resolve department by name
-    let deptId: number | null = oldDoc.department_id;
-    let deptName = department.trim();
-    const deptRes = await query(
-      `SELECT id, name FROM departments WHERE LOWER(name) LIKE LOWER($1) LIMIT 1`,
-      [`%${deptName}%`],
-    );
-    if (deptRes.rows.length > 0) {
-      deptId = (deptRes.rows[0] as { id: number }).id;
-      deptName = (deptRes.rows[0] as { name: string }).name;
+    // Validate routing (Section 33)
+    const validation = await validateRouteIncoming(id, user.id, user.role);
+    if (!validation.valid) {
+      return res.status(409).json({
+        success: false,
+        message: validation.error,
+        code: 'INVALID_WORKFLOW_TRANSITION',
+      });
     }
 
-    const newStatus = "ASSIGNED";
-    await query(
-      `UPDATE documents
-          SET department_id = COALESCE($2, department_id),
-              department_name = $3,
-              assignment_instructions = COALESCE($4, assignment_instructions),
-              status = $5,
-              updated_at = NOW()
-        WHERE id = $1`,
-      [id, deptId, deptName, notes || null, newStatus],
-    );
+    // Use transaction for atomicity (Section 47)
+    const result = await transaction(async (client) => {
+      // Lock the letter row
+      const { rows: existing } = await client.query(
+        `SELECT * FROM documents WHERE id = $1 FOR UPDATE`,
+        [id],
+      );
+      if (existing.length === 0) throw ApiError.notFound("Document not found.");
+      const oldDoc = existing[0] as DocumentRow;
 
-    await logAudit({
-      userId: user.id,
-      userName: user.full_name,
-      action: "ROUTE_LETTER",
-      entityId: id,
-      previousStatus: oldDoc.status,
-      newStatus,
-      details: { department: deptName, notes: notes || null },
+      // Resolve department by name
+      let deptId: number | null = oldDoc.department_id;
+      let deptName = department.trim();
+      const deptRes = await client.query(
+        `SELECT id, name FROM departments WHERE LOWER(name) LIKE LOWER($1) LIMIT 1`,
+        [`%${deptName}%`],
+      );
+      if (deptRes.rows.length > 0) {
+        deptId = (deptRes.rows[0] as { id: number }).id;
+        deptName = (deptRes.rows[0] as { name: string }).name;
+      }
+
+      const newStatus = "ASSIGNED";
+      await client.query(
+        `UPDATE documents
+            SET department_id = COALESCE($2, department_id),
+                department_name = $3,
+                assignment_instructions = COALESCE($4, assignment_instructions),
+                status = $5,
+                updated_at = NOW()
+          WHERE id = $1`,
+        [id, deptId, deptName, notes || null, newStatus],
+      );
+
+      // Audit (Section 38)
+      await client.query(
+        `INSERT INTO audit_logs (user_id, user_name, action, entity_type, entity_id, previous_status, new_status, details, timestamp)
+         VALUES ($1, $2, 'ROUTE_LETTER', 'LETTER', $3, $4, $5, $6, NOW())`,
+        [user.id, user.full_name, id, oldDoc.status, newStatus, JSON.stringify({ department: deptName, notes: notes || null })],
+      );
+
+      // Complete associated admin task(s) in the same transaction
+      const taskIds = taskId ? [Number(taskId)] : [];
+      if (!taskId) {
+        const { rows: activeTasks } = await client.query(
+          `SELECT id FROM admin_tasks 
+           WHERE letter_id = $1 
+             AND task_type IN ('ROUTE_INCOMING', 'ROUTE_INTERNAL') 
+             AND status IN ('PENDING', 'IN_PROGRESS', 'CLAIMED')
+           FOR UPDATE`,
+          [id],
+        );
+        for (const t of activeTasks) taskIds.push((t as any).id);
+      }
+      for (const tid of taskIds) {
+        await client.query(
+          `UPDATE admin_tasks SET status = 'COMPLETED', completed_at = NOW(), completed_by = $2, updated_at = NOW()
+           WHERE id = $1 AND status IN ('PENDING', 'IN_PROGRESS', 'CLAIMED')`,
+          [tid, user.id],
+        );
+        await client.query(
+          `INSERT INTO audit_logs (user_id, user_name, action, entity_type, entity_id, task_id, previous_status, new_status, details, timestamp)
+           VALUES ($1, $2, 'ADMIN_TASK_COMPLETED', 'TASK', $3, $3, 'PENDING', 'COMPLETED', $4, NOW())`,
+          [user.id, user.full_name, tid, JSON.stringify({ department: deptName, action: 'ROUTE_LETTER' })],
+        );
+      }
+
+      return { deptName };
     });
 
     const { rows: full } = await query(`${DOC_SELECT} WHERE d.id = $1`, [id]);
     res.json({
-      message: `Letter routed to ${deptName} successfully.`,
+      message: `Letter routed to ${result.deptName} successfully.`,
       letter: serializeDocument(full[0] as DocumentRow),
     });
   }),
@@ -711,48 +753,87 @@ router.post(
   asyncHandler(async (req: AuthenticatedRequest, res) => {
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) throw ApiError.badRequest("Invalid document id.");
-    await assertEmployeeDocumentAccess(id, req.user);
 
     const user = req.user!;
+    const { taskId } = req.body || {};
 
-    const { rows: existing } = await query(
-      `SELECT * FROM documents WHERE id = $1`,
-      [id],
-    );
-    if (existing.length === 0) throw ApiError.notFound("Document not found.");
-    const oldDoc = existing[0] as DocumentRow;
+    // Validate (Section 34)
+    const validation = await validateRegisterOutgoing(id, user.id, user.role);
+    if (!validation.valid) {
+      return res.status(409).json({
+        success: false,
+        message: validation.error,
+        code: 'INVALID_WORKFLOW_TRANSITION',
+      });
+    }
 
-    // Generate an outgoing registration number: OUT-YYYY-NNN
-    const year = new Date().getFullYear();
-    const { rows: countRows } = await query(
-      `SELECT COUNT(*)::int AS n FROM documents WHERE letter_type = 'OUTGOING' AND EXTRACT(YEAR FROM created_at) = $1`,
-      [year],
-    );
-    const n = (countRows[0] as { n: number }).n;
-    const registrationNumber = `OUT-${year}-${String(n).padStart(3, "0")}`;
+    // Use transaction for atomicity (Section 47)
+    const result = await transaction(async (client) => {
+      // Lock the letter row
+      const { rows: existing } = await client.query(
+        `SELECT * FROM documents WHERE id = $1 FOR UPDATE`,
+        [id],
+      );
+      if (existing.length === 0) throw ApiError.notFound("Document not found.");
+      const oldDoc = existing[0] as DocumentRow;
 
-    await query(
-      `UPDATE documents
-          SET registration_number = $2,
-              status = 'REGISTERED',
-              updated_at = NOW()
-        WHERE id = $1`,
-      [id, registrationNumber],
-    );
+      // Generate registration number server-side (Section 49: never trust frontend)
+      const year = new Date().getFullYear();
+      const { rows: countRows } = await client.query(
+        `SELECT COUNT(*)::int AS n FROM documents WHERE letter_type = 'OUTGOING' AND EXTRACT(YEAR FROM created_at) = $1`,
+        [year],
+      );
+      const n = (countRows[0] as { n: number }).n;
+      const registrationNumber = `OUT-${year}-${String(n).padStart(3, "0")}`;
 
-    await logAudit({
-      userId: user.id,
-      userName: user.full_name,
-      action: "REGISTER_OUTGOING",
-      entityId: id,
-      previousStatus: oldDoc.status,
-      newStatus: "REGISTERED",
-      details: { registrationNumber },
+      await client.query(
+        `UPDATE documents
+            SET registration_number = $2,
+                status = 'REGISTERED',
+                updated_at = NOW()
+          WHERE id = $1`,
+        [id, registrationNumber],
+      );
+
+      // Audit (Section 38)
+      await client.query(
+        `INSERT INTO audit_logs (user_id, user_name, action, entity_type, entity_id, previous_status, new_status, details, timestamp)
+         VALUES ($1, $2, 'REGISTER_OUTGOING', 'LETTER', $3, $4, 'REGISTERED', $5, NOW())`,
+        [user.id, user.full_name, id, oldDoc.status, JSON.stringify({ registrationNumber })],
+      );
+
+      // Complete associated admin task(s) in the same transaction
+      const taskIds = taskId ? [Number(taskId)] : [];
+      if (!taskId) {
+        const { rows: activeTasks } = await client.query(
+          `SELECT id FROM admin_tasks 
+           WHERE letter_id = $1 
+             AND task_type = 'REGISTER_OUTGOING' 
+             AND status IN ('PENDING', 'IN_PROGRESS', 'CLAIMED')
+           FOR UPDATE`,
+          [id],
+        );
+        for (const t of activeTasks) taskIds.push((t as any).id);
+      }
+      for (const tid of taskIds) {
+        await client.query(
+          `UPDATE admin_tasks SET status = 'COMPLETED', completed_at = NOW(), completed_by = $2, updated_at = NOW()
+           WHERE id = $1 AND status IN ('PENDING', 'IN_PROGRESS', 'CLAIMED')`,
+          [tid, user.id],
+        );
+        await client.query(
+          `INSERT INTO audit_logs (user_id, user_name, action, entity_type, entity_id, task_id, previous_status, new_status, details, timestamp)
+           VALUES ($1, $2, 'ADMIN_TASK_COMPLETED', 'TASK', $3, $3, 'PENDING', 'COMPLETED', $4, NOW())`,
+          [user.id, user.full_name, tid, JSON.stringify({ registrationNumber, action: 'REGISTER_OUTGOING' })],
+        );
+      }
+
+      return { registrationNumber };
     });
 
     const { rows: full } = await query(`${DOC_SELECT} WHERE d.id = $1`, [id]);
     res.json({
-      message: `Outgoing letter registered with number ${registrationNumber}.`,
+      message: `Outgoing letter registered with number ${result.registrationNumber}.`,
       letter: serializeDocument(full[0] as DocumentRow),
     });
   }),
@@ -793,15 +874,19 @@ router.post(
       details: { comment: comment || null },
     });
 
-    if (oldDoc.author_id) {
-      await createNotification({
-        userId: oldDoc.author_id,
-        type: "DOCUMENT_APPROVED",
-        message: `Your letter "${oldDoc.title}" has been marked as completed.`,
-        documentId: oldDoc.id,
-        documentTitle: oldDoc.title,
-      });
+    // Cancel any remaining open tasks for this letter
+    const { rows: remainingTasks } = await query(
+      `SELECT id FROM admin_tasks 
+       WHERE letter_id = $1 
+         AND status IN ('PENDING', 'IN_PROGRESS', 'CLAIMED')`,
+      [id]
+    );
+    for (const task of remainingTasks) {
+      await cancelTask((task as any).id, 'Letter workflow completed');
     }
+
+    // Notify author of completion (Section 9)
+    await notifyLetterCompleted(id, oldDoc.document_number, oldDoc.title, oldDoc.author_id, user.id);
 
     const { rows: full } = await query(`${DOC_SELECT} WHERE d.id = $1`, [id]);
     res.json({
@@ -997,15 +1082,19 @@ router.post(
       newStatus: "ARCHIVED",
     });
 
-    if (doc.author_id) {
-      await createNotification({
-        userId: doc.author_id,
-        type: "DOCUMENT_ARCHIVED",
-        message: `Your document "${doc.title}" was archived.`,
-        documentId: doc.id,
-        documentTitle: doc.title,
-      });
+    // Cancel any remaining open tasks for this letter
+    const { rows: remainingTasks } = await query(
+      `SELECT id FROM admin_tasks 
+       WHERE letter_id = $1 
+         AND status IN ('PENDING', 'IN_PROGRESS', 'CLAIMED')`,
+      [id]
+    );
+    for (const task of remainingTasks) {
+      await cancelTask((task as any).id, 'Letter archived');
     }
+
+    // Notify author of archival (Section 17)
+    await notifyLetterArchived(id, doc.document_number, doc.title, doc.author_id, user.id);
 
     const { rows: full } = await query(`${DOC_SELECT} WHERE d.id = $1`, [id]);
     res.json({
@@ -1066,6 +1155,7 @@ router.post(
       newStatus: "PENDING_APPROVAL",
     });
 
+    // Notify department manager of submission (Section 11)
     await notifyDepartmentManagers(
       doc.department_id,
       "DOCUMENT_SUBMITTED",
@@ -1223,7 +1313,7 @@ router.post(
     });
 
     if (doc.author_id) {
-      await createNotification({
+      await createNotificationLegacy({
         userId: doc.author_id,
         type: "DOCUMENT_RESTORED",
         message: `Your document "${doc.title}" has been restored from archives.`,

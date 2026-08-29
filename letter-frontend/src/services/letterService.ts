@@ -11,7 +11,7 @@ import {
   LetterPriority,
   LetterDispatch,
 } from "@/types/letter";
-import { AdminTaskResponse } from "@/types/adminTask";
+import { AdminTask, AdminTaskResponse, AdminTaskSummary } from "@/types/adminTask";
 
 /**
  * Mock Initial Letters Dataset for Dev Offline Mode with 3 Workflows
@@ -418,7 +418,61 @@ let inMemoryLetters = [...MOCK_LETTERS];
 
 export const letterService = {
   async getAdminTasks(): Promise<AdminTaskResponse> {
-    const response = await api.get<AdminTaskResponse>("/dashboard/admin/tasks");
+    try {
+      const response = await api.get<AdminTaskResponse>("/tasks/my");
+      return response.data;
+    } catch (error: any) {
+      // Fallback to legacy endpoint if new tasks endpoint fails
+      if (error.response?.status === 404 || error.code === 'ERR_NETWORK') {
+        const legacyResponse = await api.get<any>("/dashboard/admin/tasks");
+        return {
+          data: legacyResponse.data.data,
+          pagination: {
+            page: 1,
+            limit: 50,
+            total: legacyResponse.data.data.length,
+            totalPages: 1,
+          },
+        };
+      }
+      throw error;
+    }
+  },
+
+  async getAdminTaskSummary(): Promise<AdminTaskSummary> {
+    const response = await api.get<AdminTaskSummary>("/tasks/my/summary");
+    return response.data;
+  },
+
+  async getAdminTaskById(taskId: string): Promise<AdminTask> {
+    const response = await api.get<AdminTask>(`/tasks/${taskId}`);
+    return response.data;
+  },
+
+  async claimAdminTask(taskId: string): Promise<{ message: string; task: AdminTask }> {
+    const response = await api.post<{ message: string; task: AdminTask }>(`/tasks/${taskId}/claim`);
+    return response.data;
+  },
+
+  async startAdminTask(taskId: string): Promise<{ message: string; task: AdminTask }> {
+    const response = await api.post<{ message: string; task: AdminTask }>(`/tasks/${taskId}/start`);
+    return response.data;
+  },
+
+  async completeAdminTask(
+    taskId: string,
+    action: string,
+    details?: Record<string, unknown>
+  ): Promise<{ message: string; task: AdminTask }> {
+    const response = await api.post<{ message: string; task: AdminTask }>(`/tasks/${taskId}/complete`, {
+      action,
+      details,
+    });
+    return response.data;
+  },
+
+  async cancelAdminTask(taskId: string, reason?: string): Promise<{ message: string }> {
+    const response = await api.post<{ message: string }>(`/tasks/${taskId}/cancel`, { reason });
     return response.data;
   },
   /**
