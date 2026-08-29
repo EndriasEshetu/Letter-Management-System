@@ -22,4 +22,26 @@ pool.on('error', (err) => {
 
 export const query = (text: string, params?: unknown[]) => pool.query(text, params);
 
+/**
+ * Execute a callback inside a database transaction.
+ * Automatically commits on success, rolls back on error.
+ * The client is released back to the pool in all cases.
+ */
+export async function transaction<T>(
+  fn: (client: { query: (text: string, params?: unknown[]) => Promise<any> }) => Promise<T>
+): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 export default pool;
