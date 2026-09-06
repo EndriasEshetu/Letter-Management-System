@@ -1276,6 +1276,14 @@ export const letterService = {
   },
 
   /**
+   * Delete a letter (Admin only)
+   */
+  async deleteLetter(id: string): Promise<{ message: string }> {
+    const response = await api.delete<{ message: string }>(`/letters/${id}`);
+    return response.data;
+  },
+
+  /**
    * Restore an archived letter (Admin only)
    */
   async restoreLetter(

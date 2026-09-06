@@ -32,6 +32,7 @@ export interface LetterPermissions {
 
   // Editing
   canEditLetter: boolean;
+  canDeleteLetter?: boolean;
   canUploadAttachment: boolean;
   canAddProcessingNote: boolean;
   canSubmitLetter: boolean;
@@ -171,10 +172,8 @@ export function getLetterPermissions(
         (st === "APPROVED" || st === "READY_FOR_DISPATCH")
       ),
 
-      canEditLetter: !!(
-        letter &&
-        (st === "DRAFT" || st === "CHANGES_REQUESTED")
-      ),
+      canEditLetter: !!(letter && st !== "ARCHIVED"),
+      canDeleteLetter: !!letter,
       canUploadAttachment: !!(letter && st !== "ARCHIVED"),
       canAddProcessingNote: true,
       canSubmitLetter: !!(

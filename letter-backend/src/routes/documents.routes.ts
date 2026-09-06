@@ -7,7 +7,7 @@ import { config } from "../config";
 import { query } from "../lib/db";
 import { ApiError } from "../lib/errors";
 import { asyncHandler } from "../lib/errors";
-import { requireAuth, AuthenticatedRequest } from "../middleware/auth";
+import { requireAuth, requireRole, AuthenticatedRequest } from "../middleware/auth";
 import {
   serializeDocument,
   serializeVersion,
@@ -1460,6 +1460,41 @@ router.post(
       message: "Document restored from archive.",
       document: serializeDocument(full[0] as DocumentRow),
     });
+  }),
+);
+
+/* ─── DELETE /documents/:id — Hard delete document (Admin only) ─ */
+
+router.delete(
+  "/:id",
+  requireAuth,
+  requireRole("ADMIN"),
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) throw ApiError.badRequest("Invalid document id.");
+
+    const { rows: existing } = await query(`SELECT * FROM documents WHERE id = $1`, [id]);
+    if (existing.length === 0) throw ApiError.notFound("Document not found.");
+    const doc = existing[0] as DocumentRow;
+
+    // Delete associated relations
+    await query(`DELETE FROM tasks WHERE document_id = $1`, [id]);
+    await query(`DELETE FROM approvals WHERE document_id = $1`, [id]);
+    await query(`DELETE FROM approval_activities WHERE document_id = $1`, [id]);
+    await query(`DELETE FROM document_versions WHERE document_id = $1`, [id]);
+    await query(`DELETE FROM documents WHERE id = $1`, [id]);
+
+    const user = req.user!;
+    await logAudit({
+      userId: user.id,
+      userName: user.full_name,
+      action: "DELETE_LETTER",
+      entityId: id,
+      previousStatus: doc.status,
+      details: { title: doc.title, documentNumber: doc.document_number },
+    });
+
+    res.json({ message: "Document deleted successfully." });
   }),
 );
 

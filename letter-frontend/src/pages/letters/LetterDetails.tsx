@@ -159,6 +159,7 @@ interface ActionPanelProps {
   onDispatch: () => void;
   onComplete: () => void;
   onArchive: () => void;
+  onDelete?: () => void;
   onEdit: () => void;
   onUpload: () => void;
   onSubmit: () => void;
@@ -180,6 +181,7 @@ const RoleActionPanel: React.FC<ActionPanelProps> = ({
   onDispatch,
   onComplete,
   onArchive,
+  onDelete,
   onEdit,
   onUpload,
   onSubmit,
@@ -198,6 +200,29 @@ const RoleActionPanel: React.FC<ActionPanelProps> = ({
           <span>Administrative Actions</span>
         </h3>
         <div className="space-y-2">
+          {perms.canEditLetter && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="w-full"
+              onClick={onEdit}
+            >
+              <svg
+                className="w-4 h-4 mr-1.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+              Edit Letter
+            </Button>
+          )}
           {perms.canRouteLetter && (
             <Button
               variant="primary"
@@ -334,6 +359,29 @@ const RoleActionPanel: React.FC<ActionPanelProps> = ({
                 />
               </svg>
               Archive Letter
+            </Button>
+          )}
+          {perms.canDeleteLetter && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-red-600 border-red-300 hover:bg-red-50"
+              onClick={onDelete}
+            >
+              <svg
+                className="w-4 h-4 mr-1.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+              Delete Letter
             </Button>
           )}
           {perms.canSubmitLetter && (
@@ -803,6 +851,8 @@ export const LetterDetails: React.FC = () => {
   const [isUploadAttachmentOpen, setIsUploadAttachmentOpen] = useState(false);
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRoutingOpen, setIsRoutingOpen] = useState(false);
   const [isAssignmentOpen, setIsAssignmentOpen] = useState(false);
@@ -885,6 +935,29 @@ export const LetterDetails: React.FC = () => {
       });
     } finally {
       setIsArchiving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!letter) return;
+    setIsDeleting(true);
+    try {
+      await letterService.deleteLetter(letter.id);
+      addToast({
+        type: "warning",
+        title: "Letter Deleted",
+        message: `"${letter.subject}" was permanently deleted.`,
+      });
+      setIsDeleteDialogOpen(false);
+      navigate("/letters");
+    } catch (err: any) {
+      addToast({
+        type: "error",
+        title: "Delete Failed",
+        message: err.message || "Could not delete letter.",
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -1347,6 +1420,7 @@ export const LetterDetails: React.FC = () => {
             onDispatch={() => setIsDispatchOpen(true)}
             onComplete={handleComplete}
             onArchive={() => setIsArchiveDialogOpen(true)}
+            onDelete={() => setIsDeleteDialogOpen(true)}
             onEdit={() => navigate(`/letters/${letter.id}/edit`)}
             onUpload={() => setIsUploadAttachmentOpen(true)}
             onSubmit={handleSubmitForApproval}
@@ -1594,6 +1668,17 @@ export const LetterDetails: React.FC = () => {
           fetchLetter();
         }}
         onCancel={() => setIsRequestChangesOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={isDeleteDialogOpen}
+        title="Permanently Delete Letter?"
+        description={`Are you sure you want to permanently delete "${letter.subject}"? This action cannot be undone and will purge all associated tasks and records.`}
+        confirmLabel="Permanently Delete"
+        danger
+        isLoading={isDeleting}
+        onConfirm={handleDelete}
+        onCancel={() => setIsDeleteDialogOpen(false)}
       />
     </div>
   );
