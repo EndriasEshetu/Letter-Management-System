@@ -1478,7 +1478,7 @@ router.delete(
     const doc = existing[0] as DocumentRow;
 
     // Delete associated relations
-    await query(`DELETE FROM tasks WHERE document_id = $1`, [id]);
+    await query(`DELETE FROM admin_tasks WHERE letter_id = $1`, [id]);
     await query(`DELETE FROM approvals WHERE document_id = $1`, [id]);
     await query(`DELETE FROM approval_activities WHERE document_id = $1`, [id]);
     await query(`DELETE FROM document_versions WHERE document_id = $1`, [id]);
