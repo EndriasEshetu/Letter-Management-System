@@ -138,3 +138,53 @@ html {
 .delay-200 { animation-delay: 200ms; }
 .delay-300 { animation-delay: 300ms; }
 .delay-500 { animation-delay: 500ms; }
+
+/* ─── 3D Micro-interactions & Visual Polish ───────────────── */
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.sita-card, .sita-card-white {
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.3s ease;
+  transform-style: preserve-3d;
+}
+
+.sita-card:hover, .sita-card-white:hover {
+  transform: translateY(-3px) scale(1.002);
+  box-shadow: 0 12px 30px -4px rgba(41, 42, 39, 0.08), 0 4px 12px -2px rgba(82, 106, 85, 0.05);
+  border-color: rgba(82, 106, 85, 0.25);
+}
+
+.sita-btn-primary {
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(82, 106, 85, 0.2);
+}
+
+.sita-btn-primary:hover:not(:disabled) {
+  transform: translateY(-1.5px);
+  box-shadow: 0 8px 20px rgba(82, 106, 85, 0.35);
+}
+
+.sita-btn-secondary {
+  transition: all 0.25s ease;
+}
+
+.sita-btn-secondary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(41, 42, 39, 0.06);
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(82, 106, 85, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(82, 106, 85, 0.35);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 3s infinite ease-in-out;
+}
+
