@@ -644,7 +644,7 @@ export async function generateTasksForWorkflow(
 
   // OUTGOING LETTER WORKFLOW (Section 10)
   else if (letterType === 'OUTGOING') {
-    if (previousStatus === 'PENDING_APPROVAL' && newStatus === 'APPROVED') {
+    if (['PENDING_APPROVAL', 'PENDING_REVIEW'].includes(previousStatus) && newStatus === 'APPROVED') {
       const { rows: approvalRows } = await query(
         `SELECT * FROM approvals WHERE document_id = $1 AND status = 'APPROVED'`,
         [letterId],
@@ -660,17 +660,25 @@ export async function generateTasksForWorkflow(
 
   // INTERNAL LETTER WORKFLOW (Section 11)
   else if (letterType === 'INTERNAL') {
-    if (previousStatus === 'PENDING_APPROVAL' && newStatus === 'APPROVED') {
+    // Step 1: Manager approves (PENDING_REVIEW → APPROVED) → create REGISTER_INTERNAL task for admin
+    if (['PENDING_APPROVAL', 'PENDING_REVIEW'].includes(previousStatus) && newStatus === 'APPROVED') {
       const { rows: approvalRows } = await query(
         `SELECT * FROM approvals WHERE document_id = $1 AND status = 'APPROVED'`,
         [letterId],
       );
       if (approvalRows.length > 0) {
         taskType = 'REGISTER_INTERNAL';
-        title = 'Register & Route Internal Letter';
-        description = `Internal letter "${letter.title}" has been approved and needs to be registered and routed to the receiving department.`;
-        actionRequired = 'Register this internal letter and route it to the appropriate department.';
+        title = 'Register Internal Letter';
+        description = `Internal letter "${letter.title}" has been approved and needs to be registered with an official internal reference number.`;
+        actionRequired = 'Assign an official internal reference number to this approved internal letter.';
       }
+    }
+    // Step 2: Admin registers (APPROVED → REGISTERED) → create ROUTE_INTERNAL task for admin
+    else if (previousStatus === 'APPROVED' && newStatus === 'REGISTERED') {
+      taskType = 'ROUTE_INTERNAL';
+      title = 'Route Internal Letter';
+      description = `Internal letter "${letter.title}" has been registered and needs to be routed to the receiving department.`;
+      actionRequired = 'Select the destination department for this registered internal letter.';
     }
   }
 

@@ -203,6 +203,16 @@ async function reviewDocument(
   action: 'APPROVED' | 'REJECTED' | 'CHANGES_REQUESTED',
   comment: string | undefined
 ) {
+  // Capture the document's current status BEFORE updating it.
+  // This is the real previousStatus needed for audit logs and task generation.
+  // (Documents submitted via /:id/submit are in PENDING_REVIEW, not PENDING_APPROVAL.)
+  const { rows: preRows } = await query(
+    `SELECT status FROM documents WHERE id = $1`,
+    [documentId]
+  );
+  if (preRows.length === 0) throw ApiError.notFound('Document not found.');
+  const previousDocStatus = (preRows[0] as any).status as string;
+
   await query(
     `INSERT INTO approvals (document_id, submitter_id, submitter_name, submitter_role, priority, status, reviewed_at, reviewer_name, comment)
      VALUES ($1, $2, $3, $4, 'NORMAL', $5, now(), $3, $6)
@@ -230,7 +240,7 @@ async function reviewDocument(
     userName: reviewerName,
     action: `APPROVAL_${action}`,
     entityId: documentId,
-    previousStatus: 'PENDING_APPROVAL',
+    previousStatus: previousDocStatus,
     newStatus: action,
     details: { comment: comment || null },
   });
@@ -239,7 +249,7 @@ async function reviewDocument(
   if (action === 'APPROVED') {
     await generateTasksForWorkflow(
       documentId,
-      'PENDING_APPROVAL',
+      previousDocStatus,
       'APPROVED',
       {
         userId: reviewerId,

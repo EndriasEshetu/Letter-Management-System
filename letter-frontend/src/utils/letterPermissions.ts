@@ -177,7 +177,10 @@ export function getLetterPermissions(
       ),
       canUploadAttachment: !!(letter && st !== "ARCHIVED"),
       canAddProcessingNote: true,
-      canSubmitLetter: false,
+      canSubmitLetter: !!(
+        letter &&
+        (st === "DRAFT" || st === "IN_PROGRESS" || st === "CHANGES_REQUESTED")
+      ),
       canRespondToLetter: false,
       canMarkComplete: !!(
         letter &&

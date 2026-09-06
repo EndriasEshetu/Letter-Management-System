@@ -20,6 +20,7 @@ import {
   LetterRoutingDialog,
   LetterAssignmentDialog,
   DispatchDialog,
+  RegisterLetterModal,
   RelatedLetters,
   LetterTrackingCard,
 } from "@/components/letters";
@@ -335,7 +336,32 @@ const RoleActionPanel: React.FC<ActionPanelProps> = ({
               Archive Letter
             </Button>
           )}
-          {!perms.canRouteLetter &&
+          {perms.canSubmitLetter && (
+            <Button
+              variant="primary"
+              size="sm"
+              className="w-full"
+              onClick={onSubmit}
+              isLoading={isSubmitting}
+            >
+              <svg
+                className="w-4 h-4 mr-1.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              Submit for Review
+            </Button>
+          )}
+          {!perms.canSubmitLetter &&
+            !perms.canRouteLetter &&
             !perms.canAssignLetter &&
             !perms.canApproveLetter &&
             !perms.canRecordDispatch &&
@@ -781,6 +807,7 @@ export const LetterDetails: React.FC = () => {
   const [isRoutingOpen, setIsRoutingOpen] = useState(false);
   const [isAssignmentOpen, setIsAssignmentOpen] = useState(false);
   const [isDispatchOpen, setIsDispatchOpen] = useState(false);
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [isRequestChangesOpen, setIsRequestChangesOpen] = useState(false);
 
@@ -1311,7 +1338,7 @@ export const LetterDetails: React.FC = () => {
           <RoleActionPanel
             role={role}
             letter={letter}
-            onRegister={() => navigate("/letters/new?direction=INCOMING")}
+            onRegister={() => setIsRegisterOpen(true)}
             onRoute={() => setIsRoutingOpen(true)}
             onAssign={() => setIsAssignmentOpen(true)}
             onApprove={handleApprove}
@@ -1502,6 +1529,12 @@ export const LetterDetails: React.FC = () => {
         recipientName={letter.recipient || ""}
         recipientOrg={letter.recipientOrganization || ""}
         onClose={() => setIsDispatchOpen(false)}
+        onSuccess={fetchLetter}
+      />
+
+      <RegisterLetterModal
+        open={isRegisterOpen}
+        onClose={() => setIsRegisterOpen(false)}
         onSuccess={fetchLetter}
       />
 

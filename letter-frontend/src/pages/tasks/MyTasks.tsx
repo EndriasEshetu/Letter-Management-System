@@ -59,11 +59,24 @@ const taskDueLabel = (task: AdminTask) => {
 
 const taskMatchesFilter = (task: AdminTask, filter: string) => {
   if (filter === "ALL") return true;
-  if (filter === "OVERDUE") return task.isOverdue;
-  if (filter === "REGISTRATION") return task.type === "REGISTER_OUTGOING";
+  if (filter === "OVERDUE") return task.isOverdue || Boolean((task as any).is_overdue);
+  if (filter === "REGISTRATION")
+    return (
+      task.type === "REGISTER_OUTGOING" ||
+      task.type === "REGISTER_INTERNAL" ||
+      task.letter?.type === "OUTGOING" ||
+      (task as any).letter_type === "OUTGOING"
+    );
   if (filter === "ROUTING")
-    return task.type === "ROUTE_INCOMING" || task.type === "ROUTE_INTERNAL";
-  return task.letter_type === filter;
+    return (
+      task.type === "ROUTE_INCOMING" ||
+      task.type === "ROUTE_INTERNAL" ||
+      task.letter?.type === "INCOMING" ||
+      task.letter?.type === "INTERNAL" ||
+      (task as any).letter_type === "INCOMING" ||
+      (task as any).letter_type === "INTERNAL"
+    );
+  return task.letter?.type === filter || (task as any).letter_type === filter || task.type === filter;
 };
 
 const AdminActionCenter: React.FC = () => {

@@ -24,7 +24,7 @@ import {
   notifyLetterArchived,
 } from "../lib/notifications";
 import { logAudit, serializeAuditLog, AuditLogRow } from "../lib/audit";
-import { cancelTask, validateRouteIncoming, validateRegisterOutgoing } from "../lib/tasks";
+import { cancelTask, validateRouteIncoming, validateRegisterOutgoing, validateRegisterInternal, generateTasksForWorkflow } from "../lib/tasks";
 import { transaction } from "../lib/db";
 
 const router = Router();
@@ -566,9 +566,10 @@ router.post(
         deptName = (deptRes.rows[0] as { name: string }).name;
       }
 
-      // After admin routes, status becomes RECEIVED so the department manager
-      // can see it as a new letter awaiting officer assignment.
-      const newStatus = "RECEIVED";
+      // After admin routes:
+      // - INTERNAL letters → ROUTED  (receiving dept manager sees it as newly routed)
+      // - INCOMING letters → RECEIVED (dept sees it as a newly received letter)
+      const newStatus = (oldDoc as any).letter_type === 'INTERNAL' ? 'ROUTED' : 'RECEIVED';
       await client.query(
         `UPDATE documents
             SET department_id = COALESCE($2, department_id),
@@ -665,9 +666,9 @@ router.post(
       }
     }
 
-    // After manager assigns to officer, move to IN_PROGRESS so the employee
-    // sees their work actions (Submit for Review, Respond, Mark Complete).
-    const newStatus = "IN_PROGRESS";
+    // After manager assigns to officer, status becomes ASSIGNED.
+    // The officer then explicitly starts processing (ASSIGNED → IN_PROGRESS).
+    const newStatus = "ASSIGNED";
     await query(
       `UPDATE documents
             SET assigned_employee = COALESCE($2, assigned_employee),
@@ -858,6 +859,111 @@ router.post(
     const { rows: full } = await query(`${DOC_SELECT} WHERE d.id = $1`, [id]);
     res.json({
       message: `Outgoing letter registered with number ${result.registrationNumber}.`,
+      letter: serializeDocument(full[0] as DocumentRow),
+    });
+  }),
+);
+
+/* ─── POST /documents/:id/register-internal — Register internal letter ── */
+
+router.post(
+  "/:id/register-internal",
+  requireAuth,
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) throw ApiError.badRequest("Invalid document id.");
+
+    const user = req.user!;
+    const { taskId } = req.body || {};
+
+    // Validate: only ADMIN, letter must be INTERNAL and in APPROVED status
+    const validation = await validateRegisterInternal(id, user.id, user.role);
+    if (!validation.valid) {
+      return res.status(409).json({
+        success: false,
+        message: validation.error,
+        code: 'INVALID_WORKFLOW_TRANSITION',
+      });
+    }
+
+    const result = await transaction(async (client) => {
+      // Lock the row to prevent race conditions
+      const { rows: existing } = await client.query(
+        `SELECT * FROM documents WHERE id = $1 FOR UPDATE`,
+        [id],
+      );
+      if (existing.length === 0) throw ApiError.notFound("Document not found.");
+      const oldDoc = existing[0] as DocumentRow;
+
+      // Generate internal reference number server-side: INT-YYYY-NNN
+      const year = new Date().getFullYear();
+      const { rows: countRows } = await client.query(
+        `SELECT COUNT(*)::int AS n FROM documents
+         WHERE letter_type = 'INTERNAL' AND EXTRACT(YEAR FROM created_at) = $1`,
+        [year],
+      );
+      const n = (countRows[0] as { n: number }).n;
+      const registrationNumber = `INT-${year}-${String(n).padStart(3, "0")}`;
+
+      // Move to REGISTERED and store the reference number
+      await client.query(
+        `UPDATE documents
+            SET registration_number = $2,
+                status = 'REGISTERED',
+                updated_at = NOW()
+          WHERE id = $1`,
+        [id, registrationNumber],
+      );
+
+      // Audit
+      await client.query(
+        `INSERT INTO audit_logs
+           (user_id, user_name, action, entity_type, entity_id, previous_status, new_status, details, timestamp)
+         VALUES ($1, $2, 'REGISTER_INTERNAL', 'LETTER', $3, $4, 'REGISTERED', $5, NOW())`,
+        [user.id, user.full_name, id, oldDoc.status, JSON.stringify({ registrationNumber })],
+      );
+
+      // Complete the REGISTER_INTERNAL admin task(s)
+      const taskIds = taskId ? [Number(taskId)] : [];
+      if (!taskId) {
+        const { rows: activeTasks } = await client.query(
+          `SELECT id FROM admin_tasks
+           WHERE letter_id = $1
+             AND task_type = 'REGISTER_INTERNAL'
+             AND status IN ('PENDING', 'IN_PROGRESS', 'CLAIMED')
+           FOR UPDATE`,
+          [id],
+        );
+        for (const t of activeTasks) taskIds.push((t as any).id);
+      }
+      for (const tid of taskIds) {
+        await client.query(
+          `UPDATE admin_tasks
+              SET status = 'COMPLETED', completed_at = NOW(), completed_by = $2, updated_at = NOW()
+            WHERE id = $1 AND status IN ('PENDING', 'IN_PROGRESS', 'CLAIMED')`,
+          [tid, user.id],
+        );
+        await client.query(
+          `INSERT INTO audit_logs
+             (user_id, user_name, action, entity_type, entity_id, task_id, previous_status, new_status, details, timestamp)
+           VALUES ($1, $2, 'ADMIN_TASK_COMPLETED', 'TASK', $3, $3, 'PENDING', 'COMPLETED', $4, NOW())`,
+          [user.id, user.full_name, tid, JSON.stringify({ registrationNumber, action: 'REGISTER_INTERNAL' })],
+        );
+      }
+
+      return { registrationNumber, oldStatus: oldDoc.status };
+    });
+
+    // Create ROUTE_INTERNAL admin task so admin is reminded to route the letter next
+    await generateTasksForWorkflow(id, result.oldStatus, 'REGISTERED', {
+      userId: user.id,
+      role: user.role,
+      departmentId: user.department_id ?? undefined,
+    });
+
+    const { rows: full } = await query(`${DOC_SELECT} WHERE d.id = $1`, [id]);
+    res.json({
+      message: `Internal letter registered with number ${result.registrationNumber}.`,
       letter: serializeDocument(full[0] as DocumentRow),
     });
   }),
