@@ -36,6 +36,7 @@ export interface LetterPermissions {
   canUploadAttachment: boolean;
   canAddProcessingNote: boolean;
   canSubmitLetter: boolean;
+  canStartWork?: boolean;
   canRespondToLetter: boolean;
   canMarkComplete: boolean;
 
@@ -387,12 +388,16 @@ export function getLetterPermissions(
       letter &&
       (st === "DRAFT" || st === "IN_PROGRESS" || st === "CHANGES_REQUESTED")
     ),
+    canStartWork: !!(
+      letter &&
+      (st === "ASSIGNED" || st === "RECEIVED" || st === "ROUTED")
+    ),
     canRespondToLetter: !!(
       letter &&
       dir === "INCOMING" &&
       st === "IN_PROGRESS"
     ),
-    canMarkComplete: !!(letter && st === "IN_PROGRESS"),
+    canMarkComplete: !!(letter && (st === "IN_PROGRESS" || st === "ASSIGNED")),
 
     canArchiveLetter: false,
     canRestoreLetter: false,
