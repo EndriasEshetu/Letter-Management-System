@@ -76,12 +76,15 @@ async function assertEmployeeDocumentAccess(
 /** Generate the next document number, e.g. DOC-2026-042. */
 async function nextDocumentNumber(): Promise<string> {
   const year = new Date().getFullYear();
+  const prefix = `DOC-${year}-`;
   const { rows } = await query(
-    `SELECT COUNT(*)::int AS n FROM documents WHERE EXTRACT(YEAR FROM created_at) = $1`,
-    [year],
+    `SELECT MAX(CAST(SUBSTRING(document_number FROM '\\\d+$') AS INTEGER)) AS max_num
+     FROM documents 
+     WHERE document_number LIKE $1`,
+    [`${prefix}%`],
   );
-  const n = (rows[0] as { n: number }).n + 1;
-  return `DOC-${year}-${String(n).padStart(3, "0")}`;
+  const nextNum = ((rows[0] as { max_num: number | null }).max_num || 0) + 1;
+  return `${prefix}${String(nextNum).padStart(3, "0")}`;
 }
 
 /** Save a buffer to the local uploads directory and return the relative storage path. */
@@ -964,6 +967,46 @@ router.post(
     const { rows: full } = await query(`${DOC_SELECT} WHERE d.id = $1`, [id]);
     res.json({
       message: `Internal letter registered with number ${result.registrationNumber}.`,
+      letter: serializeDocument(full[0] as DocumentRow),
+    });
+  }),
+);
+
+/* ─── POST /documents/:id/start-work — Start work on assigned letter ── */
+
+router.post(
+  "/:id/start-work",
+  requireAuth,
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) throw ApiError.badRequest("Invalid document id.");
+    await assertEmployeeDocumentAccess(id, req.user);
+
+    const user = req.user!;
+    const { rows: existing } = await query(
+      `SELECT * FROM documents WHERE id = $1`,
+      [id],
+    );
+    if (existing.length === 0) throw ApiError.notFound("Document not found.");
+    const oldDoc = existing[0] as DocumentRow;
+
+    await query(
+      `UPDATE documents SET status = 'IN_PROGRESS', updated_at = NOW() WHERE id = $1`,
+      [id],
+    );
+
+    await logAudit({
+      userId: user.id,
+      userName: user.full_name,
+      action: "START_WORK",
+      entityId: id,
+      previousStatus: oldDoc.status,
+      newStatus: "IN_PROGRESS",
+    });
+
+    const { rows: full } = await query(`${DOC_SELECT} WHERE d.id = $1`, [id]);
+    res.json({
+      message: "Work started on letter.",
       letter: serializeDocument(full[0] as DocumentRow),
     });
   }),
