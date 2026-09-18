@@ -1080,6 +1080,30 @@ export const letterService = {
   },
 
   /**
+   * Start work on letter
+   */
+  async startWork(
+    id: string,
+  ): Promise<{ message: string; letter: LetterItem }> {
+    try {
+      const response = await api.post<{ message: string; letter: LetterItem }>(
+        `/documents/${id}/start-work`,
+      );
+      return response.data;
+    } catch (error: any) {
+      if (error.code === "ERR_NETWORK" || !error.response) {
+        const target = inMemoryLetters.find((l) => l.id === id);
+        if (target) {
+          target.status = "IN_PROGRESS";
+          if (target.assignment) target.assignment.taskStatus = "IN_PROGRESS";
+          return { message: "Work started successfully.", letter: target };
+        }
+      }
+      throw error;
+    }
+  },
+
+  /**
    * Mark letter completed
    */
   async completeLetter(
