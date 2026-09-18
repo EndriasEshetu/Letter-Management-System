@@ -36,7 +36,9 @@ interface StepDef {
 const INCOMING_STAGES: Record<string, number> = {
   DRAFT: 1,
   REGISTERED: 1,
+  ROUTED: 2,
   RECEIVED: 2,
+  ASSIGNED: 3,
   IN_PROGRESS: 3,
   RESPONSE_REQUIRED: 3,
   COMPLETED: 4,
@@ -137,7 +139,7 @@ const buildIncomingSteps = (
           ? "Completed and filed"
           : "Final archival",
     state: stepState(4),
-    timestamp: ts?.completed_at,
+    timestamp: (stepState(4) === "completed" || norm === "ARCHIVED") ? ts?.completed_at : undefined,
   },
 ];
 
