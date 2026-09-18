@@ -158,6 +158,7 @@ interface ActionPanelProps {
   onRequestChanges: () => void;
   onDispatch: () => void;
   onComplete: () => void;
+  onStartWork?: () => void;
   onArchive: () => void;
   onDelete?: () => void;
   onEdit: () => void;
@@ -180,6 +181,7 @@ const RoleActionPanel: React.FC<ActionPanelProps> = ({
   onRequestChanges,
   onDispatch,
   onComplete,
+  onStartWork,
   onArchive,
   onDelete,
   onEdit,
@@ -682,6 +684,35 @@ const RoleActionPanel: React.FC<ActionPanelProps> = ({
         <span>Work Actions</span>
       </h3>
       <div className="space-y-2">
+        {perms.canStartWork && (
+          <Button
+            variant="primary"
+            size="sm"
+            className="w-full"
+            onClick={onStartWork}
+          >
+            <svg
+              className="w-4 h-4 mr-1.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            Start Work
+          </Button>
+        )}
         {perms.canEditLetter && (
           <Button
             variant="primary"
@@ -998,6 +1029,25 @@ export const LetterDetails: React.FC = () => {
         type: "error",
         title: "Approval Failed",
         message: err.message || "Could not approve letter.",
+      });
+    }
+  };
+
+  const handleStartWork = async () => {
+    if (!letter) return;
+    try {
+      await letterService.startWork(letter.id);
+      addToast({
+        type: "success",
+        title: "Work Started",
+        message: `Status updated to IN_PROGRESS.`,
+      });
+      fetchLetter();
+    } catch (err: any) {
+      addToast({
+        type: "error",
+        title: "Action Failed",
+        message: err.message || "Could not update status.",
       });
     }
   };
@@ -1419,6 +1469,7 @@ export const LetterDetails: React.FC = () => {
             onRequestChanges={() => setIsRequestChangesOpen(true)}
             onDispatch={() => setIsDispatchOpen(true)}
             onComplete={handleComplete}
+            onStartWork={handleStartWork}
             onArchive={() => setIsArchiveDialogOpen(true)}
             onDelete={() => setIsDeleteDialogOpen(true)}
             onEdit={() => navigate(`/letters/${letter.id}/edit`)}
