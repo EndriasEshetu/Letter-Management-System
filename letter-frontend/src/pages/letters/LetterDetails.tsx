@@ -20,6 +20,7 @@ import {
   LetterRoutingDialog,
   LetterAssignmentDialog,
   DispatchDialog,
+  RegisterLetterModal,
   RelatedLetters,
   LetterTrackingCard,
 } from "@/components/letters";
@@ -149,6 +150,7 @@ const AttachmentTimelineItem: React.FC<{
 interface ActionPanelProps {
   role: string | undefined;
   letter: LetterItem;
+  onRegister?: () => void;
   onRoute: () => void;
   onAssign: () => void;
   onApprove: () => void;
@@ -156,7 +158,9 @@ interface ActionPanelProps {
   onRequestChanges: () => void;
   onDispatch: () => void;
   onComplete: () => void;
+  onStartWork?: () => void;
   onArchive: () => void;
+  onDelete?: () => void;
   onEdit: () => void;
   onUpload: () => void;
   onSubmit: () => void;
@@ -169,6 +173,7 @@ interface ActionPanelProps {
 const RoleActionPanel: React.FC<ActionPanelProps> = ({
   role,
   letter,
+  onRegister,
   onRoute,
   onAssign,
   onApprove,
@@ -176,7 +181,9 @@ const RoleActionPanel: React.FC<ActionPanelProps> = ({
   onRequestChanges,
   onDispatch,
   onComplete,
+  onStartWork,
   onArchive,
+  onDelete,
   onEdit,
   onUpload,
   onSubmit,
@@ -195,6 +202,29 @@ const RoleActionPanel: React.FC<ActionPanelProps> = ({
           <span>Administrative Actions</span>
         </h3>
         <div className="space-y-2">
+          {perms.canEditLetter && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="w-full"
+              onClick={onEdit}
+            >
+              <svg
+                className="w-4 h-4 mr-1.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
+              </svg>
+              Edit Letter
+            </Button>
+          )}
           {perms.canRouteLetter && (
             <Button
               variant="primary"
@@ -333,7 +363,55 @@ const RoleActionPanel: React.FC<ActionPanelProps> = ({
               Archive Letter
             </Button>
           )}
-          {!perms.canRouteLetter &&
+          {perms.canDeleteLetter && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-red-600 border-red-300 hover:bg-red-50"
+              onClick={onDelete}
+            >
+              <svg
+                className="w-4 h-4 mr-1.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+              Delete Letter
+            </Button>
+          )}
+          {perms.canSubmitLetter && (
+            <Button
+              variant="primary"
+              size="sm"
+              className="w-full"
+              onClick={onSubmit}
+              isLoading={isSubmitting}
+            >
+              <svg
+                className="w-4 h-4 mr-1.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              Submit for Review
+            </Button>
+          )}
+          {!perms.canSubmitLetter &&
+            !perms.canRouteLetter &&
             !perms.canAssignLetter &&
             !perms.canApproveLetter &&
             !perms.canRecordDispatch &&
@@ -362,7 +440,7 @@ const RoleActionPanel: React.FC<ActionPanelProps> = ({
               variant="primary"
               size="sm"
               className="w-full"
-              onClick={onRoute}
+              onClick={onRegister}
             >
               <svg
                 className="w-4 h-4 mr-1.5"
@@ -606,6 +684,35 @@ const RoleActionPanel: React.FC<ActionPanelProps> = ({
         <span>Work Actions</span>
       </h3>
       <div className="space-y-2">
+        {perms.canStartWork && (
+          <Button
+            variant="primary"
+            size="sm"
+            className="w-full"
+            onClick={onStartWork}
+          >
+            <svg
+              className="w-4 h-4 mr-1.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            Start Work
+          </Button>
+        )}
         {perms.canEditLetter && (
           <Button
             variant="primary"
@@ -775,10 +882,13 @@ export const LetterDetails: React.FC = () => {
   const [isUploadAttachmentOpen, setIsUploadAttachmentOpen] = useState(false);
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRoutingOpen, setIsRoutingOpen] = useState(false);
   const [isAssignmentOpen, setIsAssignmentOpen] = useState(false);
   const [isDispatchOpen, setIsDispatchOpen] = useState(false);
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [isRequestChangesOpen, setIsRequestChangesOpen] = useState(false);
 
@@ -859,6 +969,29 @@ export const LetterDetails: React.FC = () => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!letter) return;
+    setIsDeleting(true);
+    try {
+      await letterService.deleteLetter(letter.id);
+      addToast({
+        type: "warning",
+        title: "Letter Deleted",
+        message: `"${letter.subject}" was permanently deleted.`,
+      });
+      setIsDeleteDialogOpen(false);
+      navigate("/letters");
+    } catch (err: any) {
+      addToast({
+        type: "error",
+        title: "Delete Failed",
+        message: err.message || "Could not delete letter.",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleSubmitForApproval = async () => {
     if (!letter) return;
     setIsSubmitting(true);
@@ -896,6 +1029,25 @@ export const LetterDetails: React.FC = () => {
         type: "error",
         title: "Approval Failed",
         message: err.message || "Could not approve letter.",
+      });
+    }
+  };
+
+  const handleStartWork = async () => {
+    if (!letter) return;
+    try {
+      await letterService.startWork(letter.id);
+      addToast({
+        type: "success",
+        title: "Work Started",
+        message: `Status updated to IN_PROGRESS.`,
+      });
+      fetchLetter();
+    } catch (err: any) {
+      addToast({
+        type: "error",
+        title: "Action Failed",
+        message: err.message || "Could not update status.",
       });
     }
   };
@@ -1309,6 +1461,7 @@ export const LetterDetails: React.FC = () => {
           <RoleActionPanel
             role={role}
             letter={letter}
+            onRegister={() => setIsRegisterOpen(true)}
             onRoute={() => setIsRoutingOpen(true)}
             onAssign={() => setIsAssignmentOpen(true)}
             onApprove={handleApprove}
@@ -1316,7 +1469,9 @@ export const LetterDetails: React.FC = () => {
             onRequestChanges={() => setIsRequestChangesOpen(true)}
             onDispatch={() => setIsDispatchOpen(true)}
             onComplete={handleComplete}
+            onStartWork={handleStartWork}
             onArchive={() => setIsArchiveDialogOpen(true)}
+            onDelete={() => setIsDeleteDialogOpen(true)}
             onEdit={() => navigate(`/letters/${letter.id}/edit`)}
             onUpload={() => setIsUploadAttachmentOpen(true)}
             onSubmit={handleSubmitForApproval}
@@ -1502,6 +1657,12 @@ export const LetterDetails: React.FC = () => {
         onSuccess={fetchLetter}
       />
 
+      <RegisterLetterModal
+        open={isRegisterOpen}
+        onClose={() => setIsRegisterOpen(false)}
+        onSuccess={fetchLetter}
+      />
+
       <ConfirmDialog
         open={isArchiveDialogOpen}
         title="Archive Letter?"
@@ -1558,6 +1719,17 @@ export const LetterDetails: React.FC = () => {
           fetchLetter();
         }}
         onCancel={() => setIsRequestChangesOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={isDeleteDialogOpen}
+        title="Permanently Delete Letter?"
+        description={`Are you sure you want to permanently delete "${letter.subject}"? This action cannot be undone and will purge all associated tasks and records.`}
+        confirmLabel="Permanently Delete"
+        danger
+        isLoading={isDeleting}
+        onConfirm={handleDelete}
+        onCancel={() => setIsDeleteDialogOpen(false)}
       />
     </div>
   );

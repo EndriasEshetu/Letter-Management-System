@@ -32,9 +32,11 @@ export interface LetterPermissions {
 
   // Editing
   canEditLetter: boolean;
+  canDeleteLetter?: boolean;
   canUploadAttachment: boolean;
   canAddProcessingNote: boolean;
   canSubmitLetter: boolean;
+  canStartWork?: boolean;
   canRespondToLetter: boolean;
   canMarkComplete: boolean;
 
@@ -142,7 +144,7 @@ export function getLetterPermissions(
 
       canRouteLetter: !!(
         letter &&
-        (st === "REGISTERED" || st === "RECEIVED") &&
+        (st === "REGISTERED" || st === "RECEIVED" || st === "APPROVED") &&
         (dir === "INCOMING" || dir === "INTERNAL")
       ),
       canAssignLetter: false,
@@ -171,13 +173,14 @@ export function getLetterPermissions(
         (st === "APPROVED" || st === "READY_FOR_DISPATCH")
       ),
 
-      canEditLetter: !!(
-        letter &&
-        (st === "DRAFT" || st === "CHANGES_REQUESTED")
-      ),
+      canEditLetter: !!(letter && st !== "ARCHIVED"),
+      canDeleteLetter: !!letter,
       canUploadAttachment: !!(letter && st !== "ARCHIVED"),
       canAddProcessingNote: true,
-      canSubmitLetter: false,
+      canSubmitLetter: !!(
+        letter &&
+        (st === "DRAFT" || st === "IN_PROGRESS" || st === "CHANGES_REQUESTED")
+      ),
       canRespondToLetter: false,
       canMarkComplete: !!(
         letter &&
@@ -215,7 +218,7 @@ export function getLetterPermissions(
       canViewTracking: true,
       canViewAudit: false,
 
-      canRegisterLetter: false,
+      canRegisterLetter: true,
       canEditRegistrationMetadata: !!(
         letter &&
         (st === "REGISTERED" || st === "RECEIVED") &&
@@ -224,7 +227,11 @@ export function getLetterPermissions(
       canUploadScan: !!(letter && dir === "INCOMING"),
       canClassifyLetter: !!(letter && dir === "INCOMING"),
 
-      canRouteLetter: false,
+      canRouteLetter: !!(
+        letter &&
+        st === "REGISTERED" &&
+        dir === "INCOMING"
+      ),
       canAssignLetter: false,
       canApproveLetter: false,
       canRejectLetter: false,
@@ -381,12 +388,16 @@ export function getLetterPermissions(
       letter &&
       (st === "DRAFT" || st === "IN_PROGRESS" || st === "CHANGES_REQUESTED")
     ),
+    canStartWork: !!(
+      letter &&
+      (st === "ASSIGNED" || st === "RECEIVED" || st === "ROUTED")
+    ),
     canRespondToLetter: !!(
       letter &&
       dir === "INCOMING" &&
       st === "IN_PROGRESS"
     ),
-    canMarkComplete: !!(letter && st === "IN_PROGRESS"),
+    canMarkComplete: !!(letter && (st === "IN_PROGRESS" || st === "ASSIGNED")),
 
     canArchiveLetter: false,
     canRestoreLetter: false,

@@ -46,11 +46,11 @@ const priorityRank: Record<string, number> = {
 };
 
 const taskDueLabel = (task: AdminTask) => {
-  if (!task.due_date) return "No deadline";
+  if (!task.dueDate) return "No deadline";
   const days = Math.ceil(
-    (new Date(task.due_date).getTime() - Date.now()) / 86400000,
+    (new Date(task.dueDate).getTime() - Date.now()) / 86400000,
   );
-  if (task.is_overdue)
+  if (task.isOverdue)
     return `Overdue by ${Math.max(1, Math.abs(days))} day${Math.abs(days) === 1 ? "" : "s"}`;
   if (days <= 0) return "Due today";
   if (days === 1) return "Due tomorrow";
@@ -59,11 +59,24 @@ const taskDueLabel = (task: AdminTask) => {
 
 const taskMatchesFilter = (task: AdminTask, filter: string) => {
   if (filter === "ALL") return true;
-  if (filter === "OVERDUE") return task.is_overdue;
-  if (filter === "REGISTRATION") return task.type === "REGISTER_OUTGOING";
+  if (filter === "OVERDUE") return task.isOverdue || Boolean((task as any).is_overdue);
+  if (filter === "REGISTRATION")
+    return (
+      task.type === "REGISTER_OUTGOING" ||
+      task.type === "REGISTER_INTERNAL" ||
+      task.letter?.type === "OUTGOING" ||
+      (task as any).letter_type === "OUTGOING"
+    );
   if (filter === "ROUTING")
-    return task.type === "ROUTE_INCOMING" || task.type === "ROUTE_INTERNAL";
-  return task.letter_type === filter;
+    return (
+      task.type === "ROUTE_INCOMING" ||
+      task.type === "ROUTE_INTERNAL" ||
+      task.letter?.type === "INCOMING" ||
+      task.letter?.type === "INTERNAL" ||
+      (task as any).letter_type === "INCOMING" ||
+      (task as any).letter_type === "INTERNAL"
+    );
+  return task.letter?.type === filter || (task as any).letter_type === filter || task.type === filter;
 };
 
 const AdminActionCenter: React.FC = () => {
@@ -80,8 +93,6 @@ const AdminActionCenter: React.FC = () => {
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
 
   const fetchTasks = useCallback(async () => {
     setIsLoading(true);
@@ -89,7 +100,6 @@ const AdminActionCenter: React.FC = () => {
     try {
       const response = await letterService.getAdminTasks();
       setTasks(response.data);
-      setTotalPages(response.pagination?.totalPages || 1);
       // Calculate summary from tasks
       const allTasks = response.data;
       setSummary({
@@ -134,13 +144,15 @@ const AdminActionCenter: React.FC = () => {
     try {
       if (task.type === "REGISTER_OUTGOING") {
         const letterId = task.letter?.id || task.letter_id;
-        await letterService.registerOutgoingNumber(letterId);
-        addToast({
-          type: "success",
-          title: "Letter Registered",
-          message: `${task.letter?.referenceNumber || task.letter_reference} was registered successfully.`,
-        });
-        await fetchTasks();
+        if (letterId) {
+          await letterService.registerOutgoingNumber(letterId);
+          addToast({
+            type: "success",
+            title: "Letter Registered",
+            message: `${task.letter?.referenceNumber || task.letter_reference} was registered successfully.`,
+          });
+          await fetchTasks();
+        }
         return;
       }
       const letterId = task.letter?.id || task.letter_id;
@@ -231,7 +243,7 @@ const AdminActionCenter: React.FC = () => {
           {visibleTasks.map((task) => (
             <Card
               key={task.id}
-              className={`border-l-4 ${task.is_overdue ? "border-l-[#8B3232]" : task.priority === "URGENT" ? "border-l-[#C48D3F]" : "border-l-[#526A55]"}`}
+              className={`border-l-4 ${task.isOverdue ? "border-l-[#8B3232]" : task.priority === "URGENT" ? "border-l-[#C48D3F]" : "border-l-[#526A55]"}`}
             >
               <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                 <div className="min-w-0 space-y-2">
@@ -256,7 +268,7 @@ const AdminActionCenter: React.FC = () => {
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1 text-xs text-[#6B6A64]">
                     <span>
-                      <strong>From:</strong> {task.letter?.sender || task.sender || task.requestedBy?.name || task.requested_by}
+                      <strong>From:</strong> {task.letter?.sender || task.requestedBy?.name || task.requested_by}
                     </span>
                     <span>
                       <strong>Requested by:</strong> {task.requestedBy?.name || task.requested_by} (
@@ -275,11 +287,11 @@ const AdminActionCenter: React.FC = () => {
                     <strong>What you need to do:</strong> {task.description || task.actionRequired || task.action_required || task.reason}
                   </div>
                   <p
-                    className={`text-xs font-bold ${task.isOverdue || task.is_overdue ? "text-[#8B3232]" : "text-[#6B6A64]"}`}
+                    className={`text-xs font-bold ${task.isOverdue ? "text-[#8B3232]" : "text-[#6B6A64]"}`}
                   >
                     {taskDueLabel(task)}
-                    {task.dueDate || task.due_date
-                      ? ` · Due ${new Date(task.dueDate || task.due_date!).toLocaleDateString()}`
+                    {task.dueDate
+                      ? ` · Due ${new Date(task.dueDate).toLocaleDateString()}`
                       : ""}
                   </p>
                 </div>
@@ -344,9 +356,12 @@ export const MyTasks: React.FC = () => {
       return (
         l.status === "RECEIVED" ||
         l.status === "REGISTERED" ||
-        l.status === "PENDING_REVIEW"
+        l.status === "PENDING_REVIEW" ||
+        l.status === "DRAFT" ||
+        l.status === "CHANGES_REQUESTED"
       );
-    if (activeTab === "IN_PROGRESS") return l.status === "IN_PROGRESS";
+    if (activeTab === "IN_PROGRESS")
+      return l.status === "IN_PROGRESS" || l.status === "DRAFT";
     if (activeTab === "OVERDUE")
       return l.dueDate && new Date(l.dueDate) < new Date();
     if (activeTab === "COMPLETED")

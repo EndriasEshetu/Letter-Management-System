@@ -1,49 +1,51 @@
--- Migration 0008: Upgrade notifications table for full workflow integration
--- Plain PostgreSQL migration — run with: npm run migrate
+-- Migration 0009: Safety net — ensure all notifications columns exist
+-- Root cause: Migration 0008 created an index on (entity_type, entity_id) but
+-- entity_id was never added, causing the entire 0008 transaction to roll back.
+-- All columns 0008 intended to add were therefore never created.
+-- This migration re-adds everything with IF NOT EXISTS so it is safe to run
+-- regardless of whether 0008 partially applied or never applied at all.
 
--- 1. Add new columns for proper notification entity
+-- Re-add all columns from 0008 (idempotent)
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS title text;
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS actor_user_id bigint REFERENCES users(id) ON DELETE SET NULL;
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS entity_type text DEFAULT 'LETTER';
-ALTER TABLE notifications ADD COLUMN IF NOT EXISTS entity_id bigint;  -- FIXED: was missing, caused index below to fail
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS entity_id bigint;
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS priority text DEFAULT 'NORMAL' CHECK (priority IN ('LOW', 'NORMAL', 'HIGH', 'URGENT'));
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS metadata jsonb;
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS read_at timestamptz;
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT NOW();
-
--- 2. Add idempotency key for duplicate prevention
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS idempotency_key text;
 
--- 3. Create unique constraint for idempotency (one notification per event per user)
+-- Idempotency constraint (skip if already exists or fails on duplicates)
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint 
+    SELECT 1 FROM pg_constraint
     WHERE conname = 'unique_notification_per_event_per_user'
   ) THEN
-    ALTER TABLE notifications 
-      ADD CONSTRAINT unique_notification_per_event_per_user 
+    ALTER TABLE notifications
+      ADD CONSTRAINT unique_notification_per_event_per_user
       UNIQUE (user_id, type, document_id, idempotency_key);
   END IF;
 EXCEPTION WHEN others THEN
-  -- Constraint may already exist or fail on duplicates, skip
   NULL;
 END $$;
 
--- 4. Add indexes for common query patterns
-CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications (is_read);
-CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications (type);
-CREATE INDEX IF NOT EXISTS idx_notifications_priority ON notifications (priority);
-CREATE INDEX IF NOT EXISTS idx_notifications_actor ON notifications (actor_user_id);
-CREATE INDEX IF NOT EXISTS idx_notifications_entity ON notifications (entity_type, entity_id);
-
--- 5. Compound index for user's unread notifications (most common query)
+-- Re-create all indexes (idempotent)
+CREATE INDEX IF NOT EXISTS idx_notifications_is_read    ON notifications (is_read);
+CREATE INDEX IF NOT EXISTS idx_notifications_type       ON notifications (type);
+CREATE INDEX IF NOT EXISTS idx_notifications_priority   ON notifications (priority);
+CREATE INDEX IF NOT EXISTS idx_notifications_actor      ON notifications (actor_user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_entity     ON notifications (entity_type, entity_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications (user_id, is_read, created_at DESC);
-
--- 6. Index for idempotency lookup
 CREATE INDEX IF NOT EXISTS idx_notifications_idempotency ON notifications (idempotency_key) WHERE idempotency_key IS NOT NULL;
 
--- 7. Add updated_at trigger
+-- Back-fill entity_id from document_id for any existing rows
+UPDATE notifications
+SET entity_id = document_id
+WHERE entity_id IS NULL AND document_id IS NOT NULL;
+
+-- Re-create updated_at trigger
 CREATE OR REPLACE FUNCTION update_notifications_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN

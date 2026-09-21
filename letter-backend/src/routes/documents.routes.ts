@@ -7,7 +7,7 @@ import { config } from "../config";
 import { query } from "../lib/db";
 import { ApiError } from "../lib/errors";
 import { asyncHandler } from "../lib/errors";
-import { requireAuth, AuthenticatedRequest } from "../middleware/auth";
+import { requireAuth, requireRole, AuthenticatedRequest } from "../middleware/auth";
 import {
   serializeDocument,
   serializeVersion,
@@ -24,7 +24,7 @@ import {
   notifyLetterArchived,
 } from "../lib/notifications";
 import { logAudit, serializeAuditLog, AuditLogRow } from "../lib/audit";
-import { cancelTask, validateRouteIncoming, validateRegisterOutgoing } from "../lib/tasks";
+import { cancelTask, validateRouteIncoming, validateRegisterOutgoing, validateRegisterInternal, generateTasksForWorkflow } from "../lib/tasks";
 import { transaction } from "../lib/db";
 
 const router = Router();
@@ -51,10 +51,12 @@ function addEmployeeScope(
   alias = "d",
 ) {
   if (user?.role !== "EMPLOYEE") return;
+  const idIdx = params.length + 1;
+  const nameIdx = params.length + 2;
   where.push(
-    `(${alias}.author_id = $${params.length + 1} OR ${alias}.assigned_employee_id = $${params.length + 1} OR LOWER(TRIM(${alias}.assigned_employee)) = LOWER(TRIM($${params.length + 1}::text)))`,
+    `(${alias}.author_id = $${idIdx} OR ${alias}.assigned_employee_id = $${idIdx} OR LOWER(TRIM(${alias}.assigned_employee)) = LOWER(TRIM($${nameIdx}::text)) OR $${nameIdx}::text ILIKE '%' || LOWER(TRIM(NULLIF(${alias}.assigned_employee, ''))) || '%' OR LOWER(TRIM(${alias}.assigned_employee)) ILIKE '%' || LOWER(TRIM(NULLIF($${nameIdx}::text, ''))) || '%')`,
   );
-  params.push(user.id);
+  params.push(user.id, user.full_name || "");
 }
 
 async function assertEmployeeDocumentAccess(
@@ -65,8 +67,8 @@ async function assertEmployeeDocumentAccess(
   const { rows } = await query(
     `SELECT id FROM documents
       WHERE id = $1
-        AND (author_id = $2 OR assigned_employee_id = $2 OR LOWER(TRIM(assigned_employee)) = LOWER(TRIM($3::text)))`,
-    [id, user.id, user.full_name],
+        AND (author_id = $2 OR assigned_employee_id = $2 OR LOWER(TRIM(assigned_employee)) = LOWER(TRIM($3::text)) OR $3::text ILIKE '%' || LOWER(TRIM(NULLIF(assigned_employee, ''))) || '%' OR LOWER(TRIM(assigned_employee)) ILIKE '%' || LOWER(TRIM(NULLIF($3::text, ''))) || '%')`,
+    [id, user.id, user.full_name || ""],
   );
   if (rows.length === 0) throw ApiError.notFound("Document not found.");
 }
@@ -74,12 +76,15 @@ async function assertEmployeeDocumentAccess(
 /** Generate the next document number, e.g. DOC-2026-042. */
 async function nextDocumentNumber(): Promise<string> {
   const year = new Date().getFullYear();
+  const prefix = `DOC-${year}-`;
   const { rows } = await query(
-    `SELECT COUNT(*)::int AS n FROM documents WHERE EXTRACT(YEAR FROM created_at) = $1`,
-    [year],
+    `SELECT MAX(CAST(SUBSTRING(document_number FROM '\\\d+$') AS INTEGER)) AS max_num
+     FROM documents 
+     WHERE document_number LIKE $1`,
+    [`${prefix}%`],
   );
-  const n = (rows[0] as { n: number }).n + 1;
-  return `DOC-${year}-${String(n).padStart(3, "0")}`;
+  const nextNum = ((rows[0] as { max_num: number | null }).max_num || 0) + 1;
+  return `${prefix}${String(nextNum).padStart(3, "0")}`;
 }
 
 /** Save a buffer to the local uploads directory and return the relative storage path. */
@@ -308,7 +313,10 @@ router.post(
     // Initial status depending on letter type
     let initialStatus = "DRAFT";
     if (letterType === "INCOMING") {
-      initialStatus = "RECEIVED";
+      // Incoming letters start as REGISTERED — the registry officer registers them
+      // then routes to admin (RECEIVED), then admin routes to department (RECEIVED stays
+      // until manager assigns to officer who moves it to IN_PROGRESS).
+      initialStatus = "REGISTERED";
     }
 
     let departmentId: number | null = null;
@@ -413,14 +421,29 @@ router.post(
   }),
 );
 
+async function parseDocId(paramId: string): Promise<number> {
+  let cleaned = (paramId || "").trim();
+  if (cleaned.startsWith("ltr-")) {
+    cleaned = cleaned.replace(/^ltr-0*/, "");
+  }
+  const num = Number(cleaned);
+  if (Number.isFinite(num) && num > 0) return num;
+
+  const { rows } = await query(
+    `SELECT id FROM documents WHERE LOWER(document_number) = LOWER($1) LIMIT 1`,
+    [paramId.trim()],
+  );
+  if (rows.length > 0) return (rows[0] as { id: number }).id;
+  throw ApiError.badRequest("Invalid document id.");
+}
+
 /* ─── GET /documents/:id — detail with versions ────────── */
 
 router.get(
   "/:id",
   requireAuth,
   asyncHandler(async (req: AuthenticatedRequest, res) => {
-    const id = Number(req.params.id);
-    if (!Number.isFinite(id)) throw ApiError.badRequest("Invalid document id.");
+    const id = await parseDocId(req.params.id);
     await assertEmployeeDocumentAccess(id, req.user);
 
     const { rows } = await query(`${DOC_SELECT} WHERE d.id = $1`, [id]);
@@ -546,7 +569,10 @@ router.post(
         deptName = (deptRes.rows[0] as { name: string }).name;
       }
 
-      const newStatus = "ASSIGNED";
+      // After admin routes:
+      // - INTERNAL letters → ROUTED  (receiving dept manager sees it as newly routed)
+      // - INCOMING letters → RECEIVED (dept sees it as a newly received letter)
+      const newStatus = (oldDoc as any).letter_type === 'INTERNAL' ? 'ROUTED' : 'RECEIVED';
       await client.query(
         `UPDATE documents
             SET department_id = COALESCE($2, department_id),
@@ -643,6 +669,8 @@ router.post(
       }
     }
 
+    // After manager assigns to officer, status becomes ASSIGNED.
+    // The officer then explicitly starts processing (ASSIGNED → IN_PROGRESS).
     const newStatus = "ASSIGNED";
     await query(
       `UPDATE documents
@@ -834,6 +862,151 @@ router.post(
     const { rows: full } = await query(`${DOC_SELECT} WHERE d.id = $1`, [id]);
     res.json({
       message: `Outgoing letter registered with number ${result.registrationNumber}.`,
+      letter: serializeDocument(full[0] as DocumentRow),
+    });
+  }),
+);
+
+/* ─── POST /documents/:id/register-internal — Register internal letter ── */
+
+router.post(
+  "/:id/register-internal",
+  requireAuth,
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) throw ApiError.badRequest("Invalid document id.");
+
+    const user = req.user!;
+    const { taskId } = req.body || {};
+
+    // Validate: only ADMIN, letter must be INTERNAL and in APPROVED status
+    const validation = await validateRegisterInternal(id, user.id, user.role);
+    if (!validation.valid) {
+      return res.status(409).json({
+        success: false,
+        message: validation.error,
+        code: 'INVALID_WORKFLOW_TRANSITION',
+      });
+    }
+
+    const result = await transaction(async (client) => {
+      // Lock the row to prevent race conditions
+      const { rows: existing } = await client.query(
+        `SELECT * FROM documents WHERE id = $1 FOR UPDATE`,
+        [id],
+      );
+      if (existing.length === 0) throw ApiError.notFound("Document not found.");
+      const oldDoc = existing[0] as DocumentRow;
+
+      // Generate internal reference number server-side: INT-YYYY-NNN
+      const year = new Date().getFullYear();
+      const { rows: countRows } = await client.query(
+        `SELECT COUNT(*)::int AS n FROM documents
+         WHERE letter_type = 'INTERNAL' AND EXTRACT(YEAR FROM created_at) = $1`,
+        [year],
+      );
+      const n = (countRows[0] as { n: number }).n;
+      const registrationNumber = `INT-${year}-${String(n).padStart(3, "0")}`;
+
+      // Move to REGISTERED and store the reference number
+      await client.query(
+        `UPDATE documents
+            SET registration_number = $2,
+                status = 'REGISTERED',
+                updated_at = NOW()
+          WHERE id = $1`,
+        [id, registrationNumber],
+      );
+
+      // Audit
+      await client.query(
+        `INSERT INTO audit_logs
+           (user_id, user_name, action, entity_type, entity_id, previous_status, new_status, details, timestamp)
+         VALUES ($1, $2, 'REGISTER_INTERNAL', 'LETTER', $3, $4, 'REGISTERED', $5, NOW())`,
+        [user.id, user.full_name, id, oldDoc.status, JSON.stringify({ registrationNumber })],
+      );
+
+      // Complete the REGISTER_INTERNAL admin task(s)
+      const taskIds = taskId ? [Number(taskId)] : [];
+      if (!taskId) {
+        const { rows: activeTasks } = await client.query(
+          `SELECT id FROM admin_tasks
+           WHERE letter_id = $1
+             AND task_type = 'REGISTER_INTERNAL'
+             AND status IN ('PENDING', 'IN_PROGRESS', 'CLAIMED')
+           FOR UPDATE`,
+          [id],
+        );
+        for (const t of activeTasks) taskIds.push((t as any).id);
+      }
+      for (const tid of taskIds) {
+        await client.query(
+          `UPDATE admin_tasks
+              SET status = 'COMPLETED', completed_at = NOW(), completed_by = $2, updated_at = NOW()
+            WHERE id = $1 AND status IN ('PENDING', 'IN_PROGRESS', 'CLAIMED')`,
+          [tid, user.id],
+        );
+        await client.query(
+          `INSERT INTO audit_logs
+             (user_id, user_name, action, entity_type, entity_id, task_id, previous_status, new_status, details, timestamp)
+           VALUES ($1, $2, 'ADMIN_TASK_COMPLETED', 'TASK', $3, $3, 'PENDING', 'COMPLETED', $4, NOW())`,
+          [user.id, user.full_name, tid, JSON.stringify({ registrationNumber, action: 'REGISTER_INTERNAL' })],
+        );
+      }
+
+      return { registrationNumber, oldStatus: oldDoc.status };
+    });
+
+    // Create ROUTE_INTERNAL admin task so admin is reminded to route the letter next
+    await generateTasksForWorkflow(id, result.oldStatus, 'REGISTERED', {
+      userId: user.id,
+      role: user.role,
+      departmentId: user.department_id ?? undefined,
+    });
+
+    const { rows: full } = await query(`${DOC_SELECT} WHERE d.id = $1`, [id]);
+    res.json({
+      message: `Internal letter registered with number ${result.registrationNumber}.`,
+      letter: serializeDocument(full[0] as DocumentRow),
+    });
+  }),
+);
+
+/* ─── POST /documents/:id/start-work — Start work on assigned letter ── */
+
+router.post(
+  "/:id/start-work",
+  requireAuth,
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) throw ApiError.badRequest("Invalid document id.");
+    await assertEmployeeDocumentAccess(id, req.user);
+
+    const user = req.user!;
+    const { rows: existing } = await query(
+      `SELECT * FROM documents WHERE id = $1`,
+      [id],
+    );
+    if (existing.length === 0) throw ApiError.notFound("Document not found.");
+    const oldDoc = existing[0] as DocumentRow;
+
+    await query(
+      `UPDATE documents SET status = 'IN_PROGRESS', updated_at = NOW() WHERE id = $1`,
+      [id],
+    );
+
+    await logAudit({
+      userId: user.id,
+      userName: user.full_name,
+      action: "START_WORK",
+      entityId: id,
+      previousStatus: oldDoc.status,
+      newStatus: "IN_PROGRESS",
+    });
+
+    const { rows: full } = await query(`${DOC_SELECT} WHERE d.id = $1`, [id]);
+    res.json({
+      message: "Work started on letter.",
       letter: serializeDocument(full[0] as DocumentRow),
     });
   }),
@@ -1114,8 +1287,11 @@ router.post(
     if (!Number.isFinite(id)) throw ApiError.badRequest("Invalid document id.");
     await assertEmployeeDocumentAccess(id, req.user);
 
+    // Employee submits draft for their department manager's review first (PENDING_REVIEW).
+    // The manager then approves -> APPROVED, and finally admin registers the outgoing
+    // letter number before registry dispatches it.
     const { rows } = await query(
-      `UPDATE documents SET status = 'PENDING_APPROVAL', updated_at = now() WHERE id = $1 RETURNING *`,
+      `UPDATE documents SET status = 'PENDING_REVIEW', updated_at = now() WHERE id = $1 RETURNING *`,
       [id],
     );
     if (rows.length === 0) throw ApiError.notFound("Document not found.");
@@ -1129,7 +1305,7 @@ router.post(
           priority, status, submitted_at, page_count)
        VALUES ($1,$2,$3,$4,$5,'NORMAL','PENDING',now(),NULL)
        ON CONFLICT (document_id) DO UPDATE
-         SET status = 'PENDING', submitted_at = now(), reviewed_at = NULL, comment = NULL
+         SET status = 'PENDING', submitted_at = now(), reviewed_at = NULL, comment = NULL, priority = 'NORMAL'
        RETURNING id`,
       [
         id,
@@ -1149,10 +1325,10 @@ router.post(
     await logAudit({
       userId: user.id,
       userName: user.full_name,
-      action: "SUBMIT_FOR_APPROVAL",
+      action: "SUBMIT_FOR_REVIEW",
       entityId: id,
       previousStatus: doc.status,
-      newStatus: "PENDING_APPROVAL",
+      newStatus: "PENDING_REVIEW",
     });
 
     // Notify department manager of submission (Section 11)
@@ -1327,6 +1503,41 @@ router.post(
       message: "Document restored from archive.",
       document: serializeDocument(full[0] as DocumentRow),
     });
+  }),
+);
+
+/* ─── DELETE /documents/:id — Hard delete document (Admin only) ─ */
+
+router.delete(
+  "/:id",
+  requireAuth,
+  requireRole("ADMIN"),
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) throw ApiError.badRequest("Invalid document id.");
+
+    const { rows: existing } = await query(`SELECT * FROM documents WHERE id = $1`, [id]);
+    if (existing.length === 0) throw ApiError.notFound("Document not found.");
+    const doc = existing[0] as DocumentRow;
+
+    // Delete associated relations
+    await query(`DELETE FROM admin_tasks WHERE letter_id = $1`, [id]);
+    await query(`DELETE FROM approvals WHERE document_id = $1`, [id]);
+    await query(`DELETE FROM approval_activities WHERE document_id = $1`, [id]);
+    await query(`DELETE FROM document_versions WHERE document_id = $1`, [id]);
+    await query(`DELETE FROM documents WHERE id = $1`, [id]);
+
+    const user = req.user!;
+    await logAudit({
+      userId: user.id,
+      userName: user.full_name,
+      action: "DELETE_LETTER",
+      entityId: id,
+      previousStatus: doc.status,
+      details: { title: doc.title, documentNumber: doc.document_number },
+    });
+
+    res.json({ message: "Document deleted successfully." });
   }),
 );
 

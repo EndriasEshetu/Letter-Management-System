@@ -422,20 +422,144 @@ export const letterService = {
       const response = await api.get<AdminTaskResponse>("/tasks/my");
       return response.data;
     } catch (error: any) {
-      // Fallback to legacy endpoint if new tasks endpoint fails
-      if (error.response?.status === 404 || error.code === 'ERR_NETWORK') {
+      try {
         const legacyResponse = await api.get<any>("/dashboard/admin/tasks");
+        const rawList = legacyResponse.data?.data || legacyResponse.data || [];
+        const formatted = rawList.map((t: any) => ({
+          id: String(t.id || `task-${t.letter_id}`),
+          type: t.type || (t.letter_type === 'INCOMING' ? 'ROUTE_INCOMING' : t.letter_type === 'OUTGOING' ? 'REGISTER_OUTGOING' : 'ROUTE_INTERNAL'),
+          title: t.action_required || t.title || 'Administrative Action Required',
+          description: t.reason || t.description,
+          actionRequired: t.action_required || t.title || 'Action Required',
+          status: t.status || 'PENDING',
+          priority: t.priority || 'NORMAL',
+          dueDate: t.due_date || t.dueDate,
+          isOverdue: Boolean(t.is_overdue || t.isOverdue),
+          letter_id: String(t.letter_id || ''),
+          letter_type: t.letter_type,
+          letter_reference: t.letter_reference,
+          letter: {
+            id: String(t.letter_id || ''),
+            referenceNumber: t.letter_reference || '',
+            type: t.letter_type || 'INCOMING',
+            status: t.letter_status || 'REGISTERED',
+            subject: t.subject || 'Untitled Letter',
+            sender: t.sender,
+            recipient: t.recipient,
+            priority: t.priority || 'NORMAL',
+            createdBy: t.requested_by || 'Registry Officer',
+          },
+          requestedBy: {
+            name: t.requested_by,
+            role: t.requested_by_role,
+          },
+          sourceDepartment: {
+            name: t.source_department,
+          },
+          workflow: {
+            previousStep: t.previous_actor || 'Workflow',
+            currentStep: t.workflow_stage || 'Admin Review',
+            nextStep: t.next_actor || 'Next Step',
+          },
+          permissions: {
+            canExecute: true,
+            canClaim: true,
+            canCancel: false,
+          },
+          isRead: false,
+          createdAt: t.created_at || new Date().toISOString(),
+          updatedAt: t.updated_at || new Date().toISOString(),
+        }));
+
         return {
-          data: legacyResponse.data.data,
+          data: formatted,
           pagination: {
             page: 1,
             limit: 50,
-            total: legacyResponse.data.data.length,
+            total: formatted.length,
+            totalPages: 1,
+          },
+        };
+      } catch (legacyErr) {
+        const mockTasks: AdminTask[] = inMemoryLetters
+          .filter((l) => l.status === "REGISTERED" || l.status === "RECEIVED" || l.status === "APPROVED")
+          .map((l) => {
+            const isIncoming = l.direction === "INCOMING";
+            const isOutgoing = l.direction === "OUTGOING";
+            const taskType: any = isIncoming
+              ? "ROUTE_INCOMING"
+              : isOutgoing
+              ? "REGISTER_OUTGOING"
+              : "ROUTE_INTERNAL";
+
+            return {
+              id: `task-${l.id}`,
+              type: taskType,
+              title: isIncoming
+                ? "Route Incoming Letter"
+                : isOutgoing
+                ? "Register Outgoing Letter"
+                : "Route Internal Memo",
+              description: isIncoming
+                ? "Select destination department for this registered incoming letter."
+                : isOutgoing
+                ? "Verify approved letter and register official outgoing reference number."
+                : "Route approved internal memo to destination department.",
+              actionRequired: isIncoming ? "Route to Directorate" : isOutgoing ? "Register Outgoing Number" : "Route to Directorate",
+              status: "PENDING",
+              priority: l.priority || "NORMAL",
+              dueDate: l.dueDate,
+              isOverdue: Boolean(l.dueDate && new Date(l.dueDate) < new Date()),
+              letter_id: l.id,
+              letter_type: l.direction,
+              letter_reference: l.referenceNumber,
+              letter: {
+                id: l.id,
+                referenceNumber: l.referenceNumber,
+                type: l.direction,
+                status: l.status,
+                subject: l.subject,
+                sender: l.sender,
+                recipient: l.recipient,
+                priority: l.priority || "NORMAL",
+                createdBy: l.created_by || "Registry Officer",
+              },
+              requestedBy: {
+                name: l.created_by || "Registry Officer",
+                role: isIncoming ? "REGISTRY_OFFICER" : "DEPARTMENT_MANAGER",
+              },
+              sourceDepartment: {
+                name: l.originatingDepartment || l.department_name || "Main Administration",
+              },
+              targetDepartment: {
+                name: l.department_name,
+              },
+              workflow: {
+                previousStep: isIncoming ? "Registry Officer - Registration" : "Department Manager - Approval",
+                currentStep: "Main Administrator - Action Required",
+                nextStep: isIncoming ? "Department Manager - Assignment" : "Dispatch Officer",
+              },
+              permissions: {
+                canExecute: true,
+                canClaim: true,
+                canCancel: false,
+              },
+              isRead: false,
+              createdAt: l.created_at || new Date().toISOString(),
+              updatedAt: l.updated_at || new Date().toISOString(),
+            };
+          });
+
+        return {
+          data: mockTasks,
+          pagination: {
+            page: 1,
+            limit: 50,
+            total: mockTasks.length,
             totalPages: 1,
           },
         };
       }
-      throw error;
     }
   },
 
@@ -600,13 +724,19 @@ export const letterService = {
    */
   async getLetterById(id: string): Promise<LetterItem> {
     try {
-      const response = await api.get<LetterItem>(`/letters/${id}`);
+      const cleanId = id.startsWith("ltr-") ? id.replace(/^ltr-0*/, "") : id;
+      const response = await api.get<LetterItem>(`/letters/${cleanId}`);
       return response.data;
     } catch (error: any) {
-      if (error.code === "ERR_NETWORK" || !error.response) {
-        const found = inMemoryLetters.find((l) => l.id === id);
-        if (found) return found;
-      }
+      const found = inMemoryLetters.find(
+        (l) =>
+          l.id === id ||
+          l.id === `ltr-${id}` ||
+          l.id.endsWith(id) ||
+          l.referenceNumber === id ||
+          l.registrationNumber === id,
+      );
+      if (found) return found;
       throw error;
     }
   },
@@ -950,6 +1080,30 @@ export const letterService = {
   },
 
   /**
+   * Start work on letter
+   */
+  async startWork(
+    id: string,
+  ): Promise<{ message: string; letter: LetterItem }> {
+    try {
+      const response = await api.post<{ message: string; letter: LetterItem }>(
+        `/documents/${id}/start-work`,
+      );
+      return response.data;
+    } catch (error: any) {
+      if (error.code === "ERR_NETWORK" || !error.response) {
+        const target = inMemoryLetters.find((l) => l.id === id);
+        if (target) {
+          target.status = "IN_PROGRESS";
+          if (target.assignment) target.assignment.taskStatus = "IN_PROGRESS";
+          return { message: "Work started successfully.", letter: target };
+        }
+      }
+      throw error;
+    }
+  },
+
+  /**
    * Mark letter completed
    */
   async completeLetter(
@@ -993,7 +1147,11 @@ export const letterService = {
   async getMyTasks(): Promise<LetterItem[]> {
     const res = await this.getLetters();
     return res.data.filter(
-      (l) => l.assignedEmployee || l.status === "IN_PROGRESS",
+      (l) =>
+        l.assignedEmployee ||
+        l.status === "IN_PROGRESS" ||
+        l.status === "DRAFT" ||
+        l.status === "CHANGES_REQUESTED",
     );
   },
 
@@ -1139,6 +1297,14 @@ export const letterService = {
     params?: LetterFilterParams,
   ): Promise<PaginatedLetterResponse> {
     return this.getLetters({ ...params, status: "ARCHIVED" });
+  },
+
+  /**
+   * Delete a letter (Admin only)
+   */
+  async deleteLetter(id: string): Promise<{ message: string }> {
+    const response = await api.delete<{ message: string }>(`/letters/${id}`);
+    return response.data;
   },
 
   /**

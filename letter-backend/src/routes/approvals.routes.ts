@@ -203,14 +203,23 @@ async function reviewDocument(
   action: 'APPROVED' | 'REJECTED' | 'CHANGES_REQUESTED',
   comment: string | undefined
 ) {
-  const { rows } = await query(
-    `UPDATE approvals
-        SET status = $2, reviewed_at = now(), reviewer_name = $3, comment = COALESCE($4, comment)
-      WHERE document_id = $1
-      RETURNING id`,
-    [documentId, action, reviewerName, comment || null]
+  // Capture the document's current status BEFORE updating it.
+  // This is the real previousStatus needed for audit logs and task generation.
+  // (Documents submitted via /:id/submit are in PENDING_REVIEW, not PENDING_APPROVAL.)
+  const { rows: preRows } = await query(
+    `SELECT status FROM documents WHERE id = $1`,
+    [documentId]
   );
-  if (rows.length === 0) throw ApiError.notFound('No pending approval request for this document.');
+  if (preRows.length === 0) throw ApiError.notFound('Document not found.');
+  const previousDocStatus = (preRows[0] as any).status as string;
+
+  await query(
+    `INSERT INTO approvals (document_id, submitter_id, submitter_name, submitter_role, priority, status, reviewed_at, reviewer_name, comment)
+     VALUES ($1, $2, $3, $4, 'NORMAL', $5, now(), $3, $6)
+     ON CONFLICT (document_id) DO UPDATE
+       SET status = EXCLUDED.status, reviewed_at = now(), reviewer_name = EXCLUDED.reviewer_name, comment = COALESCE(EXCLUDED.comment, approvals.comment)`,
+    [documentId, reviewerId, reviewerName, reviewerRole, action, comment || null]
+  );
 
   await query(
     `UPDATE documents SET status = $2, updated_at = now() WHERE id = $1`,
@@ -231,7 +240,7 @@ async function reviewDocument(
     userName: reviewerName,
     action: `APPROVAL_${action}`,
     entityId: documentId,
-    previousStatus: 'PENDING_APPROVAL',
+    previousStatus: previousDocStatus,
     newStatus: action,
     details: { comment: comment || null },
   });
@@ -240,7 +249,7 @@ async function reviewDocument(
   if (action === 'APPROVED') {
     await generateTasksForWorkflow(
       documentId,
-      'PENDING_APPROVAL',
+      previousDocStatus,
       'APPROVED',
       {
         userId: reviewerId,
