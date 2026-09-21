@@ -1,6 +1,6 @@
 [build]
-builder = "NIXPACKS"
-buildCommand = "npm install && npm run build"
+builder = "RAILPACK"
+buildCommand = "npm ci && npm run build"
 
 [deploy]
 startCommand = "npm run migrate || true && npm run seed || true && npm run start"
