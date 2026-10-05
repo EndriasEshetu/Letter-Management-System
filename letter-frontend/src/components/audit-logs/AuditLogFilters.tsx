@@ -63,7 +63,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFiltersProps> = ({
 
   const userOptions = [
     { value: '', label: 'All Users' },
-    ...users.map((u) => ({
+    ...(users ?? []).map((u) => ({
       value: String(u.id),
       label: `${u.full_name} (${u.email})`,
     })),

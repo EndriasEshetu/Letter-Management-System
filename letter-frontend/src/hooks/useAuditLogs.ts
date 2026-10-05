@@ -56,15 +56,16 @@ export const useAuditLogs = (): UseAuditLogsReturn => {
   useEffect(() => {
     let isMounted = true;
     userService
-      .getUsers({})
+      .getUsers({ limit: 100 })
       .then((resp) => {
         if (isMounted) {
-          const list = Array.isArray(resp) ? resp : resp.data;
-          setUsers(list);
+          const list = Array.isArray(resp) ? resp : resp?.data;
+          setUsers(Array.isArray(list) ? list : []);
         }
       })
       .catch((err) => {
         console.error('Failed to load users for audit filter:', err);
+        if (isMounted) setUsers([]);
       });
     return () => {
       isMounted = false;

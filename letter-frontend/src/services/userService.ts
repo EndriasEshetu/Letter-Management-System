@@ -103,7 +103,14 @@ export const userService = {
   async getUsers(params?: UserFilterParams): Promise<PaginatedUsersResponse> {
     try {
       const response = await api.get<PaginatedUsersResponse>('/users', { params });
-      return response.data;
+      const payload = response.data ?? ({} as PaginatedUsersResponse);
+      return {
+        data: Array.isArray(payload.data) ? payload.data : [],
+        total: payload.total ?? 0,
+        page: payload.page ?? params?.page ?? 1,
+        limit: payload.limit ?? params?.limit ?? 10,
+        totalPages: payload.totalPages ?? 1,
+      };
     } catch (error: any) {
       if (error.code === 'ERR_NETWORK' || !error.response) {
         let filtered = [...mockUsers];

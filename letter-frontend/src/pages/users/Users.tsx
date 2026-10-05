@@ -72,9 +72,9 @@ export const Users: React.FC = () => {
         departmentService.getSystemCapacity(),
       ]);
 
-      setUsers(userRes.data);
-      setTotalUsers(userRes.total);
-      setTotalPages(userRes.totalPages);
+      setUsers(userRes.data ?? []);
+      setTotalUsers(userRes.total ?? 0);
+      setTotalPages(userRes.totalPages ?? 1);
       setDepartments(deptRes);
       setCapacity(capRes);
     } catch (err: any) {
