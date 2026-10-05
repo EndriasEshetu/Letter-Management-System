@@ -10,8 +10,9 @@ export const reportService = {
    * Get report analytics data from backend API
    */
   async getReportData(filters: ReportFilters): Promise<FullReportData> {
-    const response = await api.get<FullReportData>('/reports/analytics', { params: filters });
-    return response.data;
+    const response = await api.get<any>('/reports/analytics', { params: filters });
+    const payload = response.data?.overview ? response.data : (response.data?.data || response.data || {});
+    return payload as FullReportData;
   },
 
   async getFullReport(filters: ReportFilters): Promise<FullReportData> {

@@ -94,7 +94,7 @@ export const ReportsPage: React.FC = () => {
       )}
 
       {/* Empty State */}
-      {!isLoading && !error && (!data || !data.overview || data.overview.totalDocuments === 0) && (
+      {!isLoading && !error && (!data?.overview || (data.overview.totalDocuments ?? 0) === 0) && (
         <div className="my-8">
           <EmptyState
             title="No analytics data available"
@@ -106,7 +106,7 @@ export const ReportsPage: React.FC = () => {
       )}
 
       {/* Report Content */}
-      {!isLoading && !error && data && data.overview.totalDocuments > 0 && (
+      {!isLoading && !error && data?.overview && (data.overview.totalDocuments ?? 0) > 0 && (
         <div className="space-y-8">
           {/* Summary Metric Cards */}
           <ReportSummaryCards overview={data.overview} />
