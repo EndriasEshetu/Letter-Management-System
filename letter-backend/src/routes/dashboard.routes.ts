@@ -150,9 +150,19 @@ router.get(
           trendType: "positive",
         },
       ],
-      recentActivities: recentAudit.rows.map((r) =>
-        serializeAuditLog(r as AuditLogRow),
-      ),
+      recentActivities: recentAudit.rows.map((r) => {
+        const log = serializeAuditLog(r as AuditLogRow);
+        return {
+          id: log.id,
+          user: log.userName,
+          action: log.action,
+          target: log.entityType
+            ? `${log.entityType} #${log.entityId}`
+            : `#${log.entityId}`,
+          timestamp: log.timestamp,
+          type: "system" as const,
+        };
+      }),
       systemHealth: {
         storageUsedPercent: 12,
         activeSessions: totalUsers.rows[0].count,

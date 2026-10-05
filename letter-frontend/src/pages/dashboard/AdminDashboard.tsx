@@ -54,7 +54,7 @@ export const AdminDashboard: React.FC = () => {
 
       {/* Summary Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        {data.stats.map((stat) => (
+        {(data.stats ?? []).map((stat) => (
           <StatCard
             key={stat.id}
             title={stat.title}

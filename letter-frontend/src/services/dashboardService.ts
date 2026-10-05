@@ -61,25 +61,52 @@ export interface EmployeeDashboardData {
   pendingLetters?: RecentLetterItem[];
 }
 
+function normalizeActivity(item: Record<string, unknown>): ActivityItem {
+  return {
+    id: String(item.id ?? ''),
+    user: String(item.user ?? item.userName ?? 'System'),
+    avatar: item.avatar ? String(item.avatar) : undefined,
+    action: String(item.action ?? ''),
+    target: String(item.target ?? item.entityType ?? ''),
+    timestamp: String(item.timestamp ?? ''),
+    type: item.type as ActivityItem['type'],
+  };
+}
+
+function normalizeAdminPayload(raw: unknown): AdminDashboardData {
+  const data = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const activities = Array.isArray(data.recentActivities) ? data.recentActivities : [];
+  return {
+    stats: Array.isArray(data.stats) ? (data.stats as DashboardStat[]) : [],
+    recentActivities: activities.map((item) =>
+      normalizeActivity((item && typeof item === 'object' ? item : {}) as Record<string, unknown>),
+    ),
+    systemHealth: (data.systemHealth as AdminDashboardData['systemHealth']) ?? undefined,
+  };
+}
+
 export const dashboardService = {
   async getAdminDashboardData(): Promise<AdminDashboardData> {
     const response = await api.get<AdminDashboardData>('/dashboard/admin');
-    return response.data;
+    return normalizeAdminPayload(response.data);
   },
 
   async getRegistryDashboardData(): Promise<RegistryDashboardData> {
     const response = await api.get<RegistryDashboardData>('/dashboard/registry');
-    return response.data;
+    const data = response.data ?? ({} as RegistryDashboardData);
+    return { ...data, stats: data.stats ?? [] };
   },
 
   async getManagerDashboardData(): Promise<ManagerDashboardData> {
     const response = await api.get<ManagerDashboardData>('/dashboard/manager');
-    return response.data;
+    const data = response.data ?? ({} as ManagerDashboardData);
+    return { ...data, stats: data.stats ?? [] };
   },
 
   async getEmployeeDashboardData(): Promise<EmployeeDashboardData> {
     const response = await api.get<EmployeeDashboardData>('/dashboard/employee');
-    return response.data;
+    const data = response.data ?? ({} as EmployeeDashboardData);
+    return { ...data, stats: data.stats ?? [] };
   },
 };
 
