@@ -7,7 +7,7 @@ export const departmentService = {
    */
   async getDepartments(): Promise<Department[]> {
     const response = await api.get<Department[]>('/departments');
-    return response.data;
+    return Array.isArray(response.data) ? response.data : [];
   },
 
   /**

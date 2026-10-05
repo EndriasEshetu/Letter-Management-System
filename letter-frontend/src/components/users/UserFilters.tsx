@@ -36,7 +36,7 @@ export const UserFilters: React.FC<UserFiltersProps> = ({
 
   const departmentOptions = [
     { value: 'ALL', label: 'All Departments' },
-    ...departments.map((d) => ({
+    ...(departments ?? []).map((d) => ({
       value: String(d.id),
       label: d.name,
     })),

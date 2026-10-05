@@ -42,7 +42,7 @@ export const AssignManagerModal: React.FC<AssignManagerModalProps> = ({
 
   const options: SelectOption[] = [
     { value: '', label: 'Select a department manager' },
-    ...managers.map((manager) => ({
+    ...(managers ?? []).map((manager) => ({
       value: String(manager.id),
       label: `${manager.full_name} (${manager.department_name || 'No department'})`,
     })),

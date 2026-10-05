@@ -272,7 +272,7 @@ export const Archives: React.FC = () => {
         </div>
       ) : error ? (
         <ErrorState title="Unable to load archives" description={error} onRetry={fetchArchives} />
-      ) : !response || response.data.length === 0 ? (
+      ) : !response || (response.data ?? []).length === 0 ? (
         <EmptyState
           title="No archived letters found"
           description={
@@ -298,7 +298,7 @@ export const Archives: React.FC = () => {
             <Table.Th className="text-right">Actions</Table.Th>
           </Table.Header>
           <Table.Body>
-            {response.data.map((doc) => (
+            {(response.data ?? []).map((doc) => (
               <Table.Tr key={doc.id}>
                 <Table.Td>
                   <div className="flex items-center space-x-3">

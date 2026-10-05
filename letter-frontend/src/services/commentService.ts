@@ -7,7 +7,7 @@ export const commentService = {
    */
   async getComments(documentId: string): Promise<CommentItem[]> {
     const response = await api.get<CommentItem[]>(`/documents/${documentId}/comments`);
-    return response.data;
+    return Array.isArray(response.data) ? response.data : [];
   },
 
   /**

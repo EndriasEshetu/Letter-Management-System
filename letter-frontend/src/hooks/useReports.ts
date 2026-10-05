@@ -50,7 +50,7 @@ export const useReports = (): UseReportsReturn => {
       .getDepartments()
       .then((deptList) => {
         if (isMounted) {
-          setDepartments(deptList);
+          setDepartments(Array.isArray(deptList) ? deptList : []);
         }
       })
       .catch((err) => {

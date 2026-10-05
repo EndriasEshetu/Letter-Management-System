@@ -72,7 +72,7 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
     { value: 'ADMIN', label: 'Administrator' },
   ];
 
-  const deptOptions = departments.map((d) => ({
+  const deptOptions = (departments ?? []).map((d) => ({
     value: String(d.id),
     label: d.name,
   }));

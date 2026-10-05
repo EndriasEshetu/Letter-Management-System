@@ -114,7 +114,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
             <p className="text-[11px] text-[#6B6A64]">You're all caught up!</p>
           </div>
         ) : (
-          notifications.map((n) => (
+          {(notifications ?? []).map((n) => (
             <NotificationItemComponent
               key={n.id}
               notification={n}

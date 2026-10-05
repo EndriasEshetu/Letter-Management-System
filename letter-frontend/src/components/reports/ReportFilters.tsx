@@ -39,7 +39,7 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
 
   const departmentOptions = [
     { value: 'all', label: 'All Directorates' },
-    ...departments.map((d) => ({
+    ...(departments ?? []).map((d) => ({
       value: String(d.id),
       label: `${d.name} (${d.code})`,
     })),

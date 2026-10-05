@@ -36,7 +36,7 @@ export const UserTable: React.FC<UserTableProps> = ({
           </tr>
         </thead>
         <tbody className="divide-y divide-[#D8D7D1]/60">
-          {users.map((user) => {
+          {(users ?? []).map((user) => {
             const roleInfo = roleBadges[user.role] || roleBadges.EMPLOYEE;
             const isActive = user.status === 'ACTIVE' || user.is_active !== false;
 

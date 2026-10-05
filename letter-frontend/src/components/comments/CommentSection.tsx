@@ -129,7 +129,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
         </div>
       ) : (
         <div className="space-y-3">
-          {comments.map((comment) => (
+          {(comments ?? []).map((comment) => (
             <CommentItem key={comment.id} comment={comment} compact={compact} />
           ))}
         </div>

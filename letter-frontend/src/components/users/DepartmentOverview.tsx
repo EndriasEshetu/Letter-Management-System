@@ -39,7 +39,7 @@ export const DepartmentOverview: React.FC<DepartmentOverviewProps> = ({
 
         {/* Department cards list */}
         <div className="space-y-2.5">
-          {departments.map((dept) => (
+          {(departments ?? []).map((dept) => (
             <div
               key={dept.id}
               className="bg-[#F9F8F5] border border-[#D8D7D1]/70 rounded-xl p-3.5 flex items-center justify-between gap-3 hover:border-[#526A55]/30 transition-colors"

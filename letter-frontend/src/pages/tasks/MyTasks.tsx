@@ -99,9 +99,9 @@ const AdminActionCenter: React.FC = () => {
     setError(null);
     try {
       const response = await letterService.getAdminTasks();
-      setTasks(response.data);
+      setTasks(response.data ?? []);
       // Calculate summary from tasks
-      const allTasks = response.data;
+      const allTasks = response.data ?? [];
       setSummary({
         total: allTasks.length,
         requiresAction: allTasks.filter((t: AdminTask) => t.status === 'PENDING' || t.status === 'IN_PROGRESS').length,

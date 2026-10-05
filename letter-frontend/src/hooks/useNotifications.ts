@@ -15,7 +15,7 @@ export const useNotifications = () => {
       const response = await notificationService.getNotifications({
         limit: 20,
       });
-      setNotifications(response.data);
+      setNotifications(response.data ?? []);
     } catch (err: any) {
       console.error("[useNotifications] Failed to load notifications:", err);
       setError("Unable to load notifications.");

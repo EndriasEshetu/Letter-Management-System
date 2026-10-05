@@ -62,11 +62,19 @@ export const notificationService = {
     read?: "all" | "read" | "unread";
   }): Promise<PaginatedNotificationsResponse> {
     try {
-      const response = await api.get<PaginatedNotificationsResponse>(
-        "/notifications",
-        { params },
-      );
-      return response.data;
+      const response = await api.get<any>("/notifications", { params });
+      const payload = response.data ?? {};
+      const pagination = payload.pagination ?? {};
+      return {
+        data: Array.isArray(payload.data) ? payload.data : [],
+        total: payload.total ?? pagination.total ?? 0,
+        page: payload.page ?? pagination.page ?? params?.page ?? 1,
+        limit: payload.limit ?? pagination.limit ?? params?.limit ?? 20,
+        totalPages:
+          payload.totalPages ??
+          pagination.totalPages ??
+          1,
+      };
     } catch (error: any) {
       console.warn("[notificationService] API request failed, using fallback:", error?.message);
       

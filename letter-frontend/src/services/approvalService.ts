@@ -16,7 +16,7 @@ export const approvalService = {
     if (filter === 'REVIEWED') params.status = 'REVIEWED';
 
     const response = await api.get<ApprovalRequest[]>('/approvals', { params });
-    return response.data;
+    return Array.isArray(response.data) ? response.data : [];
   },
 
   /**
@@ -32,7 +32,7 @@ export const approvalService = {
    */
   async getApprovalActivity(): Promise<ApprovalActivity[]> {
     const response = await api.get<ApprovalActivity[]>('/approvals/activity');
-    return response.data;
+    return Array.isArray(response.data) ? response.data : [];
   },
 
   /**

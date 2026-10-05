@@ -103,7 +103,7 @@ export const useAuditLogs = (): UseAuditLogsReturn => {
   };
 
   return {
-    logs: result.data,
+    logs: result.data ?? [],
     users,
     filters,
     total: result.total,

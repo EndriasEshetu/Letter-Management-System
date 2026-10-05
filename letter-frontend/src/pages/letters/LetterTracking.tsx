@@ -25,7 +25,7 @@ export const LetterTracking: React.FC = () => {
     try {
       // Search by reference number (mock: fetches all and finds match)
       const res = await letterService.getLetters({ search: searchRef.trim(), limit: 1 });
-      if (res.data.length > 0) {
+      if ((res.data ?? []).length > 0) {
         const full = await letterService.getLetterById(res.data[0].id);
         setLetter(full);
       } else {

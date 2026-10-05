@@ -40,8 +40,8 @@ const Notifications: React.FC = () => {
         notificationService.getNotifications({ page, limit: 20, read: filter }),
         notificationService.getUnreadCount(),
       ]);
-      setNotifications(result.data);
-      setTotalPages(result.totalPages);
+      setNotifications(result.data ?? []);
+      setTotalPages(result.totalPages ?? 1);
       setUnreadCount(unread);
     } catch (err: any) {
       setError(err.message || "Notifications could not be loaded.");

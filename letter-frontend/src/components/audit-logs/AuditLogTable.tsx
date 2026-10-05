@@ -80,7 +80,7 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({ logs }) => {
         </Table.Header>
 
         <Table.Body>
-          {logs.map((log) => {
+          {(logs ?? []).map((log) => {
             const { date, time } = formatDate(log.created_at);
             const actionStyle = getActionBadge(log.action);
             const entityStyle = getEntityBadge(log.entity_type);

@@ -420,12 +420,21 @@ export const letterService = {
   async getAdminTasks(): Promise<AdminTaskResponse> {
     try {
       const response = await api.get<AdminTaskResponse>("/tasks/my");
-      return response.data;
+      const payload = response.data ?? ({} as AdminTaskResponse);
+      return {
+        data: Array.isArray(payload.data) ? payload.data : [],
+        pagination: payload.pagination ?? {
+          page: 1,
+          limit: 20,
+          total: 0,
+          totalPages: 1,
+        },
+      };
     } catch (error: any) {
       try {
         const legacyResponse = await api.get<any>("/dashboard/admin/tasks");
         const rawList = legacyResponse.data?.data || legacyResponse.data || [];
-        const formatted = rawList.map((t: any) => ({
+        const formatted = (Array.isArray(rawList) ? rawList : []).map((t: any) => ({
           id: String(t.id || `task-${t.letter_id}`),
           type: t.type || (t.letter_type === 'INCOMING' ? 'ROUTE_INCOMING' : t.letter_type === 'OUTGOING' ? 'REGISTER_OUTGOING' : 'ROUTE_INTERNAL'),
           title: t.action_required || t.title || 'Administrative Action Required',
@@ -609,7 +618,14 @@ export const letterService = {
       const response = await api.get<PaginatedLetterResponse>("/letters", {
         params,
       });
-      return response.data;
+      const payload = response.data ?? ({} as PaginatedLetterResponse);
+      return {
+        data: Array.isArray(payload.data) ? payload.data : [],
+        total: payload.total ?? 0,
+        page: payload.page ?? params?.page ?? 1,
+        limit: payload.limit ?? params?.limit ?? 10,
+        totalPages: payload.totalPages ?? 1,
+      };
     } catch (error: any) {
       if (error.code === "ERR_NETWORK" || !error.response) {
         let filtered = [...inMemoryLetters];
@@ -1146,7 +1162,7 @@ export const letterService = {
    */
   async getMyTasks(): Promise<LetterItem[]> {
     const res = await this.getLetters();
-    return res.data.filter(
+    return (res.data ?? []).filter(
       (l) =>
         l.assignedEmployee ||
         l.status === "IN_PROGRESS" ||
@@ -1160,7 +1176,7 @@ export const letterService = {
    */
   async getPendingRouting(): Promise<LetterItem[]> {
     const res = await this.getLetters({ status: "REGISTERED" });
-    return res.data;
+    return res.data ?? [];
   },
 
   /**
@@ -1257,7 +1273,7 @@ export const letterService = {
       const response = await api.get<AttachmentItem[]>(
         `/letters/${id}/attachments`,
       );
-      return response.data;
+      return Array.isArray(response.data) ? response.data : [];
     } catch (error: any) {
       if (error.code === "ERR_NETWORK" || !error.response) {
         const letter = inMemoryLetters.find((l) => l.id === id);

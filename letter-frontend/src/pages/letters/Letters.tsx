@@ -941,7 +941,7 @@ export const Letters: React.FC = () => {
           description={error}
           onRetry={fetchLetters}
         />
-      ) : !response || response.data.length === 0 ? (
+      ) : !response || (response.data ?? []).length === 0 ? (
         <EmptyState
           title={getEmptyTitle()}
           description={getEmptyDesc()}
@@ -970,7 +970,7 @@ export const Letters: React.FC = () => {
             ))}
           </Table.Header>
           <Table.Body>
-            {response.data.map((letter) => (
+            {(response.data ?? []).map((letter) => (
               <Table.Tr key={letter.id}>
                 {perms.tableColumns.map((col) => (
                   <Table.Td key={col.id}>{renderCell(col.id, letter)}</Table.Td>
@@ -982,7 +982,7 @@ export const Letters: React.FC = () => {
       ) : (
         /* ── Grid View ── */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {response.data.map((letter) => (
+          {(response.data ?? []).map((letter) => (
             <div
               key={letter.id}
               className="bg-[#ECEAE3] border border-[#292A27]/10 rounded-2xl p-4 flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow"
