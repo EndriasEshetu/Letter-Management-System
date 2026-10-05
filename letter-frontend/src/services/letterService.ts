@@ -465,6 +465,9 @@ export const letterService = {
           sourceDepartment: {
             name: t.source_department,
           },
+          targetDepartment: {
+            name: t.target_department || t.department_name,
+          },
           workflow: {
             previousStep: t.previous_actor || 'Workflow',
             currentStep: t.workflow_stage || 'Admin Review',

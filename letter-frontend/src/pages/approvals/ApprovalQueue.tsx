@@ -250,7 +250,7 @@ export const ApprovalQueue: React.FC = () => {
                 }
               />
             ) : (
-              {(requests ?? []).map((request) => (
+              (requests ?? []).map((request) => (
                 <ApprovalRequestCard
                   key={request.id}
                   request={request}

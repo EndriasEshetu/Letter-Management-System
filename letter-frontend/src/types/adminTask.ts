@@ -47,12 +47,12 @@ export interface AdminTask {
     role?: string;
   };
   
-  sourceDepartment: {
+  sourceDepartment?: {
     id?: string;
     name?: string;
   };
   
-  targetDepartment: {
+  targetDepartment?: {
     id?: string;
     name?: string;
   };
