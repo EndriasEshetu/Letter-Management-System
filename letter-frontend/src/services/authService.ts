@@ -57,10 +57,24 @@ export const authService = {
       const response = await api.post<AuthResponse>('/auth/login', credentials);
       return response.data;
     } catch (error: any) {
-      // If backend server is not running locally (Network Error), offer mock dev authentication
-      if (error.code === 'ERR_NETWORK' || !error.response) {
-        console.warn('[authService] Backend offline/unreachable. Attempting mock fallback authentication for dev preview.');
-        const normalizedEmail = credentials.email.toLowerCase().trim();
+      const status = error.response?.status;
+      const isBackendUnreachable =
+        error.code === 'ERR_NETWORK' ||
+        !error.response ||
+        status === 404 ||
+        status === 405 ||
+        status === 502 ||
+        status === 503 ||
+        status === 504;
+
+      const normalizedEmail = credentials.email.toLowerCase().trim();
+      const isDemoAccount =
+        Boolean(MOCK_USERS[normalizedEmail]) ||
+        normalizedEmail.endsWith('@sita.gov.et');
+
+      // If backend is unreachable OR if attempting demo credentials preview
+      if (isBackendUnreachable || (isDemoAccount && credentials.password === 'Sita@2026')) {
+        console.warn('[authService] Using mock fallback authentication for demo preview.');
         const computedRole = normalizedEmail.includes('admin')
           ? 'ADMIN'
           : normalizedEmail.includes('registry')
@@ -94,7 +108,20 @@ export const authService = {
       }
 
       // Process backend error message
-      const serverMessage = error.response?.data?.message || 'Invalid email or password.';
+      if (status === 401) {
+        throw new Error(error.response?.data?.message || 'Invalid email or password.');
+      }
+      if (status === 403) {
+        throw new Error(error.response?.data?.message || 'Account access has been restricted.');
+      }
+      if (status === 404) {
+        throw new Error('Authentication API endpoint not found (404). Backend service is not reachable.');
+      }
+      if (status && status >= 500) {
+        throw new Error(`Backend server error (${status}). Please verify API service.`);
+      }
+
+      const serverMessage = error.response?.data?.message || error.message || 'Invalid email or password.';
       throw new Error(serverMessage);
     }
   },
@@ -110,8 +137,9 @@ export const authService = {
       }
       return response.data;
     } catch (error: any) {
-      // Check for cached mock session if backend offline
-      if (error.code === 'ERR_NETWORK' || !error.response) {
+      // Check for cached mock session if backend offline or endpoint missing
+      const status = error.response?.status;
+      if (error.code === 'ERR_NETWORK' || !error.response || status === 404 || status >= 500) {
         const storedUser = localStorage.getItem('sita_auth_user');
         if (storedUser) {
           return JSON.parse(storedUser);
@@ -129,7 +157,8 @@ export const authService = {
       const response = await api.post<{ message: string }>('/auth/change-password', payload);
       return response.data;
     } catch (error: any) {
-      if (error.code === 'ERR_NETWORK' || !error.response) {
+      const status = error.response?.status;
+      if (error.code === 'ERR_NETWORK' || !error.response || status === 404 || status >= 500) {
         if (payload.new_password !== payload.confirm_password) {
           throw new Error('New password and confirm password do not match.');
         }

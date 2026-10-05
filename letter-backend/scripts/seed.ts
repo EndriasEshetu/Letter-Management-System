@@ -81,13 +81,23 @@ async function upsertUser(profile: {
   departmentId: number;
   jobTitle: string;
 }): Promise<number> {
+  const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);
   const { rows } = await pool.query('SELECT id FROM users WHERE email = $1', [profile.email]);
   if (rows.length > 0) {
-    console.log(`[seed] user ${profile.email} already exists, skipping`);
-    return rows[0].id as number;
+    const userId = rows[0].id as number;
+    await pool.query(
+      `UPDATE users
+          SET password_hash = $1,
+              status = 'ACTIVE',
+              is_active = true,
+              role = $2
+        WHERE id = $3`,
+      [passwordHash, profile.role, userId]
+    );
+    console.log(`[seed] user ${profile.email} password synchronized to ${DEMO_PASSWORD}`);
+    return userId;
   }
 
-  const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);
   const inserted = await pool.query(
     `INSERT INTO users (full_name, email, role, department_id, job_title, password_hash, status, is_active)
      VALUES ($1,$2,$3,$4,$5,$6,'ACTIVE',true) RETURNING id`,
