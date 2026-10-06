@@ -1,11 +1,13 @@
 import React from 'react';
 import { Department } from '@/types/department';
 import Button from '@/components/common/Button';
+import { Eye } from 'lucide-react';
 
 interface DepartmentCardProps {
   department: Department;
   onEdit: (department: Department) => void;
   onAssignManager: (department: Department) => void;
+  onDetails?: (department: Department) => void;
 }
 
 const getInitials = (name?: string) => {
@@ -20,6 +22,7 @@ export const DepartmentCard: React.FC<DepartmentCardProps> = ({
   department,
   onEdit,
   onAssignManager,
+  onDetails,
 }) => {
   return (
     <div className="bg-[#ECEAE3] border border-[#D8D7D1] rounded-[1.75rem] p-5 shadow-sm">
@@ -51,13 +54,26 @@ export const DepartmentCard: React.FC<DepartmentCardProps> = ({
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Button variant="secondary" size="sm" onClick={() => onEdit(department)}>
-          Edit
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => onAssignManager(department)}>
-          Assign Manager
-        </Button>
+      <div className="mt-6 space-y-2">
+        {onDetails && (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="w-full flex items-center justify-center gap-1.5"
+            onClick={() => onDetails(department)}
+          >
+            <Eye className="w-4 h-4 text-[#526A55]" />
+            Details
+          </Button>
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="outline" size="sm" onClick={() => onEdit(department)}>
+            Edit
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => onAssignManager(department)}>
+            Assign Manager
+          </Button>
+        </div>
       </div>
     </div>
   );

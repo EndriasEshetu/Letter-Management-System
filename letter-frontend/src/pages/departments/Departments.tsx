@@ -13,6 +13,7 @@ import EmptyState from '@/components/common/EmptyState';
 import DepartmentCard from '@/components/departments/DepartmentCard';
 import DepartmentFormModal from '@/components/departments/DepartmentFormModal';
 import AssignManagerModal from '@/components/departments/AssignManagerModal';
+import DepartmentDetailsModal from '@/components/users/DepartmentDetailsModal';
 
 export const Departments: React.FC = () => {
   const { user } = useAuth();
@@ -21,6 +22,8 @@ export const Departments: React.FC = () => {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [selectedDeptDetailsId, setSelectedDeptDetailsId] = useState<number | string | null>(null);
 
   const [isDepartmentModalOpen, setIsDepartmentModalOpen] = useState(false);
   const [departmentModalValue, setDepartmentModalValue] = useState<Department | null>(null);
@@ -186,6 +189,7 @@ export const Departments: React.FC = () => {
               department={department}
               onEdit={handleOpenEdit}
               onAssignManager={handleOpenAssignManager}
+              onDetails={(dept) => setSelectedDeptDetailsId(dept.id)}
             />
           ))}
         </div>
@@ -215,6 +219,13 @@ export const Departments: React.FC = () => {
         onChangeManagerId={setSelectedManagerId}
         onSubmit={handleAssignManager}
         isLoading={isAssignLoading}
+      />
+
+      {/* ── Department Details Modal ── */}
+      <DepartmentDetailsModal
+        open={Boolean(selectedDeptDetailsId)}
+        departmentId={selectedDeptDetailsId}
+        onClose={() => setSelectedDeptDetailsId(null)}
       />
     </div>
   );
