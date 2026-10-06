@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import Card from "@/components/common/Card";
+import Input from "@/components/common/Input";
 import PasswordInput from "@/components/common/PasswordInput";
 import Button from "@/components/common/Button";
 import Alert from "@/components/common/Alert";
@@ -95,13 +96,46 @@ const ROLE_GOVERNANCE: Record<string, RoleGovernanceConfig> = {
 };
 
 export const Profile: React.FC = () => {
-  const { user, changePassword, logout } = useAuth();
+  const { user, changePassword, updateProfile, logout } = useAuth();
   const navigate = useNavigate();
   const displayName = (user?.full_name || "Personnel").replace(
     /\s+\((?:ADMIN(?:ISTRATOR)?|DEPARTMENT\s*MANAGER|MANAGER|EMPLOYEE)\)\s*$/i,
     "",
   );
 
+  /* ── Contact Info State (Non-sensitive, user editable) ── */
+  const [phone, setPhone] = useState(user?.phone || "");
+  const [jobTitle, setJobTitle] = useState(user?.job_title || "");
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      setPhone(user.phone || "");
+      setJobTitle(user.job_title || "");
+    }
+  }, [user]);
+
+  const handleProfileUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileError(null);
+    setProfileSuccess(null);
+    setIsUpdatingProfile(true);
+    try {
+      await updateProfile({
+        phone: phone.trim() || undefined,
+        job_title: jobTitle.trim() || undefined,
+      });
+      setProfileSuccess("Personal contact information updated successfully.");
+    } catch (err: any) {
+      setProfileError(err.message || "Failed to update profile.");
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
+
+  /* ── Password Security State ── */
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -258,6 +292,26 @@ export const Profile: React.FC = () => {
                 </span>
               </div>
 
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#8A8983] block">
+                  Designation / Title
+                </span>
+                <span className="font-semibold text-[#292A27] text-xs mt-0.5 block">
+                  {user?.job_title || "Official Personnel"}
+                </span>
+              </div>
+
+              {user?.phone && (
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#8A8983] block">
+                    Contact Phone
+                  </span>
+                  <span className="font-medium text-[#292A27] text-xs mt-0.5 block">
+                    {user.phone}
+                  </span>
+                </div>
+              )}
+
               {/* Conditionally display Scope / Directorate / Unit according to role rules */}
               {config.scopeType !== "SYSTEM" && (
                 <div>
@@ -338,6 +392,73 @@ export const Profile: React.FC = () => {
                 ))}
               </div>
             </div>
+          </Card>
+
+          {/* ── Personal Contact Information Card (Non-sensitive self-editable) ── */}
+          <Card className="space-y-5">
+            <div>
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-bold text-[#292A27]">
+                  Personal Contact Information
+                </h3>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#526A55] bg-[#526A55]/10 px-2 py-0.5 rounded">
+                  Self-Editable
+                </span>
+              </div>
+              <p className="text-xs text-[#6B6A64] mt-1 leading-relaxed">
+                Update your active contact phone number and internal job designation.
+              </p>
+            </div>
+
+            {profileError && (
+              <Alert type="error" onClose={() => setProfileError(null)}>
+                {profileError}
+              </Alert>
+            )}
+            {profileSuccess && (
+              <Alert type="success" onClose={() => setProfileSuccess(null)}>
+                {profileSuccess}
+              </Alert>
+            )}
+
+            <form onSubmit={handleProfileUpdate} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
+                  label="Phone Number"
+                  placeholder="e.g. +251 91 123 4567"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  disabled={isUpdatingProfile}
+                />
+                <Input
+                  label="Job Title / Designation"
+                  placeholder="e.g. Senior Systems Analyst"
+                  value={jobTitle}
+                  onChange={(e) => setJobTitle(e.target.value)}
+                  disabled={isUpdatingProfile}
+                />
+              </div>
+
+              {/* Informational notice about sensitive governance fields */}
+              <div className="p-3 bg-[#F9F8F5] border border-[#D8D7D1]/80 rounded-xl flex items-start space-x-2.5 text-xs text-[#6B6A64]">
+                <svg className="w-4 h-4 text-[#8A8983] flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>
+                  Official Full Name, Email Address, Directorate/Department, and Clearance Role are governance records and can only be altered by a <strong>System Administrator</strong>.
+                </span>
+              </div>
+
+              <div className="pt-1 flex justify-end">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  isLoading={isUpdatingProfile}
+                >
+                  Save Contact Information
+                </Button>
+              </div>
+            </form>
           </Card>
 
           {/* Security & Password Settings Card */}

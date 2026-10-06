@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
-import { AuthUser, ChangePasswordPayload, LoginCredentials } from '@/types/auth';
+import { AuthUser, ChangePasswordPayload, LoginCredentials, UpdateProfilePayload } from '@/types/auth';
 import { authService } from '@/services/authService';
 
 export interface AuthContextType {
@@ -11,6 +11,7 @@ export interface AuthContextType {
   logout: () => void;
   refreshUser: () => Promise<void>;
   changePassword: (payload: ChangePasswordPayload) => Promise<void>;
+  updateProfile: (payload: UpdateProfilePayload) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -101,6 +102,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await authService.changePassword(payload);
   };
 
+  // Update non-sensitive profile handler
+  const updateProfile = async (payload: UpdateProfilePayload) => {
+    const updated = await authService.updateProfile(payload);
+    setUser(updated);
+    localStorage.setItem('sita_auth_user', JSON.stringify(updated));
+  };
+
   const value: AuthContextType = {
     user,
     token,
@@ -110,6 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logout,
     refreshUser,
     changePassword,
+    updateProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

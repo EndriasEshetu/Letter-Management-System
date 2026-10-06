@@ -63,6 +63,41 @@ router.get(
   })
 );
 
+/** PATCH /auth/profile — update non-sensitive profile info for the logged-in user */
+router.patch(
+  '/profile',
+  requireAuth,
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const { phone, job_title } = req.body || {};
+    const userId = req.user!.id;
+
+    await query(
+      `UPDATE users
+          SET phone = COALESCE($2, phone),
+              job_title = COALESCE($3, job_title)
+        WHERE id = $1`,
+      [
+        userId,
+        phone !== undefined ? (phone ? String(phone).trim() : null) : null,
+        job_title !== undefined ? (job_title ? String(job_title).trim() : null) : null,
+      ]
+    );
+
+    const { rows } = await query(
+      `SELECT u.*, d.name AS department_name
+         FROM users u
+         LEFT JOIN departments d ON d.id = u.department_id
+        WHERE u.id = $1`,
+      [userId]
+    );
+
+    res.json({
+      user: serializeAuthUser(rows[0] as UserRow),
+      message: 'Profile updated successfully.',
+    });
+  })
+);
+
 /** POST /auth/change-password */
 router.post(
   '/change-password',

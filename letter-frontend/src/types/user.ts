@@ -41,4 +41,5 @@ export interface UpdateUserPayload {
   role?: UserRole;
   department_id?: number | null;
   status?: UserStatus;
+  password?: string;
 }

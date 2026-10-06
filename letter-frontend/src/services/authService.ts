@@ -1,5 +1,5 @@
 import api from './api';
-import { AuthResponse, AuthUser, ChangePasswordPayload, LoginCredentials } from '@/types/auth';
+import { AuthResponse, AuthUser, ChangePasswordPayload, LoginCredentials, UpdateProfilePayload } from '@/types/auth';
 
 /**
  * Fallback Mock Users for development when local backend is offline.
@@ -165,6 +165,30 @@ export const authService = {
         return { message: 'Password updated successfully (Dev Mode)' };
       }
       const serverMessage = error.response?.data?.message || 'Failed to change password.';
+      throw new Error(serverMessage);
+    }
+  },
+
+  /**
+   * Update non-sensitive profile info (phone, job_title)
+   */
+  async updateProfile(payload: UpdateProfilePayload): Promise<AuthUser> {
+    try {
+      const response = await api.patch<{ user: AuthUser; message: string }>('/auth/profile', payload);
+      return response.data.user;
+    } catch (error: any) {
+      const status = error.response?.status;
+      if (error.code === 'ERR_NETWORK' || !error.response || status === 404 || status >= 500) {
+        const storedUser = localStorage.getItem('sita_auth_user');
+        if (storedUser) {
+          const userObj = JSON.parse(storedUser);
+          if (payload.phone !== undefined) userObj.phone = payload.phone;
+          if (payload.job_title !== undefined) userObj.job_title = payload.job_title;
+          localStorage.setItem('sita_auth_user', JSON.stringify(userObj));
+          return userObj;
+        }
+      }
+      const serverMessage = error.response?.data?.message || 'Failed to update profile.';
       throw new Error(serverMessage);
     }
   },

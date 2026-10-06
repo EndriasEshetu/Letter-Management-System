@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/components/common/Toast';
 import userService, { UserFilterParams } from '@/services/userService';
 import departmentService from '@/services/departmentService';
-import { User, CreateUserPayload } from '@/types/user';
+import { User, CreateUserPayload, UpdateUserPayload } from '@/types/user';
 import { Department, SystemCapacityInfo } from '@/types/department';
 
 import AccessDenied from '@/components/common/AccessDenied';
@@ -15,6 +15,7 @@ import ConfirmDialog from '@/components/common/ConfirmDialog';
 import UserFilters from '@/components/users/UserFilters';
 import UserTable from '@/components/users/UserTable';
 import UserFormModal from '@/components/users/UserFormModal';
+import EditUserModal from '@/components/users/EditUserModal';
 import DepartmentOverview from '@/components/users/DepartmentOverview';
 import PermissionsPanel from '@/components/users/PermissionsPanel';
 
@@ -48,6 +49,10 @@ export const Users: React.FC = () => {
   /* ── Modal State ── */
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [editUserTarget, setEditUserTarget] = useState<User | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [deleteUserTarget, setDeleteUserTarget] = useState<User | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [toggleUserTarget, setToggleUserTarget] = useState<User | null>(null);
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
 
@@ -134,6 +139,52 @@ export const Users: React.FC = () => {
       });
     } finally {
       setIsTogglingStatus(false);
+    }
+  };
+
+  const handleUpdateUser = async (payload: UpdateUserPayload) => {
+    if (!editUserTarget) return;
+    setIsUpdating(true);
+    try {
+      await userService.updateUser(editUserTarget.id, payload);
+      addToast({
+        type: 'success',
+        title: 'Personnel Information Updated',
+        message: `Successfully updated account for "${payload.full_name || editUserTarget.full_name}".`,
+      });
+      setEditUserTarget(null);
+      loadUsersData();
+    } catch (err: any) {
+      addToast({
+        type: 'error',
+        title: 'Update Failed',
+        message: err.message || 'Could not update personnel information.',
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteUserTarget) return;
+    setIsDeleting(true);
+    try {
+      await userService.deleteUser(deleteUserTarget.id);
+      addToast({
+        type: 'success',
+        title: 'Personnel Account Deleted',
+        message: `Account "${deleteUserTarget.full_name}" has been permanently removed from the system.`,
+      });
+      setDeleteUserTarget(null);
+      loadUsersData();
+    } catch (err: any) {
+      addToast({
+        type: 'error',
+        title: 'Deletion Failed',
+        message: err.message || 'Could not delete personnel account.',
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -264,7 +315,10 @@ export const Users: React.FC = () => {
               <>
                 <UserTable
                   users={users}
+                  currentUserId={user?.id}
+                  onEditUser={(u) => setEditUserTarget(u)}
                   onToggleStatus={(u) => setToggleUserTarget(u)}
+                  onDeleteUser={(u) => setDeleteUserTarget(u)}
                 />
 
                 {/* Pagination controls */}
@@ -370,6 +424,16 @@ export const Users: React.FC = () => {
         isLoading={isCreating}
       />
 
+      {/* ── Edit User Modal (All information editable for Admin) ── */}
+      <EditUserModal
+        open={Boolean(editUserTarget)}
+        user={editUserTarget}
+        onClose={() => setEditUserTarget(null)}
+        onSubmit={handleUpdateUser}
+        departments={departments}
+        isLoading={isUpdating}
+      />
+
       {/* ── Toggle Status Confirm Dialog ── */}
       <ConfirmDialog
         open={Boolean(toggleUserTarget)}
@@ -382,6 +446,18 @@ export const Users: React.FC = () => {
         isLoading={isTogglingStatus}
         onConfirm={handleConfirmToggleStatus}
         onCancel={() => setToggleUserTarget(null)}
+      />
+
+      {/* ── Delete User Confirm Dialog ── */}
+      <ConfirmDialog
+        open={Boolean(deleteUserTarget)}
+        title="Delete Personnel Account?"
+        description={`Are you sure you want to permanently delete the account for "${deleteUserTarget?.full_name}" (${deleteUserTarget?.role?.replace(/_/g, ' ')})? This will immediately revoke their access and unlink their profile across the system.`}
+        confirmLabel="Delete Account Permanently"
+        danger
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteUserTarget(null)}
       />
     </div>
   );

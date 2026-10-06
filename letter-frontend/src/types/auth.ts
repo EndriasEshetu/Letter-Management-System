@@ -32,6 +32,11 @@ export interface ChangePasswordPayload {
   confirm_password: string;
 }
 
+export interface UpdateProfilePayload {
+  phone?: string;
+  job_title?: string;
+}
+
 export interface AuthState {
   user: AuthUser | null;
   token: string | null;

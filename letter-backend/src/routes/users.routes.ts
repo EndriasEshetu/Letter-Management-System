@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
-import { query } from '../lib/db';
+import { query, transaction } from '../lib/db';
 import { ApiError } from '../lib/errors';
 import { asyncHandler } from '../lib/errors';
-import { requireAuth, requireRole } from '../middleware/auth';
+import { requireAuth, requireRole, AuthenticatedRequest } from '../middleware/auth';
 import { serializeUser, toNumber, UserRow } from '../lib/utils';
 
 const router = Router();
@@ -123,7 +123,7 @@ router.post(
   })
 );
 
-/** PUT /users/:id — update profile (admin). */
+/** PUT /users/:id — update all personnel info (admin). */
 router.put(
   '/:id',
   requireAuth,
@@ -132,30 +132,62 @@ router.put(
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) throw ApiError.badRequest('Invalid user id.');
 
-    const { full_name, phone, job_title, role, department_id, status } = req.body || {};
+    const { full_name, email, phone, job_title, role, department_id, status, password } = req.body || {};
+
+    // Verify user exists first
+    const { rows: existingRows } = await query(`SELECT * FROM users WHERE id = $1`, [id]);
+    if (existingRows.length === 0) throw ApiError.notFound('User not found.');
+    const existingUser = existingRows[0] as UserRow;
+
+    // Email update and uniqueness validation
+    let normalizedEmail = existingUser.email;
+    if (email && String(email).trim().toLowerCase() !== existingUser.email.toLowerCase()) {
+      normalizedEmail = String(email).trim().toLowerCase();
+      const { rows: duplicateEmail } = await query(
+        `SELECT id FROM users WHERE email = $1 AND id <> $2`,
+        [normalizedEmail, id]
+      );
+      if (duplicateEmail.length > 0) {
+        throw ApiError.conflict('A user with this email address already exists.');
+      }
+    }
+
+    // Optional admin-set password
+    if (password && String(password).trim().length > 0) {
+      if (String(password).trim().length < 6) {
+        throw ApiError.badRequest('Password must be at least 6 characters long.');
+      }
+      const newHash = await bcrypt.hash(String(password).trim(), 12);
+      await query(`UPDATE users SET password_hash = $1 WHERE id = $2`, [newHash, id]);
+    }
 
     const updated = await query(
       `UPDATE users
           SET full_name = COALESCE($2, full_name),
-              phone = COALESCE($3, phone),
-              job_title = COALESCE($4, job_title),
-              role = COALESCE($5, role),
-              department_id = COALESCE($6, department_id),
-              status = COALESCE($7, status),
-              is_active = COALESCE($8, is_active)
+              email = COALESCE($3, email),
+              phone = CASE WHEN $4::boolean THEN $5 ELSE phone END,
+              job_title = CASE WHEN $6::boolean THEN $7 ELSE job_title END,
+              role = COALESCE($8, role),
+              department_id = CASE WHEN $9::boolean THEN $10 ELSE department_id END,
+              status = COALESCE($11, status),
+              is_active = CASE WHEN $11 IS NOT NULL THEN ($11 <> 'INACTIVE') ELSE is_active END
         WHERE id = $1
         RETURNING *`,
       [
         id,
-        full_name ?? null,
-        phone ?? null,
-        job_title ?? null,
-        role ?? null,
-        department_id ?? null,
-        status ?? null,
-        status ? status !== 'INACTIVE' : null,
+        full_name ? String(full_name).trim() : null,
+        normalizedEmail,
+        phone !== undefined,
+        phone ? String(phone).trim() : null,
+        job_title !== undefined,
+        job_title ? String(job_title).trim() : null,
+        role || null,
+        department_id !== undefined,
+        department_id ? Number(department_id) : null,
+        status || null,
       ]
     );
+
     if (updated.rows.length === 0) throw ApiError.notFound('User not found.');
 
     const { rows } = await query(`${USER_SELECT} WHERE u.id = $1`, [id]);
@@ -184,6 +216,75 @@ router.patch(
 
     const { rows } = await query(`${USER_SELECT} WHERE u.id = $1`, [id]);
     res.json(serializeUser(rows[0] as UserRow));
+  })
+);
+
+/** DELETE /users/:id — permanently delete personnel account (admin). */
+router.delete(
+  '/:id',
+  requireAuth,
+  requireRole('ADMIN'),
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) throw ApiError.badRequest('Invalid user id.');
+
+    // Prevent admin from deleting their own current session account
+    if (Number(req.user!.id) === id) {
+      throw ApiError.badRequest('You cannot delete your own Administrator account.');
+    }
+
+    // Check user exists
+    const { rows: targets } = await query(`SELECT id, role, full_name FROM users WHERE id = $1`, [id]);
+    if (targets.length === 0) {
+      throw ApiError.notFound('User not found.');
+    }
+    const target = targets[0] as { id: number; role: string; full_name: string };
+
+    // If target is an admin, ensure at least one other active admin remains
+    if (target.role === 'ADMIN') {
+      const { rows: adminCount } = await query(
+        `SELECT COUNT(*)::int AS count FROM users WHERE role = 'ADMIN' AND id <> $1 AND status = 'ACTIVE'`,
+        [id]
+      );
+      if ((adminCount[0]?.count ?? 0) < 1) {
+        throw ApiError.badRequest('Cannot delete the last remaining active Administrator.');
+      }
+    }
+
+    // Clean up dependent foreign keys gracefully within a transaction
+    await transaction(async (client) => {
+      // Nullify references in documents, versions, approvals, comments, departments
+      await client.query(`UPDATE documents SET author_id = NULL WHERE author_id = $1`, [id]);
+      await client.query(`UPDATE documents SET assigned_employee_id = NULL WHERE assigned_employee_id = $1`, [id]);
+      await client.query(`UPDATE document_versions SET uploaded_by_id = NULL WHERE uploaded_by_id = $1`, [id]);
+      await client.query(`UPDATE approvals SET submitter_id = NULL WHERE submitter_id = $1`, [id]);
+      await client.query(`UPDATE comments SET author_id = NULL WHERE author_id = $1`, [id]);
+      await client.query(`UPDATE departments SET manager_id = NULL WHERE manager_id = $1`, [id]);
+
+      // If admin_tasks table exists, nullify assignment references
+      await client.query(
+        `DO $$ BEGIN
+           IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'admin_tasks') THEN
+             UPDATE admin_tasks SET assigned_to = NULL WHERE assigned_to = ${id};
+             UPDATE admin_tasks SET source_user_id = NULL WHERE source_user_id = ${id};
+             UPDATE admin_tasks SET completed_by = NULL WHERE completed_by = ${id};
+             UPDATE admin_tasks SET claimed_by = NULL WHERE claimed_by = ${id};
+             UPDATE admin_tasks SET read_by = NULL WHERE read_by = ${id};
+           END IF;
+         END $$;`
+      );
+
+      // Clean up notifications for this user
+      await client.query(`DELETE FROM notifications WHERE user_id = $1`, [id]);
+
+      // Finally, delete the user record
+      await client.query(`DELETE FROM users WHERE id = $1`, [id]);
+    });
+
+    res.json({
+      success: true,
+      message: `Personnel account "${target.full_name}" has been deleted successfully.`,
+    });
   })
 );
 

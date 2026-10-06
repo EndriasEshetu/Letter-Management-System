@@ -233,6 +233,26 @@ export const userService = {
       throw error;
     }
   },
+
+  /**
+   * Delete user account permanently
+   */
+  async deleteUser(id: string | number): Promise<void> {
+    try {
+      await api.delete(`/users/${id}`);
+    } catch (error: any) {
+      if (error.code === 'ERR_NETWORK' || !error.response) {
+        await new Promise((r) => setTimeout(r, 200));
+        const idx = mockUsers.findIndex((u) => String(u.id) === String(id));
+        if (idx !== -1) {
+          mockUsers.splice(idx, 1);
+        }
+        return;
+      }
+      const serverMessage = error.response?.data?.message || 'Failed to delete user account.';
+      throw new Error(serverMessage);
+    }
+  },
 };
 
 export default userService;
