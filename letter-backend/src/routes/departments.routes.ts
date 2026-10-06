@@ -63,6 +63,15 @@ router.post(
     });
 
     const id = (inserted.rows[0] as { id: number }).id;
+    if (manager_id) {
+      const mId = Number(manager_id);
+      if (Number.isFinite(mId)) {
+        await query(
+          `UPDATE users SET role = 'DEPARTMENT_MANAGER', department_id = $1 WHERE id = $2`,
+          [id, mId]
+        );
+      }
+    }
     const { rows } = await query(`${DEPT_SELECT} WHERE d.id = $1`, [id]);
     res.status(201).json(serializeDepartment(rows[0] as DepartmentRow));
   })
@@ -106,6 +115,22 @@ router.post(
     const managerId = Number(req.body?.manager_id);
     if (!Number.isFinite(managerId)) throw ApiError.badRequest('A valid manager_id is required.');
 
+    // 1. Demote any prior manager in this department to EMPLOYEE
+    await query(
+      `UPDATE users SET role = 'EMPLOYEE' WHERE department_id = $1 AND role = 'DEPARTMENT_MANAGER' AND id <> $2`,
+      [id, managerId]
+    );
+
+    // 2. Set user role to DEPARTMENT_MANAGER and ensure their department_id matches
+    await query(
+      `UPDATE users SET role = 'DEPARTMENT_MANAGER', department_id = $1 WHERE id = $2`,
+      [id, managerId]
+    );
+
+    // 3. Clear managerId from any other department if previously assigned
+    await query(`UPDATE departments SET manager_id = NULL WHERE manager_id = $1 AND id <> $2`, [managerId, id]);
+
+    // 4. Update department manager_id
     const updated = await query(
       `UPDATE departments SET manager_id = $2 WHERE id = $1 RETURNING id`,
       [id, managerId]

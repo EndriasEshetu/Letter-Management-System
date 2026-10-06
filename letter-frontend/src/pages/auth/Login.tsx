@@ -141,53 +141,6 @@ export const Login: React.FC = () => {
               </Button>
             </div>
           </form>
-
-          {/* Quick Mock Login Assistance */}
-          <div className="mt-8 pt-6 border-t border-[#D8D7D1]/60 text-center">
-            <p className="text-xs text-[#8A8983] mb-2 font-medium">Demo Access Accounts:</p>
-            <div className="flex flex-wrap justify-center gap-1.5 text-[11px]">
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('admin@sita.gov.et');
-                  setPassword('Sita@2026');
-                }}
-                className="px-2.5 py-1 bg-[#F9F8F6] text-[#292A27] border border-[#D8D7D1] rounded-lg hover:bg-[#AEBDA5]/20 transition-colors"
-              >
-                Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('registry@sita.gov.et');
-                  setPassword('Sita@2026');
-                }}
-                className="px-2.5 py-1 bg-[#F9F8F6] text-[#292A27] border border-[#D8D7D1] rounded-lg hover:bg-[#AEBDA5]/20 transition-colors"
-              >
-                Registry
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('manager@sita.gov.et');
-                  setPassword('Sita@2026');
-                }}
-                className="px-2.5 py-1 bg-[#F9F8F6] text-[#292A27] border border-[#D8D7D1] rounded-lg hover:bg-[#AEBDA5]/20 transition-colors"
-              >
-                Manager
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('employee@sita.gov.et');
-                  setPassword('Sita@2026');
-                }}
-                className="px-2.5 py-1 bg-[#F9F8F6] text-[#292A27] border border-[#D8D7D1] rounded-lg hover:bg-[#AEBDA5]/20 transition-colors"
-              >
-                Employee
-              </button>
-            </div>
-          </div>
         </div>
       </main>
 

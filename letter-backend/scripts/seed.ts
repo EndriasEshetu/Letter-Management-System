@@ -208,8 +208,8 @@ async function seed() {
   // 4 Official SITA Directorates
   const deptApp = await upsertDepartment('App Development Directorate', 'DIR-APP', 'Web & mobile application software engineering, portal development, and digital services.');
   const deptInf = await upsertDepartment('ICT Infrastructure Development Directorate', 'DIR-INF', 'Network infrastructure, data center operations, cybersecurity, and hardware systems.');
-  const deptSct = await upsertDepartment('Science and Technology Directorate', 'DIR-SCT', 'Scientific research innovation, technology transfer, emerging tech policies, and standards.');
-  const deptInc = await upsertDepartment('Incubation Development Directorate', 'DIR-INC', 'Tech startup incubation, innovation hub mentoring, entrepreneurship support, and grants.');
+  await upsertDepartment('Science and Technology Directorate', 'DIR-SCT', 'Scientific research innovation, technology transfer, emerging tech policies, and standards.');
+  await upsertDepartment('Incubation Development Directorate', 'DIR-INC', 'Tech startup incubation, innovation hub mentoring, entrepreneurship support, and grants.');
 
   // Demo users with hashed passwords
   const adminId = await upsertUser({
@@ -341,9 +341,6 @@ async function seed() {
 
   // Assign department managers
   await pool.query('UPDATE departments SET manager_id = $1 WHERE id = $2', [managerId, deptApp]);
-  await pool.query('UPDATE departments SET manager_id = $1 WHERE id = $2', [adminId, deptInf]);
-  await pool.query('UPDATE departments SET manager_id = $1 WHERE id = $2', [managerId, deptSct]);
-  await pool.query('UPDATE departments SET manager_id = $1 WHERE id = $2', [adminId, deptInc]);
 
   console.log('\n[seed] Done! Demo logins (password: Sita@2026):');
   console.log('  admin@sita.gov.et    (ADMIN)');

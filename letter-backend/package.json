@@ -13,7 +13,8 @@
     "start": "node dist/src/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "migrate": "tsx scripts/migrate.ts",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "clean:demo": "tsx scripts/clean-demo-data.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

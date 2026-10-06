@@ -68,13 +68,10 @@ export const authService = {
         status === 504;
 
       const normalizedEmail = credentials.email.toLowerCase().trim();
-      const isDemoAccount =
-        Boolean(MOCK_USERS[normalizedEmail]) ||
-        normalizedEmail.endsWith('@sita.gov.et');
 
-      // If backend is unreachable OR if attempting demo credentials preview
-      if (isBackendUnreachable || (isDemoAccount && credentials.password === 'Sita@2026')) {
-        console.warn('[authService] Using mock fallback authentication for demo preview.');
+      // Only fall back if the backend server is truly unreachable
+      if (isBackendUnreachable) {
+        console.warn('[authService] Backend offline, using local fallback authentication.');
         const computedRole = normalizedEmail.includes('admin')
           ? 'ADMIN'
           : normalizedEmail.includes('registry')

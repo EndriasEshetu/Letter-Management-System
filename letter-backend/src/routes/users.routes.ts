@@ -98,6 +98,9 @@ router.post(
 
     const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 12);
 
+    const userRole = role || 'EMPLOYEE';
+    const deptId = department_id ? Number(department_id) : null;
+
     const inserted = await query(
       `INSERT INTO users (full_name, email, phone, job_title, role, department_id, status, is_active, password_hash)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $7 <> 'INACTIVE', $8)
@@ -107,13 +110,25 @@ router.post(
         normalizedEmail,
         phone || null,
         job_title || null,
-        role || 'EMPLOYEE',
-        department_id ?? null,
+        userRole,
+        deptId,
         status || 'ACTIVE',
         passwordHash,
       ]
     );
     const row = inserted.rows[0] as UserRow;
+
+    // Automatically synchronize department manager if added as DEPARTMENT_MANAGER
+    if (userRole === 'DEPARTMENT_MANAGER' && deptId && (status || 'ACTIVE') !== 'INACTIVE') {
+      // 1. Demote any previous manager in this department to EMPLOYEE
+      await query(
+        `UPDATE users SET role = 'EMPLOYEE' WHERE department_id = $1 AND role = 'DEPARTMENT_MANAGER' AND id <> $2`,
+        [deptId, row.id]
+      );
+      // 2. Set department manager_id to new user
+      await query(`UPDATE departments SET manager_id = $1 WHERE id = $2`, [row.id, deptId]);
+    }
+
     const { rows } = await query(`${USER_SELECT} WHERE u.id = $1`, [row.id]);
     res.status(201).json({
       ...serializeUser(rows[0] as UserRow),
@@ -190,6 +205,27 @@ router.put(
 
     if (updated.rows.length === 0) throw ApiError.notFound('User not found.');
 
+    const updatedUser = updated.rows[0] as UserRow;
+    const finalRole = updatedUser.role;
+    const finalDeptId = updatedUser.department_id;
+    const isActive = updatedUser.is_active;
+
+    // Automatically synchronize department manager assignment
+    if (finalRole === 'DEPARTMENT_MANAGER' && finalDeptId && isActive) {
+      // 1. Demote any previous manager in this department to EMPLOYEE
+      await query(
+        `UPDATE users SET role = 'EMPLOYEE' WHERE department_id = $1 AND role = 'DEPARTMENT_MANAGER' AND id <> $2`,
+        [finalDeptId, id]
+      );
+      // 2. Set this department's manager_id to this user
+      await query(`UPDATE departments SET manager_id = $1 WHERE id = $2`, [id, finalDeptId]);
+      // 3. Clear from any other department where this user might have previously been manager
+      await query(`UPDATE departments SET manager_id = NULL WHERE manager_id = $1 AND id <> $2`, [id, finalDeptId]);
+    } else {
+      // If user is no longer an active department manager, unassign them from any department manager roles
+      await query(`UPDATE departments SET manager_id = NULL WHERE manager_id = $1`, [id]);
+    }
+
     const { rows } = await query(`${USER_SELECT} WHERE u.id = $1`, [id]);
     res.json(serializeUser(rows[0] as UserRow));
   })
@@ -213,6 +249,19 @@ router.patch(
       [id]
     );
     if (updated.rows.length === 0) throw ApiError.notFound('User not found.');
+
+    const updatedUser = updated.rows[0] as UserRow;
+    if (!updatedUser.is_active) {
+      // If deactivated, remove as department manager
+      await query(`UPDATE departments SET manager_id = NULL WHERE manager_id = $1`, [id]);
+    } else if (updatedUser.role === 'DEPARTMENT_MANAGER' && updatedUser.department_id) {
+      // If re-activated as DEPARTMENT_MANAGER, assign to department
+      await query(
+        `UPDATE users SET role = 'EMPLOYEE' WHERE department_id = $1 AND role = 'DEPARTMENT_MANAGER' AND id <> $2`,
+        [updatedUser.department_id, id]
+      );
+      await query(`UPDATE departments SET manager_id = $1 WHERE id = $2`, [id, updatedUser.department_id]);
+    }
 
     const { rows } = await query(`${USER_SELECT} WHERE u.id = $1`, [id]);
     res.json(serializeUser(rows[0] as UserRow));
