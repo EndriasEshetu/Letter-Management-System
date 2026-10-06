@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Modal from '@/components/common/Modal';
 import Button from '@/components/common/Button';
 import Input from '@/components/common/Input';
@@ -6,24 +6,20 @@ import Select, { SelectOption } from '@/components/common/Select';
 import Textarea from '@/components/common/Textarea';
 import letterService from '@/services/letterService';
 import { useToast } from '@/components/common/Toast';
+import { useAuth } from '@/hooks/useAuth';
 import { LetterPriority } from '@/types/letter';
+import DepartmentEmployeeDropdown from './DepartmentEmployeeDropdown';
 
 interface LetterAssignmentDialogProps {
   open: boolean;
   letterId: string;
   referenceNumber: string;
   subject: string;
-  departmentName: string;
+  departmentName?: string;
+  departmentId?: string | number;
   onClose: () => void;
   onSuccess: () => void;
 }
-
-const OFFICER_OPTIONS: SelectOption[] = [
-  { value: 'Endrias Eshetu', label: 'Endrias Eshetu (Senior IT Officer)' },
-  { value: 'Sara Jenkins', label: 'Sara Jenkins (Officer)' },
-  { value: 'Michael K.', label: 'Michael K. (Systems Officer)' },
-  { value: 'Tariku Bikila', label: 'Tariku Bikila (Officer)' },
-];
 
 const PRIORITY_OPTIONS: SelectOption[] = [
   { value: 'URGENT', label: 'Urgent' },
@@ -37,32 +33,84 @@ export const LetterAssignmentDialog: React.FC<LetterAssignmentDialogProps> = ({
   letterId,
   referenceNumber,
   subject,
-  departmentName,
+  departmentName: initialDeptName,
+  departmentId: initialDeptId,
   onClose,
   onSuccess,
 }) => {
+  const { user } = useAuth();
   const { addToast } = useToast();
-  const [officerName, setOfficerName] = useState('Endrias Eshetu');
+
+  // Determine effective department based on manager role or letter metadata
+  const effectiveDepartmentName = useMemo(() => {
+    if (user?.role === 'DEPARTMENT_MANAGER' && user?.department_name) {
+      return user.department_name;
+    }
+    return initialDeptName || user?.department_name || 'App Development Directorate';
+  }, [user, initialDeptName]);
+
+  const effectiveDepartmentId: string | number | undefined = useMemo(() => {
+    if (user?.role === 'DEPARTMENT_MANAGER' && user?.department_id) {
+      return user.department_id;
+    }
+    const id = initialDeptId ?? user?.department_id;
+    return id != null ? id : undefined;
+  }, [user, initialDeptId]);
+
+  const [officerName, setOfficerName] = useState('');
+  const [officerId, setOfficerId] = useState<number | string | undefined>(undefined);
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState<LetterPriority>('HIGH');
   const [instructions, setInstructions] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (open) {
+      setOfficerName('');
+      setOfficerId(undefined);
+      setDueDate('');
+      setPriority('HIGH');
+      setInstructions('');
+      setValidationError(null);
+    }
+  }, [open]);
+
+  const handleOfficerChange = (name: string, id?: number | string) => {
+    setOfficerName(name);
+    setOfficerId(id);
+    if (name) {
+      setValidationError(null);
+    }
+  };
 
   const handleAssign = async () => {
-    if (!officerName) return;
+    if (!officerName.trim()) {
+      setValidationError('Please select an employee or officer from the dropdown.');
+      return;
+    }
+
     setIsLoading(true);
+    setValidationError(null);
+
     try {
       await letterService.assignToOfficer(letterId, {
-        officerName,
+        officerName: officerName.trim(),
+        officerId,
+        departmentId: effectiveDepartmentId,
+        departmentName: effectiveDepartmentName,
         dueDate: dueDate || undefined,
         instructions: instructions.trim() || undefined,
         priority,
       });
+
       addToast({
         type: 'success',
         title: 'Task Assigned',
-        message: `${referenceNumber} assigned to ${officerName}.`,
+        message: `${referenceNumber} assigned to ${officerName} (${effectiveDepartmentName}).`,
       });
+
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -77,39 +125,64 @@ export const LetterAssignmentDialog: React.FC<LetterAssignmentDialogProps> = ({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Assign Responsible Officer" size="md">
+    <Modal open={open} onClose={onClose} title="Assign Work to Department Staff" size="md">
       <div className="space-y-4 py-2">
-        <div className="p-3 rounded-xl bg-[#526A55]/10 border border-[#526A55]/20 text-xs text-[#292A27]">
-          <p className="font-bold text-[#526A55]">{referenceNumber} ({departmentName})</p>
-          <p className="truncate text-[#6B6A64] mt-0.5">{subject}</p>
+        {/* Document & Department Context Header */}
+        <div className="p-3.5 rounded-xl bg-[#526A55]/10 border border-[#526A55]/20 text-xs text-[#292A27]">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-bold text-[#526A55] tracking-wide">{referenceNumber}</span>
+            <span className="inline-flex items-center gap-1 font-semibold text-[#292A27] bg-white/80 px-2 py-0.5 rounded-md border border-[#526A55]/20">
+              🏛️ {effectiveDepartmentName}
+            </span>
+          </div>
+          <p className="truncate text-[#6B6A64] mt-1 font-medium">{subject}</p>
+          {user?.role === 'DEPARTMENT_MANAGER' && (
+            <p className="text-[11px] text-[#526A55] font-medium mt-1">
+              ✓ Showing personnel from your assigned directorate
+            </p>
+          )}
         </div>
 
+        {/* Department Employee Dropdown Button */}
+        <div>
+          <DepartmentEmployeeDropdown
+            label="Assigned Officer / Employee"
+            required
+            departmentName={effectiveDepartmentName}
+            departmentId={effectiveDepartmentId}
+            value={officerName}
+            selectedOfficerId={officerId}
+            onChange={handleOfficerChange}
+            error={validationError || undefined}
+            placeholder={`Select employee from ${effectiveDepartmentName}...`}
+          />
+        </div>
+
+        {/* Priority & Deadline Grid */}
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-[#6B6A64] mb-1">
-              Select Officer <span className="text-[#8B3232]">*</span>
-            </label>
-            <Select options={OFFICER_OPTIONS} value={officerName} onChange={setOfficerName} />
-          </div>
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-[#6B6A64] mb-1">
               Priority
             </label>
-            <Select options={PRIORITY_OPTIONS} value={priority} onChange={(v) => setPriority(v as LetterPriority)} />
+            <Select
+              options={PRIORITY_OPTIONS}
+              value={priority}
+              onChange={(v) => setPriority(v as LetterPriority)}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#6B6A64] mb-1">
+              Response Due Date
+            </label>
+            <Input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+            />
           </div>
         </div>
 
-        <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-[#6B6A64] mb-1">
-            Action Response Deadline (Due Date)
-          </label>
-          <Input
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-          />
-        </div>
-
+        {/* Work Instructions & Scope */}
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-[#6B6A64] mb-1">
             Manager Instructions & Action Scope
@@ -117,17 +190,18 @@ export const LetterAssignmentDialog: React.FC<LetterAssignmentDialogProps> = ({
           <Textarea
             value={instructions}
             onChange={(e) => setInstructions(e.target.value)}
-            placeholder="Specify what action or response document the officer should prepare..."
+            placeholder="Specify what action, response memo, or task the employee should carry out..."
             rows={3}
           />
         </div>
 
+        {/* Modal Actions */}
         <div className="pt-3 flex justify-end space-x-3 border-t border-[#D8D7D1]">
           <Button variant="secondary" onClick={onClose} disabled={isLoading}>
             Cancel
           </Button>
           <Button variant="primary" onClick={handleAssign} isLoading={isLoading}>
-            Assign Officer
+            Assign Work
           </Button>
         </div>
       </div>

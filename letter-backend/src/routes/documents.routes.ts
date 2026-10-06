@@ -641,6 +641,8 @@ router.post(
     const {
       assignedEmployee,
       officerName,
+      officerId,
+      assignedEmployeeId,
       departmentId,
       instructions,
       dueDate,
@@ -648,6 +650,7 @@ router.post(
     const user = req.user!;
     // Accept `officerName` (sent by LetterAssignmentDialog) as alias for `assignedEmployee`
     const employeeName = assignedEmployee || officerName || null;
+    const resolvedEmployeeId = officerId || assignedEmployeeId || null;
 
     const { rows: existing } = await query(
       `SELECT * FROM documents WHERE id = $1`,
@@ -675,7 +678,7 @@ router.post(
     await query(
       `UPDATE documents
             SET assigned_employee = COALESCE($2, assigned_employee),
-              assigned_employee_id = COALESCE((SELECT id FROM users WHERE LOWER(TRIM(full_name)) = LOWER(TRIM($2)) LIMIT 1), assigned_employee_id),
+              assigned_employee_id = COALESCE($8, (SELECT id FROM users WHERE LOWER(TRIM(full_name)) = LOWER(TRIM($2)) LIMIT 1), assigned_employee_id),
               department_id = COALESCE($3, department_id),
               department_name = COALESCE($4, department_name),
               assignment_instructions = COALESCE($5, assignment_instructions),
@@ -691,6 +694,7 @@ router.post(
         instructions || null,
         dueDate ? new Date(dueDate) : null,
         newStatus,
+        resolvedEmployeeId && Number.isFinite(Number(resolvedEmployeeId)) ? Number(resolvedEmployeeId) : null,
       ],
     );
 

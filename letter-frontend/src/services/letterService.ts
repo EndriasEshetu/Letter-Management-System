@@ -952,6 +952,9 @@ export const letterService = {
     id: string,
     payload: {
       officerName: string;
+      officerId?: number | string;
+      departmentId?: number | string;
+      departmentName?: string;
       dueDate?: string;
       instructions?: string;
       priority?: LetterPriority;
@@ -970,17 +973,25 @@ export const letterService = {
           target.assignedEmployee = payload.officerName;
           target.currentResponsibleUser = payload.officerName;
           target.dueDate = payload.dueDate || target.dueDate;
-          target.status = "IN_PROGRESS";
+          target.status = "ASSIGNED";
+          if (payload.departmentName) {
+            target.department_name = payload.departmentName;
+          }
+          if (payload.departmentId) {
+            target.department_id = payload.departmentId;
+          }
 
           target.assignment = {
-            assignedDepartment: target.department_name,
+            assignedDepartment: payload.departmentName || target.department_name,
             assignedUser: payload.officerName,
+            officerName: payload.officerName,
+            assignedUserId: payload.officerId,
             assignedBy: "Department Manager",
             assignmentDate: new Date().toLocaleDateString(),
             dueDate: payload.dueDate,
             instructions: payload.instructions,
             priority: payload.priority || target.priority || "NORMAL",
-            taskStatus: "IN_PROGRESS",
+            taskStatus: "ASSIGNED",
           };
 
           if (!target.movements) target.movements = [];

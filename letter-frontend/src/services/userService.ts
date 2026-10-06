@@ -3,7 +3,7 @@ import { User, CreateUserPayload, UpdateUserPayload } from '@/types/user';
 
 /* ─── Mock User Dataset (Dev Offline Fallback) ──────────── */
 
-let mockUsers: User[] = [
+export let mockUsers: User[] = [
   {
     id: 'usr-101',
     full_name: 'Abebe Bikila',
@@ -13,6 +13,142 @@ let mockUsers: User[] = [
     role: 'ADMIN',
     department_id: null,
     department_name: null,
+    status: 'ACTIVE',
+    is_active: true,
+  },
+  // Department 1: App Development Directorate
+  {
+    id: 'usr-201',
+    full_name: 'Endrias Eshetu',
+    email: 'endrias.eshetu@sita.gov.et',
+    phone: '+251 91 234 5678',
+    job_title: 'Senior Software Engineer & Officer',
+    role: 'EMPLOYEE',
+    department_id: 1,
+    department_name: 'App Development Directorate',
+    status: 'ACTIVE',
+    is_active: true,
+  },
+  {
+    id: 'usr-202',
+    full_name: 'Sara Jenkins',
+    email: 'sara.jenkins@sita.gov.et',
+    phone: '+251 92 345 6789',
+    job_title: 'Frontend Systems Officer',
+    role: 'EMPLOYEE',
+    department_id: 1,
+    department_name: 'App Development Directorate',
+    status: 'ACTIVE',
+    is_active: true,
+  },
+  {
+    id: 'usr-203',
+    full_name: 'Michael Kebede',
+    email: 'michael.k@sita.gov.et',
+    phone: '+251 93 456 7890',
+    job_title: 'Full-Stack Developer & Officer',
+    role: 'EMPLOYEE',
+    department_id: 1,
+    department_name: 'App Development Directorate',
+    status: 'ACTIVE',
+    is_active: true,
+  },
+  {
+    id: 'usr-204',
+    full_name: 'Dawit Tadesse',
+    email: 'dawit.t@sita.gov.et',
+    phone: '+251 94 567 8901',
+    job_title: 'QA & Testing Officer',
+    role: 'EMPLOYEE',
+    department_id: 1,
+    department_name: 'App Development Directorate',
+    status: 'ACTIVE',
+    is_active: true,
+  },
+  // Department 2: ICT Infrastructure Development Directorate
+  {
+    id: 'usr-301',
+    full_name: 'Tariku Bikila',
+    email: 'tariku.b@sita.gov.et',
+    phone: '+251 91 567 1122',
+    job_title: 'Network Operations Officer',
+    role: 'EMPLOYEE',
+    department_id: 2,
+    department_name: 'ICT Infrastructure Development Directorate',
+    status: 'ACTIVE',
+    is_active: true,
+  },
+  {
+    id: 'usr-302',
+    full_name: 'Almaz Kebede',
+    email: 'almaz.k@sita.gov.et',
+    phone: '+251 92 678 2233',
+    job_title: 'Cybersecurity Infrastructure Officer',
+    role: 'EMPLOYEE',
+    department_id: 2,
+    department_name: 'ICT Infrastructure Development Directorate',
+    status: 'ACTIVE',
+    is_active: true,
+  },
+  {
+    id: 'usr-303',
+    full_name: 'Ermias Wolde',
+    email: 'ermias.w@sita.gov.et',
+    phone: '+251 93 789 3344',
+    job_title: 'Datacenter & Server Officer',
+    role: 'EMPLOYEE',
+    department_id: 2,
+    department_name: 'ICT Infrastructure Development Directorate',
+    status: 'ACTIVE',
+    is_active: true,
+  },
+  // Department 3: Science and Technology Directorate
+  {
+    id: 'usr-401',
+    full_name: 'Bethlehem Tessema',
+    email: 'bethlehem.t@sita.gov.et',
+    phone: '+251 91 890 4455',
+    job_title: 'Senior Scientific Research Officer',
+    role: 'EMPLOYEE',
+    department_id: 3,
+    department_name: 'Science and Technology Directorate',
+    status: 'ACTIVE',
+    is_active: true,
+  },
+  {
+    id: 'usr-402',
+    full_name: 'Samuel Girma',
+    email: 'samuel.g@sita.gov.et',
+    phone: '+251 92 901 5566',
+    job_title: 'Technology Standards & Transfer Officer',
+    role: 'EMPLOYEE',
+    department_id: 3,
+    department_name: 'Science and Technology Directorate',
+    status: 'ACTIVE',
+    is_active: true,
+  },
+  // Department 4: Incubation Development Directorate
+  {
+    id: 'usr-501',
+    full_name: 'Yonas Mulugeta',
+    email: 'yonas.m@sita.gov.et',
+    phone: '+251 91 012 6677',
+    job_title: 'Incubation & Accelerator Officer',
+    role: 'EMPLOYEE',
+    department_id: 4,
+    department_name: 'Incubation Development Directorate',
+    status: 'ACTIVE',
+    is_active: true,
+  },
+  {
+    id: 'usr-502',
+    full_name: 'Tigist Assefa',
+    email: 'tigist.a@sita.gov.et',
+    phone: '+251 92 123 7788',
+    job_title: 'Startup Liaison Officer',
+    role: 'EMPLOYEE',
+    department_id: 4,
+    department_name: 'Incubation Development Directorate',
     status: 'ACTIVE',
     is_active: true,
   },
@@ -191,6 +327,41 @@ export const userService = {
       const serverMessage = error.response?.data?.message || 'Failed to delete user account.';
       throw new Error(serverMessage);
     }
+  },
+
+  /**
+   * Retrieve active employees/officers belonging to a specific department
+   */
+  async getDepartmentEmployees(departmentIdOrName?: number | string): Promise<User[]> {
+    if (!departmentIdOrName) return [];
+
+    try {
+      const response = await api.get<PaginatedUsersResponse>('/users', {
+        params: {
+          department_id: String(departmentIdOrName),
+          status: 'ACTIVE',
+          limit: 100,
+        },
+      });
+      const users = Array.isArray(response.data?.data) ? response.data.data : [];
+      if (users.length > 0) {
+        return users;
+      }
+    } catch {
+      // Fallback
+    }
+
+    // Fallback using mock dataset
+    const deptStr = String(departmentIdOrName).toLowerCase().trim();
+    return mockUsers.filter((u) => {
+      const matchesDept =
+        String(u.department_id) === String(departmentIdOrName) ||
+        (u.department_name && u.department_name.toLowerCase().trim() === deptStr) ||
+        (u.department_name && deptStr.includes(u.department_name.toLowerCase().trim())) ||
+        (u.department_name && u.department_name.toLowerCase().includes(deptStr));
+
+      return matchesDept && u.is_active;
+    });
   },
 };
 

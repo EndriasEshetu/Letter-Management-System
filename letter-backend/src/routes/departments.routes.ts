@@ -46,22 +46,41 @@ router.get(
   '/:id',
   requireAuth,
   asyncHandler(async (req, res) => {
-    const id = Number(req.params.id);
-    if (!Number.isFinite(id)) throw ApiError.badRequest('Invalid department id.');
+    const rawId = req.params.id;
+    const numId = Number(rawId);
+    let deptRows: any[] = [];
 
-    const { rows: deptRows } = await query(
-      `SELECT d.*,
-              u.full_name AS manager_name,
-              u.email AS manager_email,
-              u.phone AS manager_phone,
-              u.job_title AS manager_job_title,
-              u.status AS manager_status,
-              (SELECT COUNT(*)::int FROM users u2 WHERE u2.department_id = d.id AND u2.role IN ('DEPARTMENT_MANAGER', 'EMPLOYEE')) AS member_count
-         FROM departments d
-         LEFT JOIN users u ON u.id = d.manager_id
-        WHERE d.id = $1`,
-      [id]
-    );
+    if (Number.isFinite(numId)) {
+      const result = await query(
+        `SELECT d.*,
+                u.full_name AS manager_name,
+                u.email AS manager_email,
+                u.phone AS manager_phone,
+                u.job_title AS manager_job_title,
+                u.status AS manager_status,
+                (SELECT COUNT(*)::int FROM users u2 WHERE u2.department_id = d.id AND u2.role IN ('DEPARTMENT_MANAGER', 'EMPLOYEE', 'REGISTRY_OFFICER')) AS member_count
+           FROM departments d
+           LEFT JOIN users u ON u.id = d.manager_id
+          WHERE d.id = $1`,
+        [numId]
+      );
+      deptRows = result.rows;
+    } else {
+      const result = await query(
+        `SELECT d.*,
+                u.full_name AS manager_name,
+                u.email AS manager_email,
+                u.phone AS manager_phone,
+                u.job_title AS manager_job_title,
+                u.status AS manager_status,
+                (SELECT COUNT(*)::int FROM users u2 WHERE u2.department_id = d.id AND u2.role IN ('DEPARTMENT_MANAGER', 'EMPLOYEE', 'REGISTRY_OFFICER')) AS member_count
+           FROM departments d
+           LEFT JOIN users u ON u.id = d.manager_id
+          WHERE LOWER(d.code) = LOWER($1) OR LOWER(d.name) = LOWER($1)`,
+        [rawId]
+      );
+      deptRows = result.rows;
+    }
 
     if (deptRows.length === 0) throw ApiError.notFound('Department not found.');
     const dept = deptRows[0] as any;
@@ -70,9 +89,9 @@ router.get(
     const { rows: employees } = await query(
       `SELECT id, full_name, email, phone, job_title, role, status, is_active, created_at
          FROM users
-        WHERE department_id = $1 AND role IN ('DEPARTMENT_MANAGER', 'EMPLOYEE')
-        ORDER BY (role = 'DEPARTMENT_MANAGER') DESC, (status = 'ACTIVE') DESC, full_name ASC`,
-      [id]
+        WHERE department_id = $1 AND role IN ('DEPARTMENT_MANAGER', 'EMPLOYEE', 'REGISTRY_OFFICER')
+        ORDER BY (role = 'EMPLOYEE') DESC, (role = 'DEPARTMENT_MANAGER') DESC, (status = 'ACTIVE') DESC, full_name ASC`,
+      [dept.id]
     );
 
     const totalEmployees = employees.length;

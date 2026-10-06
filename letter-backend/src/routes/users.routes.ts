@@ -17,13 +17,20 @@ const USER_SELECT = `
 /** Default password assigned to newly created accounts (changeable on first login). */
 const DEFAULT_PASSWORD = 'Sita@2026';
 
-/** GET /users — paginated, filtered (admin). */
+/** GET /users — paginated, filtered (admin or department manager). */
 router.get(
   '/',
   requireAuth,
-  requireRole('ADMIN'),
-  asyncHandler(async (req, res) => {
-    const { search, role, department_id, status } = req.query as Record<string, string | undefined>;
+  requireRole('ADMIN', 'DEPARTMENT_MANAGER'),
+  asyncHandler(async (req: AuthenticatedRequest, res) => {
+    let { search, role, department_id, status } = req.query as Record<string, string | undefined>;
+    const user = req.user!;
+
+    // If Department Manager, scope queries strictly to their own department
+    if (user.role === 'DEPARTMENT_MANAGER' && user.department_id) {
+      department_id = String(user.department_id);
+    }
+
     const page = toNumber(req.query.page, 1);
     const limit = Math.min(toNumber(req.query.limit, 10), 100);
     const offset = (page - 1) * limit;

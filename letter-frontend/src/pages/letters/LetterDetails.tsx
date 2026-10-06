@@ -1641,7 +1641,16 @@ export const LetterDetails: React.FC = () => {
         letterId={letter.id}
         referenceNumber={letter.referenceNumber}
         subject={letter.subject}
-        departmentName={letter.currentLocation || letter.department_name}
+        departmentName={
+          user?.role === "DEPARTMENT_MANAGER" && user?.department_name
+            ? user.department_name
+            : letter.department_name || letter.currentLocation || ""
+        }
+        departmentId={
+          user?.role === "DEPARTMENT_MANAGER" && user?.department_id
+            ? user.department_id
+            : letter.department_id
+        }
         onClose={() => setIsAssignmentOpen(false)}
         onSuccess={fetchLetter}
       />

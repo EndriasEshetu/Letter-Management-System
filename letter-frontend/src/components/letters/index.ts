@@ -4,6 +4,7 @@ export { default as RegisterLetterModal, RegisterLetterModal as RegisterLetterMo
 export { default as UploadAttachmentModal, UploadAttachmentModal as UploadAttachmentModalComponent } from './UploadAttachmentModal';
 export { default as LetterRoutingDialog } from './LetterRoutingDialog';
 export { default as LetterAssignmentDialog } from './LetterAssignmentDialog';
+export { default as DepartmentEmployeeDropdown } from './DepartmentEmployeeDropdown';
 export { default as DispatchDialog } from './DispatchDialog';
 export { default as RelatedLetters } from './RelatedLetters';
 export { default as LetterTrackingCard } from './LetterTrackingCard';
