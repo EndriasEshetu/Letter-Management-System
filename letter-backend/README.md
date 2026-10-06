@@ -37,13 +37,13 @@ Express (port 5000)  ──►  /api/* routes  ──►  Supabase
 4. Start the frontend (`npm run dev` in `smart-eoffice-frontend`) and log in with a
    seeded account.
 
-## Demo accounts (created by `npm run seed`)
+## System Initial Account (created by `npm run seed`)
 
 | Email | Role | Password |
 |---|---|---|
 | `admin@sita.gov.et` | ADMIN | `Sita@2026` |
-| `manager@sita.gov.et` | DEPARTMENT_MANAGER | `Sita@2026` |
-| `employee@sita.gov.et` | EMPLOYEE | `Sita@2026` |
+
+*All department managers, registry officers, and employees are managed and assigned dynamically by the Administrator.*
 
 ## Scripts
 

@@ -15,37 +15,6 @@ const MOCK_USERS: Record<string, AuthUser> = {
     job_title: 'Main Administrator',
     status: 'ACTIVE',
   },
-  'registry@sita.gov.et': {
-    id: 2,
-    full_name: 'Abebe Demissie',
-    email: 'registry@sita.gov.et',
-    role: 'REGISTRY_OFFICER',
-    department_id: null,
-    department_name: null,
-    unit_name: 'Central Registry',
-    job_title: 'Senior Registry Officer',
-    status: 'ACTIVE',
-  },
-  'manager@sita.gov.et': {
-    id: 3,
-    full_name: 'Tariku Eshetu',
-    email: 'manager@sita.gov.et',
-    role: 'DEPARTMENT_MANAGER',
-    department_id: 1,
-    department_name: 'App Development Directorate',
-    job_title: 'Directorate Manager',
-    status: 'ACTIVE',
-  },
-  'employee@sita.gov.et': {
-    id: 4,
-    full_name: 'Endrias Eshetu',
-    email: 'employee@sita.gov.et',
-    role: 'EMPLOYEE',
-    department_id: 2,
-    department_name: 'ICT Infrastructure Development Directorate',
-    job_title: 'Systems Specialist',
-    status: 'ACTIVE',
-  },
 };
 
 export const authService = {

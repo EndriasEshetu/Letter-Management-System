@@ -326,14 +326,13 @@ Notifications are generated automatically from backend business events.
 
 ---
 
-## 🔑 Demo Credentials
-
+## 🔑 System Initial Credentials
+ 
 | Role | Email | Password | Primary Scope |
 |------|-------|----------|---------------|
-| **Admin** | `admin@sita.gov.et` | `Sita@2026` | Full system control, task management, user administration |
-| **Department Manager** | `manager@sita.gov.et` | `Sita@2026` | Approval queue, department letters, officer assignment |
-| **Registry Officer** | `registry@sita.gov.et` | `Sita@2026` | Letter registration, dispatch recording |
-| **Employee** | `employee@sita.gov.et` | `Sita@2026` | Draft letters, execute assigned tasks |
+| **Admin** | `admin@sita.gov.et` | `Sita@2026` | Full system control, task management, personnel & department administration |
+ 
+*Note: All Department Managers, Registry Officers, and Employees are created, assigned, and managed dynamically by the System Administrator in the Personnel Directory.*
 
 ---
 

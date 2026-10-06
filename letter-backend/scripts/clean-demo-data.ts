@@ -21,6 +21,14 @@ const uploadsDir = UPLOADS_DIR || path.resolve(process.cwd(), 'uploads');
 async function runCleanup() {
   console.log('[cleanup] Starting demo data removal...');
 
+  // 0. Delete default demo manager, employee, and registry officer
+  await pool.query('DELETE FROM users WHERE email IN ($1, $2, $3)', [
+    'manager@sita.gov.et',
+    'employee@sita.gov.et',
+    'registry@sita.gov.et',
+  ]);
+  console.log('[cleanup] Cleared default demo manager, employee, and registry officer accounts');
+
   // 1. Delete admin tasks
   await pool.query('DELETE FROM admin_tasks');
   console.log('[cleanup] Cleared admin_tasks');
