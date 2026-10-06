@@ -17,15 +17,43 @@ import tasksRoutes from './routes/tasks.routes';
 
 const app = express();
 
-app.use(
-  cors({
-    origin: config.corsOrigin.includes('*') ? true : config.corsOrigin,
-    credentials: true,
-    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  })
-);
-app.options('*', cors());
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // Allow non-browser requests (mobile, curl, server-to-server)
+    if (!origin) return callback(null, true);
+
+    const explicitAllowed = [
+      'https://letter-management-system.vercel.app',
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'http://localhost:4173',
+      'http://127.0.0.1:5173',
+      ...config.corsOrigin,
+    ];
+
+    if (
+      explicitAllowed.includes('*') ||
+      explicitAllowed.includes(origin) ||
+      origin.endsWith('.vercel.app') ||
+      origin.endsWith('.railway.app') ||
+      origin.includes('localhost') ||
+      origin.includes('127.0.0.1')
+    ) {
+      return callback(null, true);
+    }
+
+    console.warn(`[CORS] Blocked request from origin: ${origin}`);
+    return callback(null, false);
+  },
+  credentials: true,
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Content-Disposition'],
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 
