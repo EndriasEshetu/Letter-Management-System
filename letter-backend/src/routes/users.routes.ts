@@ -99,7 +99,8 @@ router.post(
     const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 12);
 
     const userRole = role || 'EMPLOYEE';
-    const deptId = department_id ? Number(department_id) : null;
+    const isCentralRole = userRole === 'ADMIN' || userRole === 'REGISTRY_OFFICER';
+    const deptId = isCentralRole ? null : (department_id ? Number(department_id) : null);
 
     const inserted = await query(
       `INSERT INTO users (full_name, email, phone, job_title, role, department_id, status, is_active, password_hash)
@@ -176,6 +177,11 @@ router.put(
       await query(`UPDATE users SET password_hash = $1 WHERE id = $2`, [newHash, id]);
     }
 
+    const finalNewRole = role || existingUser.role;
+    const isCentralRole = finalNewRole === 'ADMIN' || finalNewRole === 'REGISTRY_OFFICER';
+    const willSetDept = isCentralRole ? true : (department_id !== undefined);
+    const newDeptId = isCentralRole ? null : (department_id ? Number(department_id) : null);
+
     const updated = await query(
       `UPDATE users
           SET full_name = COALESCE($2, full_name),
@@ -197,8 +203,8 @@ router.put(
         job_title !== undefined,
         job_title ? String(job_title).trim() : null,
         role || null,
-        department_id !== undefined,
-        department_id ? Number(department_id) : null,
+        willSetDept,
+        newDeptId,
         status || null,
       ]
     );

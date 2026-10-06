@@ -42,6 +42,8 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
     return Object.keys(errs).length === 0;
   };
 
+  const isCentralRole = role === 'ADMIN' || role === 'REGISTRY_OFFICER';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate() || isLoading) return;
@@ -52,7 +54,7 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
       phone: phone.trim() || undefined,
       job_title: jobTitle.trim() || undefined,
       role,
-      department_id: Number(departmentId) || 1,
+      department_id: isCentralRole ? null : (departmentId ? Number(departmentId) : (departments?.[0]?.id ? Number(departments[0].id) : null)),
       status: 'ACTIVE',
     });
 
@@ -62,7 +64,18 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
     setPhone('');
     setJobTitle('');
     setRole('EMPLOYEE');
+    setDepartmentId(departments?.[0] ? String(departments[0].id) : '1');
     setErrors({});
+  };
+
+  const handleRoleChange = (val: string) => {
+    const nextRole = val as UserRole;
+    setRole(nextRole);
+    if (nextRole === 'ADMIN' || nextRole === 'REGISTRY_OFFICER') {
+      setDepartmentId('');
+    } else if (!departmentId && departments?.length > 0) {
+      setDepartmentId(String(departments[0].id));
+    }
   };
 
   const roleOptions = [
@@ -72,10 +85,13 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
     { value: 'ADMIN', label: 'Administrator' },
   ];
 
-  const deptOptions = (departments ?? []).map((d) => ({
-    value: String(d.id),
-    label: d.name,
-  }));
+  const deptOptions = [
+    { value: '', label: 'No Department / Central Agency (Admin & Registry)' },
+    ...(departments ?? []).map((d) => ({
+      value: String(d.id),
+      label: d.name,
+    })),
+  ];
 
   return (
     <Modal
@@ -138,17 +154,19 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
           />
 
           <Select
-            label="Department"
-            options={deptOptions}
-            value={departmentId}
-            onChange={(val) => setDepartmentId(val)}
-          />
-
-          <Select
             label="Role / Clearance"
             options={roleOptions}
             value={role}
-            onChange={(val) => setRole(val as UserRole)}
+            onChange={handleRoleChange}
+          />
+
+          <Select
+            label="Department / Directorate"
+            options={deptOptions}
+            value={isCentralRole ? '' : departmentId}
+            onChange={(val) => setDepartmentId(val)}
+            disabled={isCentralRole}
+            helperText={isCentralRole ? 'Central Agency personnel (Admin & Registry) do not belong to a department.' : undefined}
           />
         </div>
       </form>

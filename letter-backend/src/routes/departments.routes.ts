@@ -10,7 +10,7 @@ const router = Router();
 const DEPT_SELECT = `
   SELECT d.*,
          u.full_name AS manager_name,
-         (SELECT COUNT(*)::int FROM users u2 WHERE u2.department_id = d.id) AS member_count
+         (SELECT COUNT(*)::int FROM users u2 WHERE u2.department_id = d.id AND u2.role IN ('DEPARTMENT_MANAGER', 'EMPLOYEE')) AS member_count
     FROM departments d
     LEFT JOIN users u ON u.id = d.manager_id
 `;
@@ -56,7 +56,7 @@ router.get(
               u.phone AS manager_phone,
               u.job_title AS manager_job_title,
               u.status AS manager_status,
-              (SELECT COUNT(*)::int FROM users u2 WHERE u2.department_id = d.id) AS member_count
+              (SELECT COUNT(*)::int FROM users u2 WHERE u2.department_id = d.id AND u2.role IN ('DEPARTMENT_MANAGER', 'EMPLOYEE')) AS member_count
          FROM departments d
          LEFT JOIN users u ON u.id = d.manager_id
         WHERE d.id = $1`,
@@ -66,11 +66,11 @@ router.get(
     if (deptRows.length === 0) throw ApiError.notFound('Department not found.');
     const dept = deptRows[0] as any;
 
-    // Fetch all members / employees of this department
+    // Fetch all members / employees belonging specifically to this department
     const { rows: employees } = await query(
       `SELECT id, full_name, email, phone, job_title, role, status, is_active, created_at
          FROM users
-        WHERE department_id = $1
+        WHERE department_id = $1 AND role IN ('DEPARTMENT_MANAGER', 'EMPLOYEE')
         ORDER BY (role = 'DEPARTMENT_MANAGER') DESC, (status = 'ACTIVE') DESC, full_name ASC`,
       [id]
     );

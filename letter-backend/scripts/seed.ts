@@ -85,7 +85,7 @@ async function seed() {
 
   // 4 Official SITA Directorates
   await upsertDepartment('App Development Directorate', 'DIR-APP', 'Web & mobile application software engineering, portal development, and digital services.');
-  const deptInf = await upsertDepartment('ICT Infrastructure Development Directorate', 'DIR-INF', 'Network infrastructure, data center operations, cybersecurity, and hardware systems.');
+  await upsertDepartment('ICT Infrastructure Development Directorate', 'DIR-INF', 'Network infrastructure, data center operations, cybersecurity, and hardware systems.');
   await upsertDepartment('Science and Technology Directorate', 'DIR-SCT', 'Scientific research innovation, technology transfer, emerging tech policies, and standards.');
   await upsertDepartment('Incubation Development Directorate', 'DIR-INC', 'Tech startup incubation, innovation hub mentoring, entrepreneurship support, and grants.');
 
@@ -94,7 +94,7 @@ async function seed() {
     full_name: 'Abebe Bikila',
     email: 'admin@sita.gov.et',
     role: 'ADMIN',
-    departmentId: deptInf,
+    departmentId: null,
     jobTitle: 'System Administrator & Main Admin',
   });
 
