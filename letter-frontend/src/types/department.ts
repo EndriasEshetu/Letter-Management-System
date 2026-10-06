@@ -29,3 +29,32 @@ export interface SystemCapacityInfo {
   used_licenses: number;
   utilization_percent: number;
 }
+
+export interface DepartmentMember {
+  id: number | string;
+  full_name: string;
+  email: string;
+  phone?: string;
+  job_title?: string;
+  role: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  is_active: boolean;
+  created_at?: string;
+}
+
+export interface DepartmentDetails extends Department {
+  manager?: {
+    id: number | string;
+    full_name: string;
+    email: string;
+    phone?: string;
+    job_title?: string;
+    status: string;
+  } | null;
+  employees: DepartmentMember[];
+  stats: {
+    total_employees: number;
+    active_employees: number;
+    inactive_employees: number;
+  };
+}

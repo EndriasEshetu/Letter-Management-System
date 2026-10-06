@@ -1,5 +1,11 @@
 import api from './api';
-import { Department, CreateDepartmentPayload, UpdateDepartmentPayload, SystemCapacityInfo } from '@/types/department';
+import {
+  Department,
+  CreateDepartmentPayload,
+  UpdateDepartmentPayload,
+  SystemCapacityInfo,
+  DepartmentDetails,
+} from '@/types/department';
 
 export const departmentService = {
   /**
@@ -57,6 +63,14 @@ export const departmentService = {
       manager_id: managerId,
       manager_name: managerName,
     });
+    return response.data;
+  },
+
+  /**
+   * Get comprehensive details of a specific department including manager and staff roster
+   */
+  async getDepartmentDetails(id: number | string): Promise<DepartmentDetails> {
+    const response = await api.get<DepartmentDetails>(`/departments/${id}`);
     return response.data;
   },
 };

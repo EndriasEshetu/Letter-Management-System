@@ -18,6 +18,8 @@ import UserFormModal from '@/components/users/UserFormModal';
 import EditUserModal from '@/components/users/EditUserModal';
 import DepartmentOverview from '@/components/users/DepartmentOverview';
 import PermissionsPanel from '@/components/users/PermissionsPanel';
+import DepartmentDetailsModal from '@/components/users/DepartmentDetailsModal';
+import { Eye } from 'lucide-react';
 
 type DirectoryTab = 'USERS' | 'DEPARTMENTS' | 'PERMISSIONS';
 
@@ -55,6 +57,7 @@ export const Users: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [toggleUserTarget, setToggleUserTarget] = useState<User | null>(null);
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
+  const [selectedDeptDetailsId, setSelectedDeptDetailsId] = useState<number | string | null>(null);
 
   /* ── Load Users & System Data ── */
   const loadUsersData = useCallback(async () => {
@@ -357,6 +360,7 @@ export const Users: React.FC = () => {
               departments={departments}
               capacity={capacity}
               isLoading={isLoading}
+              onViewDetails={(id) => setSelectedDeptDetailsId(id)}
             />
           </div>
         </div>
@@ -366,22 +370,48 @@ export const Users: React.FC = () => {
       {activeTab === 'DEPARTMENTS' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
-            <h3 className="text-base font-semibold text-[#292A27]">SITA Organizational Departments</h3>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-semibold text-[#292A27]">SITA Organizational Departments</h3>
+                <p className="text-xs text-[#8A8983]">Official directorates and assigned leadership clearance.</p>
+              </div>
+              <span className="text-xs font-semibold text-[#526A55] bg-[#526A55]/10 px-2.5 py-1 rounded-full">
+                {departments.length} Directorates
+              </span>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {departments.map((dept) => (
-                <div key={dept.id} className="bg-[#ECEAE3] border border-[#D8D7D1] rounded-2xl p-5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[#526A55] bg-[#526A55]/10 px-2.5 py-1 rounded-md">
-                      {dept.code}
-                    </span>
-                    <span className="text-xs font-semibold text-[#292A27]">
-                      {dept.member_count} Members
-                    </span>
+                <div
+                  key={dept.id}
+                  className="bg-[#ECEAE3] border border-[#D8D7D1] rounded-2xl p-5 flex flex-col justify-between space-y-4 shadow-2xs hover:border-[#526A55]/30 transition-colors"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[#526A55] bg-[#526A55]/10 px-2.5 py-1 rounded-md">
+                        {dept.code}
+                      </span>
+                      <span className="text-xs font-semibold text-[#292A27] bg-white/70 px-2.5 py-0.5 rounded-full border border-[#D8D7D1]/50">
+                        {dept.member_count} Members
+                      </span>
+                    </div>
+                    <h4 className="text-base font-bold text-[#292A27]">{dept.name}</h4>
+                    <p className="text-xs text-[#6B6A64] line-clamp-2">{dept.description}</p>
                   </div>
-                  <h4 className="text-base font-bold text-[#292A27]">{dept.name}</h4>
-                  <p className="text-xs text-[#6B6A64] line-clamp-2">{dept.description}</p>
-                  <div className="pt-2 border-t border-[#D8D7D1]/60 text-xs text-[#6B6A64]">
-                    Manager: <strong className="text-[#292A27]">{dept.manager_name || 'Unassigned'}</strong>
+
+                  <div className="pt-3 border-t border-[#D8D7D1]/60 flex items-center justify-between gap-2 text-xs">
+                    <div className="text-[#6B6A64] truncate">
+                      Manager: <strong className="text-[#292A27]">{dept.manager_name || 'Unassigned'}</strong>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setSelectedDeptDetailsId(dept.id)}
+                      className="flex-shrink-0 cursor-pointer text-xs py-1 px-3 font-semibold text-[#526A55] border-[#526A55]/30 hover:bg-[#526A55]/10"
+                    >
+                      <Eye className="w-3.5 h-3.5 mr-1.5 text-[#526A55]" />
+                      Details
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -393,6 +423,7 @@ export const Users: React.FC = () => {
               departments={departments}
               capacity={capacity}
               isLoading={isLoading}
+              onViewDetails={(id) => setSelectedDeptDetailsId(id)}
             />
           </div>
         </div>
@@ -410,6 +441,7 @@ export const Users: React.FC = () => {
               departments={departments}
               capacity={capacity}
               isLoading={isLoading}
+              onViewDetails={(id) => setSelectedDeptDetailsId(id)}
             />
           </div>
         </div>
@@ -458,6 +490,13 @@ export const Users: React.FC = () => {
         isLoading={isDeleting}
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteUserTarget(null)}
+      />
+
+      {/* ── Department Details Modal ── */}
+      <DepartmentDetailsModal
+        open={Boolean(selectedDeptDetailsId)}
+        departmentId={selectedDeptDetailsId}
+        onClose={() => setSelectedDeptDetailsId(null)}
       />
     </div>
   );

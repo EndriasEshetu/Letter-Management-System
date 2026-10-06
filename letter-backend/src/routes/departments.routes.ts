@@ -41,6 +41,78 @@ router.get(
   })
 );
 
+/** GET /departments/:id — retrieve department details including manager & employee roster. */
+router.get(
+  '/:id',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) throw ApiError.badRequest('Invalid department id.');
+
+    const { rows: deptRows } = await query(
+      `SELECT d.*,
+              u.full_name AS manager_name,
+              u.email AS manager_email,
+              u.phone AS manager_phone,
+              u.job_title AS manager_job_title,
+              u.status AS manager_status,
+              (SELECT COUNT(*)::int FROM users u2 WHERE u2.department_id = d.id) AS member_count
+         FROM departments d
+         LEFT JOIN users u ON u.id = d.manager_id
+        WHERE d.id = $1`,
+      [id]
+    );
+
+    if (deptRows.length === 0) throw ApiError.notFound('Department not found.');
+    const dept = deptRows[0] as any;
+
+    // Fetch all members / employees of this department
+    const { rows: employees } = await query(
+      `SELECT id, full_name, email, phone, job_title, role, status, is_active, created_at
+         FROM users
+        WHERE department_id = $1
+        ORDER BY (role = 'DEPARTMENT_MANAGER') DESC, (status = 'ACTIVE') DESC, full_name ASC`,
+      [id]
+    );
+
+    const totalEmployees = employees.length;
+    const activeEmployees = employees.filter((e: any) => e.is_active).length;
+    const inactiveEmployees = totalEmployees - activeEmployees;
+
+    const manager = dept.manager_id
+      ? {
+          id: dept.manager_id,
+          full_name: dept.manager_name,
+          email: dept.manager_email,
+          phone: dept.manager_phone,
+          job_title: dept.manager_job_title,
+          status: dept.manager_status || 'ACTIVE',
+        }
+      : null;
+
+    res.json({
+      ...serializeDepartment(dept),
+      manager,
+      employees: employees.map((e: any) => ({
+        id: e.id,
+        full_name: e.full_name,
+        email: e.email,
+        phone: e.phone || '',
+        job_title: e.job_title || 'Staff Member',
+        role: e.role,
+        status: e.status || (e.is_active ? 'ACTIVE' : 'INACTIVE'),
+        is_active: e.is_active,
+        created_at: e.created_at,
+      })),
+      stats: {
+        total_employees: totalEmployees,
+        active_employees: activeEmployees,
+        inactive_employees: inactiveEmployees,
+      },
+    });
+  })
+);
+
 /** POST /departments — create (admin). */
 router.post(
   '/',
